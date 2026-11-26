@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -70,9 +69,8 @@ import androidx.compose.ui.unit.sp
 import com.tokipin.app.R
 import com.tokipin.app.data.Entry
 import com.tokipin.app.data.EntryKind
+import com.tokipin.app.data.EntryRules
 
-// Same row as the homepage trial and the iOS app.
-private val quickEmoji = listOf("🍊", "🧣", "🎧", "☕", "🌿", "📷", "🌙")
 
 fun EntryKind.textStyle(): TextStyle = when (this) {
     EntryKind.WORD, EntryKind.EMOJI -> TkType.word
@@ -98,6 +96,16 @@ fun EditorScreen(vm: AppViewModel) {
         keyboard?.show()
     }
 
+    fun onFieldChange(value: TextFieldValue) {
+        // The emoji tool accepts only emoji; letters, digits and Hangul are dropped as they arrive.
+        val next = if (draft.kind == EntryKind.EMOJI && value.composition == null) {
+            val kept = EntryRules.emojiOnly(value.text)
+            if (kept == value.text) value else TextFieldValue(kept, TextRange(kept.length))
+        } else value
+        field = next
+        vm.updateRaw(next.text)
+    }
+
     BackHandler {
         when {
             selection != null -> vm.endSelection()
@@ -107,7 +115,7 @@ fun EditorScreen(vm: AppViewModel) {
     }
 
     LaunchedEffect(draft.kind, draft.editId, selection == null) {
-        if (selection == null && (draft.kind == EntryKind.WORD || draft.kind == EntryKind.PLACE)) focusField()
+        if (selection == null && draft.kind != EntryKind.TIME) focusField()
     }
 
     TkBackground {
@@ -123,7 +131,7 @@ fun EditorScreen(vm: AppViewModel) {
             ) {
                 items(draft.items, key = { it.id }) { item ->
                     if (item.id == draft.editId && selection == null) {
-                        Composer(draft.kind, field, focus, onChange = { field = it; vm.updateRaw(it.text) }, onDone = {
+                        Composer(draft.kind, field, focus, onChange = { onFieldChange(it) }, onDone = {
                             if (vm.commitRaw()) focusField()
                         })
                     } else {
@@ -152,7 +160,7 @@ fun EditorScreen(vm: AppViewModel) {
                 }
                 if (draft.editId == null && selection == null && draft.kind != EntryKind.TIME) {
                     item(key = "composer") {
-                        Composer(draft.kind, field, focus, onChange = { field = it; vm.updateRaw(it.text) }, onDone = {
+                        Composer(draft.kind, field, focus, onChange = { onFieldChange(it) }, onDone = {
                             if (vm.commitRaw()) focusField()
                         })
                     }
@@ -169,27 +177,16 @@ fun EditorScreen(vm: AppViewModel) {
                 if (vm.saveFailed) SaveFailedBanner(onRetry = vm::saveDraft)
                 vm.undo?.let { UndoBar(it) }
                 if (draft.kind == EntryKind.EMOJI && selection == null) {
+                    // Android has no API to open a keyboard on its emoji panel, so the hint points at the
+                    // keyboard's own emoji key; anything that is not an emoji is dropped as it is typed.
                     Text(stringResource(R.string.editor_emoji_prompt), style = TkType.label, modifier = Modifier.padding(horizontal = 6.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(quickEmoji) { emoji ->
-                            Box(
-                                Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .clickable(role = Role.Button) { vm.addValue(EntryKind.EMOJI, emoji) }
-                                    .semantics { contentDescription = emoji },
-                                contentAlignment = Alignment.Center,
-                            ) { Text(emoji, fontSize = 26.sp) }
-                        }
-                    }
                 }
                 KindToolbar(draft.kind) { kind ->
                     revealedId = null
                     if (vm.setKind(kind)) {
                         when (kind) {
                             EntryKind.TIME -> { keyboard?.hide(); showTimePicker = true }
-                            EntryKind.EMOJI -> keyboard?.hide() // the quick row leads; tapping the field opens the keyboard
-                            else -> focusField()
+                                                        else -> focusField()
                         }
                     }
                 }

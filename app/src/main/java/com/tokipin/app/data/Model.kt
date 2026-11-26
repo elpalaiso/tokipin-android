@@ -78,6 +78,22 @@ object EntryRules {
         }
     }
 
+    /** Keeps only whole emoji (grapheme clusters with a pictograph, incl. ZWJ sequences, flags, skin tones). */
+    fun emojiOnly(value: String): String {
+        val it = java.text.BreakIterator.getCharacterInstance()
+        it.setText(value)
+        val out = StringBuilder()
+        var start = it.first()
+        var end = it.next()
+        while (end != java.text.BreakIterator.DONE) {
+            val cluster = value.substring(start, end)
+            if (containsEmoji(cluster)) out.append(cluster)
+            start = end
+            end = it.next()
+        }
+        return out.toString()
+    }
+
     fun containsEmoji(value: String): Boolean {
         var i = 0
         while (i < value.length) {

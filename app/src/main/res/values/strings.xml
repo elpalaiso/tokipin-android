@@ -22,7 +22,7 @@
     <string name="editor_invalid_emoji">이모지를 입력해 주세요.</string>
     <string name="editor_empty_edit">값을 입력하거나 항목을 삭제해 주세요.</string>
     <string name="editor_need_one">단어나 이모지 하나를 남겨 보세요.</string>
-    <string name="editor_emoji_prompt">남기고 싶은 이모지를 골라요.</string>
+    <string name="editor_emoji_prompt">키보드의 😊 키를 눌러 이모지를 골라요. 이모지만 입력돼요.</string>
     <string name="editor_save_failed">저장하지 못했어요.\n입력은 이 화면에 남아 있어요.\n저장 공간을 확인해 주세요.</string>
     <string name="editor_retry">다시 시도</string>
     <string name="editor_item_deleted">항목을 삭제했어요.</string>

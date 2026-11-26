@@ -29,6 +29,12 @@ class RulesTest {
         assertNull(EntryRules.normalized(EntryKind.EMOJI, "비"))
     }
 
+    @Test fun emojiOnlyDropsEverythingElse() {
+        assertEquals("🌧️☕", EntryRules.emojiOnly("비🌧️ a1☕"))
+        assertEquals("👩‍👩‍👧🇰🇷👍🏽", EntryRules.emojiOnly("가👩‍👩‍👧 🇰🇷x👍🏽"))
+        assertEquals("", EntryRules.emojiOnly("산책"))
+    }
+
     private val journal = Journal()
         .withDay(LocalDate.of(2026, 11, 25), listOf(Entry(kind = EntryKind.WORD, value = "살구잼"), Entry(kind = EntryKind.PLACE, value = "연남동")))
         .withDay(LocalDate.of(2026, 11, 18), listOf(Entry(kind = EntryKind.PLACE, value = "한강")))
