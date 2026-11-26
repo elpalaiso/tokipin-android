@@ -207,6 +207,12 @@ fun EditorScreen(vm: AppViewModel) {
                             onMove = { to -> revealedId = null; vm.moveDraftItem(item.id, to) },
                             onPickUp = { haptics.report(com.tokipin.app.rules.NavEvent.FRAGMENT_PICK_UP) },
                             edgeScroll = { y -> edgeScroll(y) },
+                            // Heights (not positions) of the rows around the held one: sizes do not
+                            // change when rows trade places, so they are never stale after a move.
+                            heightAt = { i ->
+                                val id = vm.draft?.items?.getOrNull(i)?.id
+                                if (id == null) null else listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == id }?.size?.toFloat()
+                            },
                         )
                     }
                 }
@@ -437,6 +443,7 @@ private fun EditorRow(
     onMove: (Int) -> Unit,
     onPickUp: () -> Unit,
     edgeScroll: (Float) -> Float,
+    heightAt: (Int) -> Float?,
 ) {
     val density = LocalDensity.current
     val reduceMotion = LocalReduceMotion.current
@@ -459,13 +466,14 @@ private fun EditorRow(
     var menuOpen by remember { mutableStateOf(false) }
     val currentIndex by androidx.compose.runtime.rememberUpdatedState(index)
     val currentCount by androidx.compose.runtime.rememberUpdatedState(count)
+    // The row's own coordinates, inside the lifted layer, so a finger position maps to the window exactly.
     val coords = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
 
     Box(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .onGloballyPositioned { coords[0] = it; rowHeight = it.size.height.toFloat() }
+            .onGloballyPositioned { rowHeight = it.size.height.toFloat() }
             .zIndex(if (lifted) 1f else 0f)
             .graphicsLayer {
                 translationY = liftY
@@ -499,6 +507,7 @@ private fun EditorRow(
                     },
                 )
                 .testTag("editRow_${item.id}")
+                .onGloballyPositioned { coords[0] = it }
                 // One gesture handler for tap, long press in place (menu) and long-press drag (move).
                 .pointerInput(item.id, selecting) {
                     awaitEachGesture {
@@ -516,6 +525,15 @@ private fun EditorRow(
                         var at = start
                         var travelled = 0f
                         liftY = 0f
+                        // The held row stays pinned to the finger: its offset is the finger's travel in
+                        // the window, plus what the list scrolled, minus how far its slot has moved.
+                        // Slot moves are summed from the neighbours' heights, never read back from a
+                        // layout that may not have caught up with the last move yet.
+                        fun windowY(p: androidx.compose.ui.geometry.Offset) = coords[0]?.takeIf { it.isAttached }?.localToWindow(p)?.y
+                        val startY = windowY(down.position) ?: 0f
+                        var lastY = startY
+                        var scrolled = 0f
+                        var slotShift = 0f
                         onPickUp() // one light tick, only when picked up
                         var cancelled = false
                         while (true) {
@@ -523,15 +541,25 @@ private fun EditorRow(
                             val change = event.changes.firstOrNull { it.id == down.id }
                             if (change == null || change.isConsumed) { cancelled = true; break }
                             if (!change.pressed) { change.consume(); break }
-                            val dy = change.position.y - change.previousPosition.y
                             change.consume()
-                            travelled += kotlin.math.abs(dy)
-                            liftY += dy
+                            val fingerY = windowY(change.position) ?: lastY
+                            travelled += kotlin.math.abs(fingerY - lastY)
+                            lastY = fingerY
                             // Near the list's top or bottom edge, scroll so far places can be reached.
-                            coords[0]?.takeIf { it.isAttached }?.let { liftY += edgeScroll(it.localToWindow(change.position).y) }
-                            val step = rowHeight + spacing
-                            while (step > 0 && liftY > step / 2 && at < currentCount - 1) { at++; onMove(at); liftY -= step }
-                            while (step > 0 && liftY < -step / 2 && at > 0) { at--; onMove(at); liftY += step }
+                            scrolled += edgeScroll(fingerY)
+                            liftY = fingerY - startY + scrolled - slotShift
+                            // Trade places once the row's centre passes a neighbour's middle; a fast drag
+                            // may pass several rows in one event.
+                            while (at < currentCount - 1) {
+                                val next = (heightAt(at + 1) ?: rowHeight) + spacing
+                                if (liftY <= next / 2) break
+                                at++; onMove(at); slotShift += next; liftY -= next
+                            }
+                            while (at > 0) {
+                                val prev = (heightAt(at - 1) ?: rowHeight) + spacing
+                                if (liftY >= -prev / 2) break
+                                at--; onMove(at); slotShift -= prev; liftY += prev
+                            }
                         }
                         lifted = false
                         liftY = 0f

@@ -610,6 +610,52 @@ class UxSpecDeviceTest {
         assertTrue("공원 now first", bounds(compose.onNodeWithTag("dayItem_b")).top < bounds(compose.onNodeWithTag("dayItem_a")).top)
     }
 
+    /** iOS e4f5d1e parity: a held fragment never drifts from the finger, also past a taller row. */
+    @Test fun aHeldFragmentStaysUnderTheFingerAcrossRowsOfDifferentHeights() {
+        val long = "아주 긴 문장을 남겨서 이 줄이 여러 줄로 감기도록 만든 첫 조각입니다 정말 길게 이어지는 문장"
+        val data = """{"version":1,"days":[{"date":"2026-11-20","updatedAt":"2026-11-20T10:00:00Z","items":[
+            ${item("word", long, "L")},${item("word", "하나", "s1")},${item("place", "둘", "s2")},${item("word", "셋", "s3")},${item("word", "넷", "s4")}]}]}"""
+        launch(data = data, today = rangeToday)
+        selectDay("2026-11-20")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitForIdle(); Thread.sleep(300)
+        val tall = bounds(compose.onNodeWithTag("editRow_L"))
+        assertTrue("the first row is taller", tall.height > bounds(compose.onNodeWithTag("editRow_s1")).height * 1.5f)
+        fun checkHeld(tag: String, fingerY: Float) {
+            compose.waitForIdle()
+            val c = bounds(compose.onNodeWithTag(tag)).center.y
+            assertEquals("$tag stays under the finger", fingerY, c, 6f * density)
+        }
+        // Fast drag of the tall row down over several short rows, checked between bursts.
+        var finger = tall.center.y
+        // Long press is timed by event time within one injection, so pick up with a first small move.
+        compose.onNodeWithTag("editRow_L").performTouchInput { down(center); advanceEventTime(800); moveBy(Offset(0f, 2f), 8) }
+        finger += 2f
+        repeat(4) {
+            val step = 45f * density
+            compose.onNodeWithTag("editRow_L").performTouchInput { repeat(3) { moveBy(Offset(0f, step / 3), 8) } }
+            finger += step
+            checkHeld("editRow_L", finger)
+        }
+        compose.onNodeWithTag("editRow_L").performTouchInput { up() }
+        compose.waitForIdle()
+        scenario!!.onActivity { assertEquals("L moved down", true, it.vm.draft!!.items.indexOfFirst { e -> e.id == "L" } >= 3) }
+        // Fast drag of the last short row up past the tall one to the top.
+        val short = bounds(compose.onNodeWithTag("editRow_s4"))
+        finger = short.center.y
+        compose.onNodeWithTag("editRow_s4").performTouchInput { down(center); advanceEventTime(800); moveBy(Offset(0f, -2f), 8) }
+        finger -= 2f
+        val travel = short.center.y - bounds(compose.onNodeWithTag("editRow_s1")).top
+        repeat(4) {
+            compose.onNodeWithTag("editRow_s4").performTouchInput { repeat(3) { moveBy(Offset(0f, -travel / 12), 8) } }
+            finger -= travel / 4
+            checkHeld("editRow_s4", finger)
+        }
+        compose.onNodeWithTag("editRow_s4").performTouchInput { up() }
+        compose.waitForIdle()
+        scenario!!.onActivity { assertEquals("s4 reached the top", "s4", it.vm.draft!!.items.first().id) }
+    }
+
     @Test fun talkBackActionsMoveAndDelete() {
         launch(data = editData)
         openDayFromRecords("2026-11-25")
