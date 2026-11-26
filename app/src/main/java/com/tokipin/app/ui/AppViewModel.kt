@@ -423,6 +423,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         store.hapticsEnabled = enabled
     }
 
+    /** Debug builds (개발용 테스트 데이터): replace all records with the homepage's sample journal. */
+    fun replaceWithSamples() = replaceAll(com.tokipin.app.data.SampleData.journal(), R.string.debug_samples_done)
+
+    /** Debug builds: clear every record and the draft, to check the empty home. */
+    fun clearAllRecords() = replaceAll(Journal(), R.string.debug_cleared)
+
+    private fun replaceAll(next: Journal, message: Int) {
+        draft = null
+        persistDraft()
+        clearUndo()
+        persistJournal(next) {
+            transientMessage = res.getString(message)
+            selectedDate = next.recordedDates().firstOrNull() ?: LocalDate.now()
+            visibleMonth = YearMonth.from(selectedDate)
+            entry = ListEntry.Anchor(null)
+            focusRequest++
+        }
+    }
+
     fun export(uri: Uri) {
         val resolver = getApplication<Application>().contentResolver
         viewModelScope.launch {

@@ -70,6 +70,31 @@ tasks.matching { it.name.startsWith("test") || it.name.startsWith("connected") }
     dependsOn(verifyUxSpec)
 }
 
+/**
+ * Debug sample data is a port of the homepage generator (../tokipin/trial.js). This dumps the web
+ * generator's output with node so SampleDataTest can compare every day; without node the test skips.
+ */
+val webSamplesDir = layout.buildDirectory.dir("generated/webSamples")
+val dumpWebSamples by tasks.registering {
+    val out = webSamplesDir.map { it.file("web-samples.json") }
+    val web = rootProject.file("../tokipin")
+    val script = rootProject.file("tools/web-samples.js")
+    outputs.upToDateWhen { false }
+    doLast {
+        val target = out.get().asFile
+        target.parentFile.mkdirs()
+        target.delete()
+        runCatching {
+            val process = ProcessBuilder("node", script.path, web.path).redirectError(ProcessBuilder.Redirect.INHERIT).start()
+            val text = process.inputStream.readBytes()
+            if (process.waitFor() == 0) target.writeBytes(text)
+        }.onFailure { logger.warn("node not available; SampleDataTest will skip the web comparison") }
+    }
+}
+android.sourceSets.getByName("test").resources.directories.add(webSamplesDir.get().asFile.path)
+tasks.matching { it.name.startsWith("process") && it.name.endsWith("UnitTestJavaRes") }.configureEach { dependsOn(dumpWebSamples) }
+tasks.matching { it.name == "testDebugUnitTest" || it.name == "testReleaseUnitTest" }.configureEach { dependsOn(dumpWebSamples) }
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17

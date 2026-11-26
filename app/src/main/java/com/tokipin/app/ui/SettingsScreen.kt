@@ -93,6 +93,15 @@ fun SettingsSheet(vm: AppViewModel) {
                     TkIcon(R.drawable.ic_download, size = 20.dp, tint = if (canExport) Tk.Primary else Tk.Muted)
                 }
             }
+            if (com.tokipin.app.data.SampleData.AVAILABLE) {
+                // Debug builds only (src/debug); release builds have no sample data and no rows.
+                Text(stringResource(R.string.debug_section), style = TkType.body.copy(fontSize = 15.sp), modifier = Modifier.padding(top = 4.dp))
+                Group {
+                    LinkRow(stringResource(R.string.debug_samples)) { vm.replaceWithSamples(); vm.closeSettings() }
+                    HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
+                    LinkRow(stringResource(R.string.debug_clear)) { vm.clearAllRecords(); vm.closeSettings() }
+                }
+            }
             Text(stringResource(R.string.settings_storage_title), style = TkType.body.copy(fontSize = 15.sp), modifier = Modifier.padding(top = 4.dp))
             Text(stringResource(R.string.settings_storage_body), style = TkType.label)
             Group {
@@ -141,7 +150,7 @@ fun PolicyScreen(policy: Policy, onBack: () -> Unit) {
         )
     }
     TkBackground {
-        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_close), onBack)
                 Spacer(Modifier.width(10.dp))

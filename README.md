@@ -39,6 +39,10 @@ The interaction rules come from `Tokipin-Native-UX-v0.1` (md + json with 59 case
 ANDROID_SERIAL=<device> ./gradlew :app:connectedDebugAndroidTest   # gestures, calendar state, haptic counts
 ```
 
+## Debug sample data
+
+Debug builds show **설정 › 개발용 테스트 데이터** with "예시 기록 넣기" (replace all records with three years of samples ending today) and "모든 기록 지우기" (check the empty home). The samples are an exact port of the homepage generator (`../tokipin/trial.js`, `trial-content.js`) in `app/src/debug/.../SampleData.kt`, with the same item ids as iOS. `SampleDataTest` compares every date, kind and value with the web generator through node (`tools/web-samples.js`). Release builds use `app/src/release/.../SampleData.kt`, which has no data and hides the rows.
+
 ## Data format
 
 Stored at `files/tokipin/records.json` (atomic writes) with the draft in `files/tokipin/draft.json`. Export writes the same JSON, identical to iOS so files are interchangeable:

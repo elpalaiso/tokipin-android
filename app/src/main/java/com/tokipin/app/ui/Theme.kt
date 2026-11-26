@@ -8,6 +8,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -108,6 +112,14 @@ object TkType {
     val label = base.merge(fontSize = 14.sp, lineHeight = 20.sp, color = Tk.Secondary)
     val small = base.merge(fontSize = 12.sp, lineHeight = 16.sp, color = Tk.Secondary)
 }
+
+/** Readable content width on tablets, foldables and landscape: centered, at most 640dp wide. */
+val CONTENT_MAX_WIDTH = 640.dp
+
+fun Modifier.contentColumn(): Modifier = this
+    .fillMaxWidth()
+    .wrapContentWidth(Alignment.CenterHorizontally)
+    .widthIn(max = CONTENT_MAX_WIDTH)
 
 fun Modifier.glass(shape: Shape = CircleShape): Modifier = this
     .clip(shape)

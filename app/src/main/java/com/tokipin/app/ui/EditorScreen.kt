@@ -136,7 +136,7 @@ fun EditorScreen(vm: AppViewModel) {
     }
 
     TkBackground {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
+        Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding().navigationBarsPadding().imePadding()) {
             if (selection != null) SelectionHeader(vm, selection) else EditorHeader(vm, draft.items.isNotEmpty())
 
             val listState = rememberLazyListState()

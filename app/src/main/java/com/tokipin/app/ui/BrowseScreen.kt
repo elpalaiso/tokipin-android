@@ -11,6 +11,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.tappableElement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -155,7 +158,7 @@ fun BrowseScreen(vm: AppViewModel) {
 
     TkBackground {
         CompositionLocalProvider(LocalPinchTargets provides pinchTargets) {
-            Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding()) {
                 BrowseTopBar(vm, onDayMenu = { dayMenuFor = vm.selectedDate })
                 Box(
                     Modifier
@@ -190,6 +193,7 @@ fun BrowseScreen(vm: AppViewModel) {
                 }
             }
         }
+        if (vm.journal.isEmpty && (vm.level == Level.RECORDS || vm.level == Level.YEAR)) PeekRabbit()
         BottomActions(vm)
     }
 
@@ -303,7 +307,7 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
 private fun BoxScope.BottomActions(vm: AppViewModel) {
     val haptics = LocalHaptics.current
     Column(
-        Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.align(Alignment.BottomCenter).contentColumn().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         vm.undo?.let { UndoBar(it) }
@@ -328,12 +332,26 @@ private fun EmptyHome(vm: AppViewModel) {
             Text(stringResource(R.string.home_empty), style = TkType.title)
             GlassPill(stringResource(R.string.home_first_record), onClick = { vm.openEditor(LocalDate.now()) }, leading = R.drawable.ic_plus)
         }
-        // The rabbit peeks in from the corner (Figma 01 · 토끼는 모서리에서 빼꼼).
+    }
+}
+
+/**
+ * The rabbit peeks in from the screen's bottom-right corner (Figma 01 · 토끼는 모서리에서 빼꼼), on the
+ * whole screen even when the content column is narrower (tablets). Same rule as iOS: 52% of the
+ * screen width (170–300dp), shifted right by 6% of its size, its bottom on the screen edge. With
+ * 3-button navigation it sits above the buttons so they never cover its eyes.
+ */
+@Composable
+private fun BoxScope.PeekRabbit() {
+    val density = LocalDensity.current
+    val buttons = with(density) { WindowInsets.tappableElement.getBottom(density).toDp() }
+    BoxWithConstraints(Modifier.align(Alignment.BottomEnd).fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+        val side = (maxWidth * 0.52f).coerceIn(170.dp, 300.dp)
         Image(
             painterResource(R.drawable.ic_peek_rabbit),
             contentDescription = null,
             colorFilter = ColorFilter.tint(Color(0xFFA9BC9E)),
-            modifier = Modifier.align(Alignment.BottomEnd).size(200.dp).offset(x = 20.dp, y = 8.dp),
+            modifier = Modifier.padding(bottom = buttons).size(side).offset(x = side * 0.06f),
         )
     }
 }
@@ -763,12 +781,15 @@ private fun YearView(vm: AppViewModel) {
             .distinctUntilChanged()
             .collect { yr -> if (yr != null && state.isScrollInProgress) vm.scrolledTo(YearMonth.of(yr, 1)) }
     }
+    // Three months per row on phones, four when there is room (tablets, foldables, landscape).
+    BoxWithConstraints {
+    val perRow = if (maxWidth >= 560.dp) 4 else 3
     LazyColumn(state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 110.dp)) {
         itemsIndexed(years, key = { _, y -> y }) { _, year ->
             // The year title scrolls together with its twelve months.
             Column(Modifier.padding(top = 12.dp, bottom = 12.dp).testTag("year_$year")) {
                 Text(year.toString(), style = TkType.title.copy(fontSize = 30.sp), modifier = Modifier.padding(start = 4.dp, bottom = 8.dp).semantics { heading() })
-                (1..12).chunked(3).forEach { row ->
+                (1..12).chunked(perRow).forEach { row ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         row.forEach { m ->
                             val month = YearMonth.of(year, m)
@@ -782,6 +803,7 @@ private fun YearView(vm: AppViewModel) {
                 }
             }
         }
+    }
     }
 }
 

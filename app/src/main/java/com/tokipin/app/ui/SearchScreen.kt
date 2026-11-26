@@ -79,7 +79,7 @@ fun SearchScreen(vm: AppViewModel) {
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
     TkBackground {
-        Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
+        Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding().imePadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_close_search), vm::closeSearch)
                 Spacer(Modifier.width(8.dp))
