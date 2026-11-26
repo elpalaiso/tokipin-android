@@ -20,7 +20,10 @@ class SampleDataTest {
         assumeTrue("node not available", resource != null)
         val web = Json.parseToJsonElement(resource!!.readText()).jsonObject
         val today = LocalDate.parse(web["today"]!!.jsonPrimitive.content)
-        assertEquals(web["start"]!!.jsonPrimitive.content, SampleData.start(today).toString())
+        // The web's `start` is now its calendar range (from the first of the month); the generated
+        // days themselves still begin on firstDay, the day after the same date three years earlier.
+        val firstWebDay = web["days"]!!.jsonArray.minOf { it.jsonObject["date"]!!.jsonPrimitive.content }
+        assertEquals(firstWebDay, SampleData.journal(today).dates.last().toString())
 
         val expected = web["days"]!!.jsonArray.associate { day ->
             day.jsonObject["date"]!!.jsonPrimitive.content to day.jsonObject["items"]!!.jsonArray.map {

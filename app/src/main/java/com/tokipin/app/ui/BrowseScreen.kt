@@ -464,8 +464,8 @@ private fun DayBody(vm: AppViewModel, shown: LocalDate) {
             .padding(bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        items.forEachIndexed { index, entry ->
-            DailyItem(entry = entry, lead = index == 0, highlighted = vm.highlightId == entry.id)
+        items.forEach { entry ->
+            DailyItem(entry = entry, highlighted = vm.highlightId == entry.id)
         }
     }
 }
@@ -504,34 +504,27 @@ private fun WeekRow(start: LocalDate, date: LocalDate, onSelect: (LocalDate) -> 
 
 /** Reading only: editing goes through the pencil at the bottom (no per-fragment ⋯ any more). */
 @Composable
-private fun DailyItem(entry: Entry, lead: Boolean, highlighted: Boolean) {
+private fun DailyItem(entry: Entry, highlighted: Boolean) {
+    // Figma 5-2105: every fragment has the same weight, the first one included: one row each, an
+    // icon only for place and time, a divider under each.
     val text = entry.shown()
-    val shape = RoundedCornerShape(if (lead) 22.dp else 10.dp)
+    val shape = RoundedCornerShape(10.dp)
     Box(Modifier.testTag("dayItem_${entry.id}")) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = if (lead) 128.dp else 64.dp)
-                .then(
-                    when {
-                        lead -> Modifier.clip(shape).background(Tk.Card).border(0.8.dp, Tk.CardBorder, shape)
-                        highlighted -> Modifier.clip(shape).background(Tk.SheetRow.copy(alpha = 0.7f))
-                        else -> Modifier
-                    },
-                )
-                .then(if (highlighted) Modifier.border(1.dp, Tk.Focus.copy(alpha = 0.7f), shape) else Modifier)
-                .padding(start = if (lead) 22.dp else 4.dp, end = 16.dp),
-            verticalAlignment = if (lead) Alignment.Top else Alignment.CenterVertically,
+                .heightIn(min = 64.dp)
+                .then(if (highlighted) Modifier.clip(shape).background(Tk.SheetRow.copy(alpha = 0.7f)).border(1.dp, Tk.Focus.copy(alpha = 0.7f), shape) else Modifier)
+                .padding(start = 4.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(Modifier.weight(1f).padding(top = if (lead) 32.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (!lead && (entry.kind == EntryKind.PLACE || entry.kind == EntryKind.TIME)) {
-                    TkIcon(entry.kind.icon(), tint = Tk.Secondary, size = 16.dp)
-                    Spacer(Modifier.width(12.dp))
-                }
-                Text(text, style = if (lead) TkType.word else TkType.title)
+            if (entry.kind == EntryKind.PLACE || entry.kind == EntryKind.TIME) {
+                TkIcon(entry.kind.icon(), tint = Tk.Secondary, size = 16.dp)
+                Spacer(Modifier.width(12.dp))
             }
+            Text(text, style = TkType.title, modifier = Modifier.weight(1f))
         }
-        if (!lead) HorizontalDivider(color = Tk.Divider, modifier = Modifier.align(Alignment.BottomCenter))
+        HorizontalDivider(color = Tk.Divider, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 

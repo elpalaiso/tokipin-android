@@ -95,6 +95,12 @@ fun EntryKind.textStyle(): TextStyle = when (this) {
     EntryKind.PLACE, EntryKind.TIME -> TkType.itemSecondary
 }
 
+/**
+ * Figma 211-3000: saved fragments all read at the same size (like the day view). Only the very
+ * first fragment typed on an empty day ([large]) stays large while it is being written.
+ */
+fun EntryKind.editorStyle(large: Boolean): TextStyle = if (large) textStyle() else TkType.title
+
 @Composable
 fun EditorScreen(vm: AppViewModel) {
     val draft = vm.draft ?: return
@@ -181,9 +187,9 @@ fun EditorScreen(vm: AppViewModel) {
             ) {
                 items(draft.items, key = { it.id }) { item ->
                     if (item.id == draft.editId && selection == null && draft.kind == EntryKind.TIME) {
-                        PendingTime(draft.raw.ifEmpty { item.value })
+                        PendingTime(draft.raw.ifEmpty { item.value }, large = false)
                     } else if (item.id == draft.editId && selection == null) {
-                        Composer(draft.kind, field, focus, onChange = { onFieldChange(it) }, onDone = {
+                        Composer(draft.kind, field, focus, large = draft.items.isEmpty(), onChange = { onFieldChange(it) }, onDone = {
                             if (vm.commitRaw()) focusField()
                         })
                     } else {
@@ -218,7 +224,7 @@ fun EditorScreen(vm: AppViewModel) {
                 }
                 if (draft.editId == null && selection == null && draft.kind != EntryKind.TIME) {
                     item(key = "composer_${draft.kind}") {
-                        Composer(draft.kind, field, focus, onChange = { onFieldChange(it) }, onDone = {
+                        Composer(draft.kind, field, focus, large = draft.items.isEmpty(), onChange = { onFieldChange(it) }, onDone = {
                             if (vm.commitRaw()) focusField()
                         })
                     }
@@ -226,7 +232,7 @@ fun EditorScreen(vm: AppViewModel) {
                 if (draft.editId == null && selection == null && draft.kind == EntryKind.TIME) {
                     // The time tool has no text field (the time is chosen below), so the waiting row shows
                     // the same "시간" placeholder as the other tools, or the time chosen but not yet added.
-                    item(key = "composer_TIME") { TimeSlot(draft.raw) }
+                    item(key = "composer_TIME") { TimeSlot(draft.raw, large = draft.items.isEmpty()) }
                 }
             }
             LaunchedEffect(draft.items.size) {
@@ -388,6 +394,7 @@ private fun Composer(
     kind: EntryKind,
     value: TextFieldValue,
     focus: FocusRequester,
+    large: Boolean,
     onChange: (TextFieldValue) -> Unit,
     onDone: () -> Unit,
 ) {
@@ -396,7 +403,7 @@ private fun Composer(
     BasicTextField(
         value = value,
         onValueChange = onChange,
-        textStyle = kind.textStyle(),
+        textStyle = kind.editorStyle(large),
         cursorBrush = SolidColor(Tk.Primary),
         singleLine = true,
         // Each tool is its own input session with its own options, so switching tools makes the
@@ -416,7 +423,7 @@ private fun Composer(
             .semantics { contentDescription = description },
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.CenterStart) {
-                if (value.text.isEmpty()) Text(label, style = kind.textStyle().copy(color = Tk.Muted.copy(alpha = 0.6f)))
+                if (value.text.isEmpty()) Text(label, style = kind.editorStyle(large).copy(color = Tk.Muted.copy(alpha = 0.6f)))
                 inner()
             }
         },
@@ -606,7 +613,7 @@ private fun EditorRow(
                 ) { if (checked) TkIcon(R.drawable.ic_check, tint = Tk.Surface, size = 14.dp) }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(shownText, style = if (selecting) TkType.title else item.kind.textStyle())
+            Text(shownText, style = TkType.title)
         }
         Box(Modifier.align(Alignment.BottomStart)) {
             DropdownMenu(
@@ -695,21 +702,21 @@ private fun EmojiKeyHint() {
 }
 
 @Composable
-private fun TimeSlot(pending: String) {
-    if (pending.isNotEmpty()) { PendingTime(pending); return }
+private fun TimeSlot(pending: String, large: Boolean) {
+    if (pending.isNotEmpty()) { PendingTime(pending, large); return }
     val label = stringResource(EntryKind.TIME.label())
     Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).semantics { contentDescription = label }, contentAlignment = Alignment.CenterStart) {
-        Text(label, style = EntryKind.TIME.textStyle().copy(color = Tk.Muted.copy(alpha = 0.6f)))
+        Text(label, style = EntryKind.TIME.editorStyle(large).copy(color = Tk.Muted.copy(alpha = 0.6f)))
     }
 }
 
 @Composable
-private fun PendingTime(value: String) {
+private fun PendingTime(value: String, large: Boolean) {
     Box(
         Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
             .background(Tk.SheetRow.copy(alpha = 0.8f)).padding(horizontal = 4.dp),
         contentAlignment = Alignment.CenterStart,
-    ) { Text(LocalTimeDisplay.current.format(value), style = EntryKind.TIME.textStyle()) }
+    ) { Text(LocalTimeDisplay.current.format(value), style = EntryKind.TIME.editorStyle(large)) }
 }
 
 /**
