@@ -183,6 +183,11 @@ fun EditorScreen(vm: AppViewModel) {
                         })
                     }
                 }
+                if (draft.editId == null && selection == null && draft.kind == EntryKind.TIME) {
+                    // The time tool has no text field (the time is chosen below), so the waiting row shows
+                    // the same "시간" placeholder as the other tools, or the time chosen but not yet added.
+                    item(key = "composer_TIME") { TimeSlot(draft.raw) }
+                }
             }
             LaunchedEffect(draft.items.size) {
                 if (draft.items.isNotEmpty()) listState.animateScrollToItem(listState.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1)
@@ -446,6 +451,15 @@ private fun EmojiKeyHint() {
         TkIcon(R.drawable.ic_emoji, tint = Tk.OnFocus, size = 18.dp)
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.editor_emoji_prompt), style = TkType.label.copy(color = Tk.OnFocus, fontWeight = FontWeight.Medium))
+    }
+}
+
+@Composable
+private fun TimeSlot(pending: String) {
+    if (pending.isNotEmpty()) { PendingTime(pending); return }
+    val label = stringResource(EntryKind.TIME.label())
+    Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).semantics { contentDescription = label }, contentAlignment = Alignment.CenterStart) {
+        Text(label, style = EntryKind.TIME.textStyle().copy(color = Tk.Muted.copy(alpha = 0.6f)))
     }
 }
 
