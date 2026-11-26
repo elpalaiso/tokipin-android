@@ -48,9 +48,9 @@
     <string name="view_month">월간 달력</string>
     <string name="view_year">연간</string>
     <string name="settings">설정</string>
-    <string name="day_empty">이날 남긴 기록이 없어요</string>
+    <string name="day_empty">이날 남긴 기록이 없어요.</string>
     <string name="month_empty">이달에 남긴 기록이 없어요.</string>
-    <string name="month_empty_cd">%1$d월에 남긴 기록이 없어요</string>
+    <string name="month_empty_cd">%1$d월에 남긴 기록이 없어요.</string>
     <string name="cd_edit_day">이날 기록 편집</string>
     <string name="move_up">위로 이동</string>
     <string name="move_down">아래로 이동</string>

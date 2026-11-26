@@ -73,7 +73,7 @@ fun EmptyRabbitCard(width: Dp, modifier: Modifier = Modifier) {
                 .offset((EmptyStateSpec.RABBIT_X * s).dp, (EmptyStateSpec.RABBIT_Y * s).dp)
                 .size((EmptyStateSpec.RABBIT * s).dp),
         )
-        val shape = RoundedCornerShape((18 * s).dp)
+        val shape = RoundedCornerShape((14 * s).dp)
         Box(
             Modifier
                 .align(Alignment.BottomCenter)

@@ -522,7 +522,7 @@ class UxSpecDeviceTest {
         openDayOnRail("2026-11-25", "2026.11.24(화)")
         val empty = compose.onNodeWithTag("dayEmpty_2026-11-24")
         empty.assertExists()
-        assertEquals("이날 남긴 기록이 없어요", empty.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
+        assertEquals("이날 남긴 기록이 없어요.", empty.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
         // Picture centre at about 30% of the space between the date band and the bottom buttons.
         assertTrue(centerFraction("dayEmpty_2026-11-24", "dayBody") in 0.18f..0.36f)
         compose.onNodeWithTag("addRecord").performClick()
@@ -655,7 +655,7 @@ class UxSpecDeviceTest {
         launch(data = editData)
         showRecordedMonth("2026-12")
         compose.onNodeWithTag("monthEmpty").assertExists()
-        assertEquals("12월에 남긴 기록이 없어요", compose.onNodeWithTag("monthEmpty").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
+        assertEquals("12월에 남긴 기록이 없어요.", compose.onNodeWithTag("monthEmpty").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
         assertTrue(centerFraction("monthEmpty", "recordsBody") in 0.18f..0.36f)
         compose.onNodeWithText("이달에 남긴 기록이 없어요.").assertDoesNotExist()
         menu("MONTH")
