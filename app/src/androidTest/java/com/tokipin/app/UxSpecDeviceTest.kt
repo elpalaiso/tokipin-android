@@ -530,6 +530,37 @@ class UxSpecDeviceTest {
         return (c - a.top) / a.height
     }
 
+    private fun imeVisible(): Boolean {
+        var shown = false
+        scenario!!.onActivity {
+            shown = androidx.core.view.ViewCompat.getRootWindowInsets(it.window.decorView)
+                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+        }
+        return shown
+    }
+
+    /** iOS 806a80e parity: pencil (keyboard closed) → tap the empty row → typing keeps the keyboard. */
+    @Test fun tappingTheEmptyRowAfterThePencilKeepsTheKeyboardWhileTyping() {
+        val data = """{"version":1,"days":[{"date":"2026-11-20","updatedAt":"2026-11-20T10:00:00Z","items":[
+            ${item("word", "산책", "k1")},${item("emoji", "🌿", "k2")}]}]}"""
+        launch(data = data, today = rangeToday)
+        selectDay("2026-11-20")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitForIdle(); Thread.sleep(500)
+        assertTrue("pencil opens with the keyboard closed", noFocusedField() && !imeVisible())
+        compose.onNodeWithContentDescription("단어 입력").performClick()
+        compose.waitUntil(3_000) { imeVisible() }
+        // Type through the real IME connection, one character at a time.
+        val ui = InstrumentationRegistry.getInstrumentation().uiAutomation
+        for (c in listOf("b", "a", "m")) {
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(ui.executeShellCommand("input text $c")).readBytes()
+            Thread.sleep(400); compose.waitForIdle()
+            assertTrue("keyboard still open after '$c'", imeVisible())
+            assertTrue("field still focused after '$c'", !noFocusedField())
+        }
+        compose.onNodeWithText("bam").assertExists()
+    }
+
     @Test fun emptyDayPlusSavesTheFirstFragmentAndPencilReopensItWithoutKeyboard() {
         launch(data = editData)
         openDayOnRail("2026-11-25", "2026.11.24(화)")
@@ -739,13 +770,20 @@ class UxSpecDeviceTest {
         compose.waitUntil(3_000) { exists(level("DAILY")) }
     }
 
+    /** Mini months draw their days in one Canvas; the dots they draw are exposed as RecordedDaysKey. */
+    private fun dayDot(date: String): Boolean {
+        val d = java.time.LocalDate.parse(date)
+        val node = compose.onNodeWithTag("mini_${date.substring(0, 7)}").fetchSemanticsNode()
+        return d in node.config[com.tokipin.app.ui.RecordedDaysKey]
+    }
+
     @Test fun yearViewShowsTheSelectedMonthFocusAndTheRecordDayDotsTogether() {
         launchRange()
         selectDay("2017-05-14")
         menu("YEAR")
         scrollTo("year_2017")
         assertTrue("① 5월 focus", exists(compose.onNode(hasTestTag("mini_2017-05") and selected)))
-        compose.onNode(hasTestTag("dayDot_2017-05-14"), useUnmergedTree = true).assertExists() // ②
+        assertTrue(dayDot("2017-05-14")) // ②
         compose.onNode(hasTestTag("monthDot_2017-05"), useUnmergedTree = true).assertExists()  // ③
         compose.onNode(hasTestTag("yearDot_2017"), useUnmergedTree = true).assertExists()
         compose.onNode(list).performScrollToNode(hasTestTag("yearGap_2018"))
@@ -757,8 +795,8 @@ class UxSpecDeviceTest {
         compose.onNodeWithText("오늘").performClick()
         compose.waitForIdle(); Thread.sleep(300)
         assertTrue(exists(compose.onNode(hasTestTag("mini_2026-11") and selected)))
-        (23..26).forEach { compose.onNode(hasTestTag("dayDot_2026-11-$it"), useUnmergedTree = true).assertExists() }
-        listOf("03", "09", "13", "16").forEach { compose.onNode(hasTestTag("dayDot_2026-11-$it"), useUnmergedTree = true).assertDoesNotExist() }
+        (23..26).forEach { assertTrue("dot on 11-$it", dayDot("2026-11-$it")) }
+        listOf("03", "09", "13", "16").forEach { assertTrue("no dot on 11-$it", !dayDot("2026-11-$it")) }
     }
 
     @Test fun yearGapOpensInPlaceAndCloses() {

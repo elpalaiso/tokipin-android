@@ -2,11 +2,12 @@ package com.tokipin.app.ui
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerEvent
@@ -14,7 +15,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import com.tokipin.app.rules.Level
 import com.tokipin.app.rules.PinchAnchor
 import com.tokipin.app.rules.PinchRules
@@ -26,12 +26,18 @@ import kotlin.coroutines.cancellation.CancellationException
  * cell; on a tie the current selection wins.
  */
 class PinchTargets {
-    private val bounds = mutableMapOf<Any, Rect>()
+    // Layout coordinates, not rectangles: cells only hand over a reference as they move (every
+    // scroll frame, for every visible date), and positions are worked out only when a pinch asks.
+    private val nodes = LinkedHashMap<Any, LayoutCoordinates>()
 
-    fun put(key: Any, rect: Rect) { bounds[key] = rect }
-    fun remove(key: Any) { bounds.remove(key) }
+    fun put(key: Any, coordinates: LayoutCoordinates) { nodes[key] = coordinates }
+    fun remove(key: Any, coordinates: LayoutCoordinates? = null) {
+        if (coordinates == null || nodes[key] === coordinates) nodes.remove(key)
+    }
 
     fun at(point: Offset, preferred: Any? = null): Any? {
+        val bounds = LinkedHashMap<Any, Rect>()
+        nodes.forEach { (key, c) -> if (c.isAttached) bounds[key] = c.boundsInRoot() }
         bounds.entries.firstOrNull { it.value.contains(point) }?.let { return it.key }
         val nearest = bounds.entries.minByOrNull { distanceTo(it.value, point) } ?: return null
         val best = distanceTo(nearest.value, point)
@@ -49,10 +55,38 @@ class PinchTargets {
 val LocalPinchTargets = staticCompositionLocalOf { PinchTargets() }
 
 /** Registers this element as the date (LocalDate) or month (YearMonth) a pinch over it refers to. */
-fun Modifier.pinchTarget(key: Any): Modifier = composed {
-    val targets = LocalPinchTargets.current
-    DisposableEffect(key) { onDispose { targets.remove(key) } }
-    onGloballyPositioned { targets.put(key, it.boundsInRoot()) }
+fun Modifier.pinchTarget(key: Any): Modifier = this then PinchTargetElement(key)
+
+private data class PinchTargetElement(val key: Any) : androidx.compose.ui.node.ModifierNodeElement<PinchTargetNode>() {
+    override fun create() = PinchTargetNode(key)
+    override fun update(node: PinchTargetNode) = node.update(key)
+}
+
+/** A Modifier.Node (no recomposition, no per-frame allocation) that keeps the registry current. */
+private class PinchTargetNode(private var key: Any) : Modifier.Node(),
+    androidx.compose.ui.node.GlobalPositionAwareModifierNode,
+    androidx.compose.ui.node.CompositionLocalConsumerModifierNode {
+    private var targets: PinchTargets? = null
+    private var last: LayoutCoordinates? = null
+
+    override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
+        val t = targets ?: currentValueOf(LocalPinchTargets).also { targets = it }
+        last = coordinates
+        t.put(key, coordinates)
+    }
+
+    fun update(next: Any) {
+        if (next == key) return
+        targets?.remove(key, last)
+        key = next
+        last?.let { targets?.put(key, it) }
+    }
+
+    override fun onDetach() {
+        targets?.remove(key, last)
+        targets = null
+        last = null
+    }
 }
 
 /** Callbacks for one pinch, in the coordinates of the pinched area. */

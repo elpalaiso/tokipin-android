@@ -413,6 +413,12 @@ class RecordedMonths(
             return (recordDates.map(YearMonth::from).filter { it <= current } + current).distinct().sorted()
         }
 
+        /** [visibleMonths] from the months that hold records (the journal's month index). */
+        fun visibleMonthsOf(recordMonths: Collection<YearMonth>, today: java.time.LocalDate): List<YearMonth> {
+            val current = YearMonth.from(today)
+            return (recordMonths.filter { it <= current } + current).distinct().sorted()
+        }
+
         /** [requested] if listed; otherwise the listed month fewest calendar months away, ties to the more recent. */
         fun nearest(months: List<YearMonth>, requested: YearMonth): YearMonth {
             if (months.isEmpty() || requested in months) return requested

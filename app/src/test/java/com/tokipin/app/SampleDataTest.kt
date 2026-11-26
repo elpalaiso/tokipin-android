@@ -39,4 +39,14 @@ class SampleDataTest {
         val day = LocalDate.of(2026, 11, 25).toEpochDay()
         items.forEachIndexed { i, e -> assertEquals("00000000-0000-4000-8000-%012x".format(day * 16 + i), e.id) }
     }
+
+    /** The large seed shared with iOS: same per-day rules over ten years ending 2026-11-26. */
+    @Test fun largeSeedHasTheSharedShape() {
+        val large = SampleData.large()
+        assertEquals("2016-11-27", SampleData.start(SampleData.LARGE_REFERENCE, 10).toString())
+        assertEquals("2016-11-27", large.dates.last().toString())
+        assertEquals("2026-11-26", large.dates.first().toString())
+        assertEquals(3064, large.days.size)
+        assertEquals(9906, large.days.values.sumOf { it.size })
+    }
 }

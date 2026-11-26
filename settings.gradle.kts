@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "TokipinAndroid"
 include(":app")
+include(":benchmark")

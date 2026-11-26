@@ -30,13 +30,14 @@ class JournalStore(context: Context) {
     suspend fun loadJournal(): Journal = withContext(Dispatchers.IO) {
         if (!journalFile.baseFile.exists()) return@withContext Journal()
         val text = journalFile.readFully().decodeToString()
-        decodeJournal(text)
+        decodeJournal(text).warmed()
     }
 
     internal fun decodeJournal(text: String): Journal =
         json.decodeFromString(RecordsFile.serializer(), text).toJournal()
 
     suspend fun saveJournal(journal: Journal) = withContext(Dispatchers.IO) {
+        journal.warmed() // the indexes the screen will read are built here, not on the main thread
         write(journalFile, json.encodeToString(RecordsFile.serializer(), RecordsFile.from(journal)))
     }
 

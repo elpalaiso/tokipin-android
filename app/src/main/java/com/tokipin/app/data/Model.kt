@@ -3,7 +3,14 @@ package com.tokipin.app.data
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
+import java.time.YearMonth
 import java.util.UUID
+
+/** "yyyy-MM-dd" without a formatter: the keys are always canonical, and this is ~10× faster. */
+internal fun isoDate(key: String): LocalDate =
+    if (key.length == 10 && key[4] == '-' && key[7] == '-') {
+        LocalDate.of(key.substring(0, 4).toInt(), key.substring(5, 7).toInt(), key.substring(8, 10).toInt())
+    } else LocalDate.parse(key)
 
 @Serializable
 enum class EntryKind {
@@ -29,7 +36,23 @@ data class Journal(
 ) {
     fun itemsOn(date: LocalDate): List<Entry> = days[date.toString()].orEmpty()
 
-    fun recordedDates(): List<LocalDate> = days.keys.map(LocalDate::parse).sortedDescending()
+    // Indexes over the saved dates. A Journal never changes once made (each edit makes a new one),
+    // so they are built once, on first use; AppViewModel builds them off the main thread
+    // ([warmed]) before a large journal reaches the screen. None of them is part of equals.
+
+    /** Every saved date, newest first. */
+    val dates: List<LocalDate> by lazy { days.keys.map(::isoDate).sortedDescending() }
+    val dateSet: Set<LocalDate> by lazy { dates.toHashSet() }
+    /** Saved dates of each month, newest first. */
+    val byMonth: Map<YearMonth, List<LocalDate>> by lazy { dates.groupBy { YearMonth.of(it.year, it.monthValue) } }
+    val months: Set<YearMonth> get() = byMonth.keys
+    val years: Set<Int> by lazy { byMonth.keys.mapTo(HashSet()) { it.year } }
+
+    fun recordedDates(): List<LocalDate> = dates
+    fun datesIn(month: YearMonth): List<LocalDate> = byMonth[month].orEmpty()
+
+    /** Builds every index now (call off the main thread); returns this journal. */
+    fun warmed(): Journal = apply { years; dateSet }
 
     fun withDay(date: LocalDate, items: List<Entry>, now: java.time.Instant = java.time.Instant.now()): Journal {
         val next = days.toMutableMap()

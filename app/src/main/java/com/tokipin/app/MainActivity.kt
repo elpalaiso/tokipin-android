@@ -18,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.tokipin.app.ui.AppViewModel
 import com.tokipin.app.ui.BrowseScreen
@@ -54,8 +56,18 @@ class MainActivity : ComponentActivity() {
             SystemSettings.Global.getFloat(contentResolver, SystemSettings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
         }.getOrDefault(false)
 
+        // Debug and benchmark builds only: `--es tokipin.seed large` starts from with the
+        // ten-year sample, so performance checks start from the same data. Release has no samples.
+        if (savedInstanceState == null && com.tokipin.app.data.SampleData.AVAILABLE &&
+            intent?.getStringExtra("tokipin.seed") == "large"
+        ) vm.seedRequest = "large"
+
         setContent {
             TokipinTheme {
+              // Test tags double as resource ids so UI Automator (benchmarks) can find the same nodes.
+              androidx.compose.foundation.layout.Box(
+                  androidx.compose.ui.Modifier.semantics { testTagsAsResourceId = true },
+              ) {
                 val view = LocalView.current
                 val haptics = remember(view) { Haptics(view) { vm.hapticsEnabled } }
                 val context = androidx.compose.ui.platform.LocalContext.current
@@ -96,6 +108,7 @@ class MainActivity : ComponentActivity() {
                     }
                     if (vm.settingsOpen) SettingsSheet(vm)
                 }
+              }
             }
         }
     }

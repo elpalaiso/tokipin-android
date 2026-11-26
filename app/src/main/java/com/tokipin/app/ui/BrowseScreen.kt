@@ -78,6 +78,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -571,7 +572,7 @@ private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
     val emptyText = stringResource(R.string.month_empty_cd, vm.recordedMonth.monthValue)
     LaunchedEffect(vm.recordedMonth) {
         // Only the settled month is announced; months passed while dragging or cancelled are not.
-        val empty = vm.journal.recordedDates().none { YearMonth.from(it) == vm.recordedMonth }
+        val empty = vm.journal.datesIn(vm.recordedMonth).isEmpty()
         if (empty) view.announceForAccessibility(emptyText)
     }
     // v0.3: pages are the visible-month list (months with records + this month), one slot per swipe.
@@ -712,7 +713,7 @@ private val RAIL_HINT_BAND = 14.dp
 @Composable
 private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDate) -> Unit) {
     val haptics = LocalHaptics.current
-    val dates = remember(vm.journal, month) { vm.journal.recordedDates().filter { YearMonth.from(it) == month } }
+    val dates = vm.journal.datesIn(month)
     val rows = remember(dates) { monthRows(dates) }
     val state = rememberLazyListState()
     LaunchedEffect(vm.focusRequest, month) {
@@ -778,7 +779,6 @@ private fun DayCard(
     val time = LocalTimeDisplay.current
     val title = items.firstOrNull()
     val rest = items.drop(1)
-    val description = date.fullLabel() + ", " + items.joinToString(", ") { time.text(it) }
     Column(
         modifier
             .pinchTarget(date)
@@ -788,7 +788,7 @@ private fun DayCard(
             .background(Tk.Card)
             .border(if (selected) 1.dp else 0.8.dp, if (selected) Tk.Secondary.copy(alpha = 0.7f) else Tk.CardBorder, shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .semantics(mergeDescendants = true) { contentDescription = description }
+            .semantics(mergeDescendants = true) { contentDescription = date.fullLabel() + ", " + items.joinToString(", ") { time.text(it) } }
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(date.cardLabel(), style = TkType.small)
@@ -847,7 +847,7 @@ private fun MonthView(vm: AppViewModel) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
             weekdays().forEach { Text(it.short(), style = TkType.small, textAlign = TextAlign.Center, modifier = Modifier.weight(1f)) }
         }
-        LazyColumn(state = state, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 110.dp)) {
+        LazyColumn(state = state, modifier = Modifier.testTag("calendarList"), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 110.dp)) {
             itemsIndexed(rows, key = { _, r ->
                 when (r) {
                     is com.tokipin.app.rules.MonthRow.Month -> r.month.toString()
@@ -923,6 +923,7 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
             }
         }
         val shape = RoundedCornerShape(20.dp)
+        val today = com.tokipin.app.rules.AppClock.today()
         Column(Modifier.padding(top = 6.dp).clip(shape).background(Tk.Surface.copy(alpha = 0.55f)).border(0.8.dp, Tk.CardBorder, shape).padding(4.dp)) {
             repeat(weeks) { week ->
                 if (week > 0) HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 6.dp))
@@ -932,7 +933,7 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
                         Box(Modifier.weight(1f).heightIn(min = MONTH_CELL_MIN)) {
                             if (day in 1..month.lengthOfMonth()) {
                                 val date = month.atDay(day)
-                                MonthCell(date, vm.journal.itemsOn(date), date == vm.selectedDate, date == com.tokipin.app.rules.AppClock.today()) { onOpenDay(date) }
+                                MonthCell(date, vm.journal.itemsOn(date), date == vm.selectedDate, date == today) { onOpenDay(date) }
                             }
                         }
                     }
@@ -947,7 +948,6 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
 private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, today: Boolean, onClick: () -> Unit) {
     val time = LocalTimeDisplay.current
     val (shown, more) = CalendarRules.preview(items)
-    val label = date.fullLabel() + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { time.text(it) }
     Column(
         Modifier
             .pinchTarget(date)
@@ -958,7 +958,11 @@ private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, to
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) Color(0xFF4A5C6B) else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = label; this.selected = selected }
+            // Built only when semantics are read (TalkBack, tests), not for every cell on every scroll.
+            .semantics(mergeDescendants = true) {
+                contentDescription = date.fullLabel() + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { time.text(it) }
+                this.selected = selected
+            }
             .padding(vertical = 6.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -984,9 +988,8 @@ private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, to
 private fun YearView(vm: AppViewModel) {
     val haptics = LocalHaptics.current
     val range = vm.range
-    val dates = vm.journal.recordedDates()
-    val recorded = remember(vm.journal) { dates.toSet() }
-    val recordedYears = remember(vm.journal) { dates.map { it.year }.toSet() }
+    val journal = vm.journal
+    val recordedYears = journal.years
     val rows = remember(range, recordedYears, vm.expandedYearGaps) {
         com.tokipin.app.rules.CalendarFolding.years(range, recordedYears, vm.expandedYearGaps)
     }
@@ -1000,10 +1003,15 @@ private fun YearView(vm: AppViewModel) {
             .distinctUntilChanged()
             .collect { yr -> if (yr != null && state.isScrollInProgress) vm.scrolledTo(YearMonth.of(yr, 1)) }
     }
+    val miniText = androidx.compose.ui.text.rememberTextMeasurer(cacheSize = 0).let { m ->
+        val d = LocalDensity.current
+        remember(m, d) { MiniDayText(m, d) }
+    }
     // Three months per row on phones, four when there is room (tablets, foldables, landscape).
+    CompositionLocalProvider(LocalMiniDayText provides miniText) {
     BoxWithConstraints {
     val perRow = if (maxWidth >= 560.dp) 4 else 3
-    LazyColumn(state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 110.dp)) {
+    LazyColumn(state = state, modifier = Modifier.testTag("calendarList"), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 110.dp)) {
         itemsIndexed(rows, key = { _, r ->
             when (r) {
                 is com.tokipin.app.rules.YearRow.Year -> "y${r.year}"
@@ -1036,7 +1044,7 @@ private fun YearView(vm: AppViewModel) {
                                 row.forEach { m ->
                                     val month = YearMonth.of(year, m)
                                     MiniMonth(
-                                        month, recorded,
+                                        month, journal,
                                         selected = YearMonth.from(vm.selectedDate) == month,
                                         enabled = month in range,
                                         modifier = Modifier.weight(1f),
@@ -1049,6 +1057,7 @@ private fun YearView(vm: AppViewModel) {
                 }
             }
         }
+    }
     }
     }
 }
@@ -1066,9 +1075,10 @@ private fun SummaryDot(modifier: Modifier = Modifier, size: androidx.compose.ui.
  * after the current month are dimmed and cannot be opened.
  */
 @Composable
-private fun MiniMonth(month: YearMonth, recorded: Set<LocalDate>, selected: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun MiniMonth(month: YearMonth, journal: com.tokipin.app.data.Journal, selected: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val lead = CalendarRules.firstDayColumn(month, firstDayOfWeek())
-    val count = recorded.count { YearMonth.from(it) == month }
+    val recorded = journal.dateSet
+    val count = journal.datesIn(month).size
     val description = if (!enabled) stringResource(R.string.cd_out_of_range, month.monthValue)
     else stringResource(R.string.cd_year_month, month.year, month.monthValue) +
         (if (count > 0) ", " + stringResource(R.string.cd_recorded_days, count) else "")
@@ -1081,7 +1091,10 @@ private fun MiniMonth(month: YearMonth, recorded: Set<LocalDate>, selected: Bool
             .then(if (selected) Modifier.background(Color(0xFF4A5C6B).copy(alpha = 0.8f)).border(1.dp, Tk.Focus.copy(alpha = 0.55f), shape) else Modifier)
             .graphicsLayer { alpha = if (enabled) 1f else 0.35f }
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = description; this.selected = selected }
+            .semantics(mergeDescendants = true) {
+                contentDescription = description; this.selected = selected
+                recordedDays = journal.datesIn(month)
+            }
             .padding(6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1089,36 +1102,55 @@ private fun MiniMonth(month: YearMonth, recorded: Set<LocalDate>, selected: Bool
             if (count > 0) SummaryDot(Modifier.padding(start = 4.dp).testTag("monthDot_$month"), size = 4.dp)
         }
         Spacer(Modifier.height(4.dp))
-        val cells = lead + month.lengthOfMonth()
-        repeat((cells + 6) / 7) { week ->
-            Row(Modifier.fillMaxWidth()) {
-                repeat(7) { col ->
-                    val day = week * 7 + col - lead + 1
-                    Box(Modifier.weight(1f).aspectRatio(0.9f), contentAlignment = Alignment.Center) {
-                        if (day in 1..month.lengthOfMonth()) {
-                            val date = month.atDay(day)
-                            val has = date in recorded
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    day.toString(),
-                                    fontSize = 7.sp,
-                                    lineHeight = 8.sp,
-                                    color = if (has) Tk.Primary else Tk.Muted,
-                                    fontWeight = if (has) FontWeight.Bold else FontWeight.Normal,
-                                )
-                                // The record-day dot: shape, not only colour, marks a recorded day.
-                                Box(
-                                    Modifier.size(2.5.dp).clip(CircleShape)
-                                        .background(if (has) Tk.Focus else Color.Transparent)
-                                        .then(if (has) Modifier.testTag("dayDot_$date") else Modifier),
-                                )
-                            }
-                        }
-                    }
-                }
+        // The days are drawn in one Canvas rather than ~40 small composables each: a year row has
+        // twelve of these, and composing ~2,000 nodes per year made the year view stutter on long
+        // journals. Same layout as before: 7 columns, cells 0.9 wide per 1 tall, the number (7sp,
+        // bold when recorded) above a 2.5dp dot that marks a recorded day.
+        val weeks = (lead + month.lengthOfMonth() + 6) / 7
+        val measurer = LocalMiniDayText.current
+        val primary = Tk.Primary
+        val muted = Tk.Muted
+        val dot = Tk.Focus
+        androidx.compose.foundation.Canvas(
+            Modifier.fillMaxWidth().aspectRatio(7 * 0.9f / weeks).testTag("miniDays_$month"),
+        ) {
+            val cellW = size.width / 7
+            val cellH = size.height / weeks
+            val dotR = 2.5.dp.toPx() / 2
+            for (day in 1..month.lengthOfMonth()) {
+                val i = lead + day - 1
+                val has = month.atDay(day) in recorded
+                val text = measurer.layout(day, has, if (has) primary else muted)
+                val blockH = text.size.height + dotR * 2
+                val cx = (i % 7) * cellW + cellW / 2
+                val top = (i / 7) * cellH + (cellH - blockH) / 2
+                drawText(text, topLeft = androidx.compose.ui.geometry.Offset(cx - text.size.width / 2f, top))
+                if (has) drawCircle(dot, dotR, androidx.compose.ui.geometry.Offset(cx, top + text.size.height + dotR))
             }
         }
     }
 }
+
+/** The recorded days a mini month marks with a dot (its pixels are drawn, so tests read this). */
+val RecordedDaysKey = androidx.compose.ui.semantics.SemanticsPropertyKey<List<LocalDate>>("RecordedDays")
+private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.recordedDays by RecordedDaysKey
+
+/** Day numbers 1–31 of the mini months, measured once per style and colour. */
+private class MiniDayText(private val measurer: androidx.compose.ui.text.TextMeasurer, private val density: androidx.compose.ui.unit.Density) {
+    private val cache = HashMap<Long, androidx.compose.ui.text.TextLayoutResult>()
+    fun layout(day: Int, bold: Boolean, color: Color): androidx.compose.ui.text.TextLayoutResult =
+        cache.getOrPut((color.value.toLong() shl 8) xor (day.toLong() shl 1) xor (if (bold) 1L else 0L)) {
+            measurer.measure(
+                day.toString(),
+                androidx.compose.ui.text.TextStyle(
+                    color = color, fontSize = 7.sp, lineHeight = 8.sp,
+                    fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+                ),
+                density = density,
+            )
+        }
+}
+
+private val LocalMiniDayText = androidx.compose.runtime.staticCompositionLocalOf<MiniDayText> { error("no MiniDayText") }
 
 // endregion

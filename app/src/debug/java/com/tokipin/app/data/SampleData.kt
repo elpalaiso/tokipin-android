@@ -217,17 +217,31 @@ object SampleData {
         return items
     }
 
-    /** trial.js `firstDay`: the day after the same date three years earlier. */
-    fun start(today: LocalDate): LocalDate = today.minusYears(3).plusDays(1)
+    /** trial.js `firstDay`: the day after the same date [years] years earlier (three on the homepage). */
+    fun start(today: LocalDate, years: Long = 3): LocalDate = today.minusYears(years).plusDays(1)
 
     /** Every sample day from [start] to [today], as a journal. */
-    fun journal(today: LocalDate = com.tokipin.app.rules.AppClock.today()): Journal {
-        var journal = Journal()
-        var day = start(today)
+    fun journal(today: LocalDate = com.tokipin.app.rules.AppClock.today(), years: Long = 3): Journal {
+        // Built in one map: adding day by day with withDay copied the whole map each time.
+        val days = LinkedHashMap<String, List<Entry>>()
+        val stamps = LinkedHashMap<String, String>()
+        val now = java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()
+        var day = start(today, years)
         while (!day.isAfter(today)) {
-            if (hasSample(day.toEpochDay())) journal = journal.withDay(day, itemsOn(day))
+            if (hasSample(day.toEpochDay())) {
+                val items = itemsOn(day)
+                if (items.isNotEmpty()) { days[day.toString()] = items; stamps[day.toString()] = now }
+            }
             day = day.plusDays(1)
         }
-        return journal
+        return Journal(days, stamps)
     }
+
+    /**
+     * The shared large-data seed for speed checks (same as iOS "대용량 예시 넣기 (10년)"): the
+     * homepage generator over the ten years ending on the review date, 2016-11-27 … 2026-11-26
+     * (3,064 days, 9,906 fragments).
+     */
+    val LARGE_REFERENCE: LocalDate = LocalDate.of(2026, 11, 26)
+    fun large(): Journal = journal(LARGE_REFERENCE, years = 10)
 }

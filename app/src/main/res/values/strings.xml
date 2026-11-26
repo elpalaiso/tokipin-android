@@ -131,6 +131,9 @@
     <string name="debug_range_replace">교체</string>
     <string name="debug_range_done">달력 범위 예시를 넣었어요.</string>
     <string name="debug_range_failed">달력 범위 예시를 불러오지 못했어요.</string>
+    <string name="debug_large_samples">대용량 예시 넣기 (10년)</string>
+    <string name="debug_large_body">2016.11.27부터 2026.11.26까지 홈페이지 예시 규칙으로 만든 10년치(3,064일, 9,906조각)로 속도를 확인해요. 이 기기의 기존 기록과 초안을 교체해요.</string>
+    <string name="debug_large_done">대용량 예시를 넣었어요.</string>
     <string name="debug_clear">모든 기록 지우기</string>
     <string name="debug_samples_done">예시 기록을 넣었어요.</string>
     <string name="debug_cleared">모든 기록을 지웠어요.</string>

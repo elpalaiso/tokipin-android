@@ -53,6 +53,7 @@ import java.time.LocalDate
 @Composable
 fun SettingsSheet(vm: AppViewModel) {
     var confirmRangeSamples by rememberSaveable { mutableStateOf(false) }
+    var confirmLargeSamples by rememberSaveable { mutableStateOf(false) }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) vm.export(uri)
     }
@@ -108,6 +109,8 @@ fun SettingsSheet(vm: AppViewModel) {
                     HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
                     LinkRow(stringResource(R.string.debug_range_samples)) { confirmRangeSamples = true }
                     HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
+                    LinkRow(stringResource(R.string.debug_large_samples)) { confirmLargeSamples = true }
+                    HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
                     LinkRow(stringResource(R.string.debug_clear)) { vm.clearAllRecords(); vm.closeSettings() }
                 }
             }
@@ -134,6 +137,23 @@ fun SettingsSheet(vm: AppViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = { confirmRangeSamples = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+    if (confirmLargeSamples && com.tokipin.app.data.SampleData.AVAILABLE) {
+        AlertDialog(
+            onDismissRequest = { confirmLargeSamples = false },
+            title = { Text(stringResource(R.string.debug_large_samples)) },
+            text = { Text(stringResource(R.string.debug_large_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmLargeSamples = false
+                    vm.replaceWithLargeSamples()
+                    vm.closeSettings()
+                }) { Text(stringResource(R.string.debug_range_replace)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmLargeSamples = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }

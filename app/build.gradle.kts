@@ -33,6 +33,22 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        /**
+         * Performance checks (:benchmark): release code and R8, profileable, debug-signed, with the
+         * debug sample data so a benchmark can seed the large journal. Never shipped.
+         */
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            proguardFiles("benchmark-rules.pro")
+        }
+    }
+    sourceSets.getByName("benchmark") {
+        java.directories.add("src/debug/java")
+        kotlin.directories.add("src/debug/java")
+        assets.directories.add("src/debug/assets")
     }
 
     buildFeatures {
@@ -118,6 +134,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.profileinstaller)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 

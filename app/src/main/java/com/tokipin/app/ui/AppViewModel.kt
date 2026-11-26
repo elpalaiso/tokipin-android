@@ -69,6 +69,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     init { load() }
 
+    /** Set by MainActivity before the first load finishes (debug and benchmark builds only). */
+    internal var seedRequest: String? = null
+
     fun load() {
         screen = Screen.Loading
         viewModelScope.launch {
@@ -78,6 +81,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             showSkeleton = false
             loaded.onFailure { screen = Screen.LoadFailed; return@launch }
             journal = loaded.getOrThrow()
+            // Debug/benchmark builds: a launch with `tokipin.seed` starts from that sample journal.
+            seedRequest?.let { name ->
+                seedRequest = null
+                if (com.tokipin.app.data.SampleData.AVAILABLE) {
+                    val seeded = withContext(Dispatchers.Default) {
+                        (if (name == "large") com.tokipin.app.data.SampleData.large() else com.tokipin.app.data.SampleData.journal()).warmed()
+                    }
+                    store.saveJournal(seeded)
+                    withContext(Dispatchers.IO) { store.writeDrafts(com.tokipin.app.data.DraftsFile()) }
+                    store.hasLaunchedBefore = true
+                    journal = seeded
+                }
+            }
             val drafts = store.loadDrafts()
             keptDrafts = drafts.drafts.filter { it.hasContent }.associateBy { it.date }
             draft = drafts.active?.let { keptDrafts[it] }
@@ -361,9 +377,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** From the earlier of 11 months ago and the oldest saved record, to the current month. */
     val range: com.tokipin.app.rules.CalendarRange
-        get() = com.tokipin.app.rules.CalendarRange.of(journal.days.keys.map(LocalDate::parse), today)
+        get() = memo("range") { com.tokipin.app.rules.CalendarRange.of(journal.dates.lastOrNull()?.let(::listOf).orEmpty(), today) }
 
-    val recordedMonths: Set<YearMonth> get() = journal.days.keys.map { YearMonth.from(LocalDate.parse(it)) }.toSet()
+    val recordedMonths: Set<YearMonth> get() = journal.months
+
+    /**
+     * Values derived from (journal, today), kept until either changes: the screens read them on
+     * every recomposition, and with ten years of records recomputing them each time shows as jank.
+     */
+    private val memos = HashMap<String, Any>()
+    private var memoJournal: Journal? = null
+    private var memoToday: LocalDate? = null
+    @Suppress("UNCHECKED_CAST")
+    private fun <T : Any> memo(name: String, compute: () -> T): T {
+        // Same journal object (by identity: comparing two journals' contents is itself O(n)) and same day.
+        val j = journal
+        val t = today
+        if (memoJournal !== j || memoToday != t) { memos.clear(); memoJournal = j; memoToday = t }
+        return memos.getOrPut(name, compute) as T
+    }
 
     var expandedMonthGaps by mutableStateOf<Set<YearMonth>>(emptySet()); private set
     var expandedYearGaps by mutableStateOf<Set<Int>>(emptySet()); private set
@@ -389,7 +421,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Months with a saved fragment up to this month, plus this month; drafts never change it. */
     val visibleRecordMonths: List<YearMonth>
-        get() = com.tokipin.app.rules.RecordedMonths.visibleMonths(journal.recordedDates(), today)
+        get() = memo("visibleMonths") { com.tokipin.app.rules.RecordedMonths.visibleMonthsOf(journal.months, today) }
 
     var recordedMonth by mutableStateOf(com.tokipin.app.rules.AppClock.thisMonth()); private set
 
@@ -474,7 +506,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         when (target) {
             is LocalDate -> selectedDate = target
             is YearMonth -> if (YearMonth.from(selectedDate) != target) {
-                selectedDate = journal.recordedDates().firstOrNull { YearMonth.from(it) == target } ?: target.atDay(1)
+                selectedDate = journal.datesIn(target).firstOrNull() ?: target.atDay(1)
             }
         }
         return changeLevel(next, ListEntry.Anchor(anchorY))
@@ -511,7 +543,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openMonth(month: YearMonth): Boolean {
         selectedDate = if (YearMonth.from(selectedDate) == month) selectedDate
-        else journal.recordedDates().firstOrNull { YearMonth.from(it) == month } ?: month.atDay(1)
+        else journal.datesIn(month).firstOrNull() ?: month.atDay(1)
         return changeLevel(Level.MONTH)
     }
 
@@ -606,13 +638,24 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** Debug builds (개발용 테스트 데이터): replace all records with the homepage's sample journal. */
     fun replaceWithSamples() = replaceAll(com.tokipin.app.data.SampleData.journal(), R.string.debug_samples_done)
 
-    fun replaceWithCalendarRangeSamples() {
+    fun replaceWithCalendarRangeSamples() = replaceWithAsset("calendar-range-records.json", R.string.debug_range_done)
+
+    /** Debug builds: the homepage generator over ten years (shared with iOS) for speed checks. */
+    fun replaceWithLargeSamples() {
+        if (!com.tokipin.app.data.SampleData.AVAILABLE) return
+        viewModelScope.launch {
+            val next = withContext(Dispatchers.Default) { com.tokipin.app.data.SampleData.large().warmed() }
+            replaceAll(next, R.string.debug_large_done)
+        }
+    }
+
+    private fun replaceWithAsset(name: String, done: Int) {
         if (!com.tokipin.app.data.SampleData.AVAILABLE) return
         viewModelScope.launch {
             val next = try {
                 withContext(Dispatchers.IO) {
-                    getApplication<Application>().assets.open("calendar-range-records.json").bufferedReader().use {
-                        store.decodeJournal(it.readText())
+                    getApplication<Application>().assets.open(name).bufferedReader().use {
+                        store.decodeJournal(it.readText()).warmed()
                     }
                 }
             } catch (e: java.io.IOException) {
@@ -622,7 +665,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 transientMessage = res.getString(R.string.debug_range_failed)
                 return@launch
             }
-            replaceAll(next, R.string.debug_range_done)
+            replaceAll(next, done)
         }
     }
 

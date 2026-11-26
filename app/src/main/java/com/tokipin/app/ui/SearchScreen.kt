@@ -29,6 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -55,16 +61,33 @@ data class SearchHit(val date: LocalDate, val entry: Entry)
  * Words, emoji, places, times and dates are searchable (Figma 03 · 검색 대상). Typing a kind's name
  * ("장소", "Place") lists every item of that kind. Newest dates first, entered order within a day.
  */
-fun search(journal: Journal, query: String, kindNames: Map<EntryKind, String>): List<SearchHit> {
-    val q = query.trim().lowercase()
-    if (q.isEmpty()) return emptyList()
-    val kinds = kindNames.filterValues { it.lowercase() == q }.keys
-    return journal.recordedDates().flatMap { date ->
-        val dateText = searchableDate(date)
-        val dateMatches = dateText.contains(q) || date.toString().contains(q)
-        journal.itemsOn(date).filter { entry ->
-            dateMatches || entry.kind in kinds || entry.value.lowercase().contains(q)
-        }.map { SearchHit(date, it) }
+fun search(journal: Journal, query: String, kindNames: Map<EntryKind, String>): List<SearchHit> =
+    SearchIndex(journal).find(query, kindNames)
+
+/**
+ * Searchable text of every saved day, prepared once per journal (date text and lower-cased values)
+ * so each keystroke only compares strings, off the main thread.
+ */
+class SearchIndex(journal: Journal) {
+    private class Day(val date: LocalDate, val dateText: String, val iso: String, val entries: List<Entry>, val lowered: List<String>)
+
+    private val days: List<Day> = journal.dates.map { date ->
+        val entries = journal.itemsOn(date)
+        Day(date, searchableDate(date), date.toString(), entries, entries.map { it.value.lowercase() })
+    }
+
+    fun find(query: String, kindNames: Map<EntryKind, String>): List<SearchHit> {
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) return emptyList()
+        val kinds = kindNames.filterValues { it.lowercase() == q }.keys
+        val hits = ArrayList<SearchHit>()
+        for (day in days) {
+            val dateMatches = day.dateText.contains(q) || day.iso.contains(q)
+            day.entries.forEachIndexed { i, entry ->
+                if (dateMatches || entry.kind in kinds || day.lowered[i].contains(q)) hits += SearchHit(day.date, entry)
+            }
+        }
+        return hits
     }
 }
 
@@ -74,7 +97,19 @@ fun SearchScreen(vm: AppViewModel) {
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val kindNames = remember { EntryKind.entries.associateWith { context.getString(it.label()) } }
-    val hits = remember(vm.searchQuery, vm.journal) { search(vm.journal, vm.searchQuery, kindNames) }
+    // Results are worked out on a background thread; the field never waits for them. The index is
+    // built once per journal, and an older query's result is dropped when a newer one arrives.
+    val journal = vm.journal
+    val query = vm.searchQuery
+    var index by remember(journal) { mutableStateOf<SearchIndex?>(null) }
+    LaunchedEffect(journal) { index = withContext(Dispatchers.Default) { SearchIndex(journal) } }
+    var hits by remember { mutableStateOf(emptyList<SearchHit>()) }
+    var hitsFor by remember { mutableStateOf("") }
+    LaunchedEffect(index, query) {
+        val idx = index ?: return@LaunchedEffect
+        hits = withContext(Dispatchers.Default) { idx.find(query, kindNames) }
+        hitsFor = query
+    }
     BackHandler { vm.closeSearch() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
@@ -98,7 +133,7 @@ fun SearchScreen(vm: AppViewModel) {
                         cursorBrush = SolidColor(Tk.Primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
-                        modifier = Modifier.weight(1f).focusRequester(focus).semantics { contentDescription = hint },
+                        modifier = Modifier.weight(1f).focusRequester(focus).testTag("searchField").semantics { contentDescription = hint },
                         decorationBox = { inner ->
                             Box(contentAlignment = Alignment.CenterStart) {
                                 if (vm.searchQuery.isEmpty()) Text(hint, style = TkType.body.copy(color = Tk.Muted))
@@ -116,10 +151,10 @@ fun SearchScreen(vm: AppViewModel) {
                     }
                 }
             }
-            if (vm.searchQuery.isNotBlank() && hits.isEmpty()) {
+            if (vm.searchQuery.isNotBlank() && hitsFor == vm.searchQuery && hits.isEmpty()) {
                 Text(stringResource(R.string.search_none), style = TkType.body.copy(color = Tk.Secondary), modifier = Modifier.padding(24.dp))
             }
-            LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
+            LazyColumn(modifier = Modifier.testTag("searchResults"), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
                 var lastDate: LocalDate? = null
                 hits.forEach { hit ->
                     val header = hit.date != lastDate

@@ -6,5 +6,7 @@ import java.time.LocalDate
 object SampleData {
     const val AVAILABLE = false
 
-    fun journal(@Suppress("UNUSED_PARAMETER") today: LocalDate = LocalDate.now()): Journal = Journal()
+    fun journal(@Suppress("UNUSED_PARAMETER") today: LocalDate = LocalDate.now(), @Suppress("UNUSED_PARAMETER") years: Long = 3): Journal = Journal()
+
+    fun large(): Journal = Journal()
 }
