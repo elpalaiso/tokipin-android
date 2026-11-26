@@ -73,7 +73,8 @@ class SearchIndex(journal: Journal) {
 
     private val days: List<Day> = journal.dates.map { date ->
         val entries = journal.itemsOn(date)
-        Day(date, searchableDate(date), date.toString(), entries, entries.map { it.value.lowercase() })
+        // The date as written in the app (2026.11.25 and its weekday in the app language) and ISO.
+        Day(date, (searchableDate(date) + " " + date.fullLabel()).lowercase(), date.toString(), entries, entries.map { it.value.lowercase() })
     }
 
     fun find(query: String, kindNames: Map<EntryKind, String>): List<SearchHit> {

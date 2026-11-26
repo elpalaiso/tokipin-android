@@ -107,7 +107,7 @@ import java.time.temporal.TemporalAdjusters
 private fun firstDayOfWeek(): DayOfWeek = AppLocale.firstDayOfWeek
 private fun LocalDate.weekStart(): LocalDate = with(TemporalAdjusters.previousOrSame(firstDayOfWeek()))
 private fun weekdays(): List<DayOfWeek> = (0L until 7L).map { firstDayOfWeek().plus(it) }
-private fun DayOfWeek.short(): String = getDisplayName(DateTextStyle.NARROW, AppLocale.current)
+private fun DayOfWeek.short(): String = getDisplayName(DateTextStyle.NARROW, AppLocale.format)
 
 /** Month cells keep a 96dp minimum (same as iOS 96pt) and grow with larger text. */
 private val MONTH_CELL_MIN = 96.dp

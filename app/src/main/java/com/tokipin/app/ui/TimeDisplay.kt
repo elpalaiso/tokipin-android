@@ -16,13 +16,13 @@ import com.tokipin.app.rules.TimeRules
  */
 class TimeDisplay(val is24Hour: Boolean, private val pattern12: String, private val pattern24: String) {
     fun format(hhmm: String): String =
-        TimeRules.display(hhmm, is24Hour, AppLocale.current, pattern12, pattern24)
+        TimeRules.display(hhmm, is24Hour, AppLocale.format, pattern12, pattern24)
 
     fun text(entry: Entry): String = if (entry.kind == EntryKind.TIME) format(entry.value) else entry.value
 
     companion object {
         fun from(context: Context): TimeDisplay {
-            val locale = AppLocale.current
+            val locale = AppLocale.format
             return TimeDisplay(
                 is24Hour = DateFormat.is24HourFormat(context),
                 pattern12 = DateFormat.getBestDateTimePattern(locale, "hm"),

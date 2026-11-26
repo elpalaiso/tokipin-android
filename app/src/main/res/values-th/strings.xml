@@ -97,14 +97,14 @@
     <string name="cd_change_date">เปลี่ยนวันที่บันทึก</string>
     <string name="home_empty">ยังไม่มีบันทึก</string>
     <plurals name="delete_day">
-        <item quantity="other">ลบบันทึก %1$d รายการของวันนี้</item>
+        <item quantity="other">ลบบันทึก %1$d รายการของวันที่เลือก</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="other">ลบบันทึก %1$d รายการของวันนี้แล้ว</item>
+        <item quantity="other">ลบบันทึก %1$d รายการของวันที่เลือกแล้ว</item>
     </plurals>
     <string name="home_first_record">เขียนบันทึกแรก</string>
-    <string name="cd_edit_day">แก้ไขบันทึกของวันนี้</string>
-    <string name="cd_day_menu">ตัวเลือกเพิ่มเติมของวันนี้</string>
+    <string name="cd_edit_day">แก้ไขบันทึกของวันที่เลือก</string>
+    <string name="cd_day_menu">ตัวเลือกเพิ่มเติมของวันที่เลือก</string>
     <string name="cd_item_menu">ตัวเลือกเพิ่มเติมของ %1$s</string>
     <string name="month_empty">ยังไม่มีบันทึกในเดือนนี้</string>
     <string name="month_empty_cd">ยังไม่มีบันทึกใน%1$s</string>

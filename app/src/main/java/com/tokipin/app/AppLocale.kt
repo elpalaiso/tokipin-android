@@ -30,6 +30,19 @@ object AppLocale {
     var device: Locale = Locale.getDefault()
         private set
 
+    /**
+     * Locale for dates, weekdays and times: the app language, with the device's region when the
+     * device speaks that language too, so British English reads "Wed, 25 Nov 2026" and Mexican
+     * Spanish uses Mexico's conventions, while the words stay in the app language.
+     */
+    val format: Locale get() = formatFor(current, device)
+
+    fun formatFor(app: Locale, device: Locale): Locale {
+        val sameScript = device.script.isEmpty() || app.script.isEmpty() || device.script == app.script
+        if (device.language != app.language || !sameScript || device.country.isEmpty()) return app
+        return Locale.Builder().setLocale(app).setRegion(device.country).build()
+    }
+
     /** The supported tag for one preferred locale, or null (same rules as the web's matchLocale). */
     fun match(locale: Locale): String? {
         val parts = locale.toLanguageTag().lowercase().replace('_', '-').split('-')

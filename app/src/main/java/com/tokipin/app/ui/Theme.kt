@@ -128,10 +128,10 @@ fun Modifier.glass(shape: Shape = CircleShape): Modifier = this
 
 // region Dates — Figma 04 · 화면 속 표기: YYYY.MM, YYYY.MM.DD(요일), cards "DD / 요일"; weekday from the locale.
 
-fun LocalDate.fullLabel(locale: Locale = AppLocale.current): String =
+fun LocalDate.fullLabel(locale: Locale = AppLocale.format): String =
     "%04d.%02d.%02d(%s)".format(year, monthValue, dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
 
-fun LocalDate.cardLabel(locale: Locale = AppLocale.current): String =
+fun LocalDate.cardLabel(locale: Locale = AppLocale.format): String =
     "%d / %s".format(dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
 
 fun YearMonth.label(): String = "%04d.%02d".format(year, monthValue)
@@ -145,7 +145,7 @@ fun searchableDate(date: LocalDate): String = "%04d.%02d.%02d".format(date.year,
  */
 object DateWords {
     private fun pattern(skeleton: String): java.time.format.DateTimeFormatter {
-        val locale = AppLocale.current
+        val locale = AppLocale.format
         return java.time.format.DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, skeleton), locale)
     }
 

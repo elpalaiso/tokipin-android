@@ -278,7 +278,7 @@ APP = {
         {"one": "Bu günün %1$d notunu sil", "other": "Bu günün %1$d notunu sil"},
         {"one": "Удалить %1$d запись за этот день", "few": "Удалить %1$d записи за этот день", "many": "Удалить %1$d записей за этот день", "other": "Удалить %1$d записи за этот день"},
         {"one": "इस दिन का %1$d नोट मिटाएँ", "other": "इस दिन के %1$d नोट मिटाएँ"},
-        {"other": "ลบบันทึก %1$d รายการของวันนี้"},
+        {"other": "ลบบันทึก %1$d รายการของวันที่เลือก"},
         {"one": "Excluir %1$d anotação deste dia", "many": "Excluir as %1$d anotações deste dia", "other": "Excluir as %1$d anotações deste dia"},
         {"one": "Eliminar %1$d nota de este día", "many": "Eliminar las %1$d notas de este día", "other": "Eliminar las %1$d notas de este día"},
         {"one": "Eliminar %1$d nota de este día", "many": "Eliminar las %1$d notas de este día", "other": "Eliminar las %1$d notas de este día"},
@@ -294,7 +294,7 @@ APP = {
         {"one": "Bu günün %1$d notu silindi.", "other": "Bu günün %1$d notu silindi."},
         {"one": "Удалена %1$d запись за этот день.", "few": "Удалено %1$d записи за этот день.", "many": "Удалено %1$d записей за этот день.", "other": "Удалено %1$d записи за этот день."},
         {"one": "इस दिन का %1$d नोट मिटा दिया गया।", "other": "इस दिन के %1$d नोट मिटा दिए गए।"},
-        {"other": "ลบบันทึก %1$d รายการของวันนี้แล้ว"},
+        {"other": "ลบบันทึก %1$d รายการของวันที่เลือกแล้ว"},
         {"one": "%1$d anotação deste dia foi excluída.", "many": "%1$d anotações deste dia foram excluídas.", "other": "%1$d anotações deste dia foram excluídas."},
         {"one": "Se ha eliminado %1$d nota de este día.", "many": "Se han eliminado %1$d notas de este día.", "other": "Se han eliminado %1$d notas de este día."},
         {"one": "Se eliminó %1$d nota de este día.", "many": "Se eliminaron %1$d notas de este día.", "other": "Se eliminaron %1$d notas de este día."},
@@ -310,14 +310,14 @@ APP = {
     "cd_edit_day": [
         "Edit this day’s notes", "この日の記録を編集", "Notizen dieses Tages bearbeiten", "Modifier les notes du jour",
         "Edit catatan untuk tanggal ini", "Sửa ghi chú của ngày này", "Günün notlarını düzenle", "Изменить записи за день",
-        "इस दिन के नोट में बदलाव करें", "แก้ไขบันทึกของวันนี้", "Editar as anotações deste dia", "Editar las notas del día",
+        "इस दिन के नोट में बदलाव करें", "แก้ไขบันทึกของวันที่เลือก", "Editar as anotações deste dia", "Editar las notas del día",
         "Editar las notas del día", "编辑当天记录", "編輯這天的紀錄", "編輯當天記錄",
     ],
     # TP-0307 · adjusted from demo/TP-0053: opens the day menu (does not delete)
     "cd_day_menu": [
         "More options for this day", "この日のメニュー", "Weitere Optionen für diesen Tag", "Plus d’options pour ce jour",
         "Opsi lain untuk tanggal ini", "Thêm tùy chọn cho ngày này", "Günün diğer seçenekleri", "Другие действия для этого дня",
-        "इस दिन के और विकल्प", "ตัวเลือกเพิ่มเติมของวันนี้", "Mais opções para este dia", "Más opciones del día", "Más opciones del día",
+        "इस दिन के और विकल्प", "ตัวเลือกเพิ่มเติมของวันที่เลือก", "Mais opções para este dia", "Más opciones del día", "Más opciones del día",
         "这一天的更多选项", "這天的更多選項", "這一天的更多選項",
     ],
     # TP-0308 · adjusted from demo/TP-0088; %1$s is the item

@@ -12,7 +12,7 @@ Korean, the source, lives in values-ko/.
 
 Usage: python3 tools/l10n/generate.py <path to a checkout of the web repo's locales directory>
 """
-import json, os, sys
+import json, os, re, sys
 from xml.sax.saxutils import escape
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -55,7 +55,22 @@ def android(text: str) -> str:
     return s
 
 
+def source_names(res: str):
+    """Every user-facing name in the Korean source (values-ko); debug_* and untranslatable excluded."""
+    text = open(os.path.join(res, "values-ko", "strings.xml"), encoding="utf-8").read()
+    names = re.findall(r'<(?:string|plurals) name="([^"]+)"(?![^>]*translatable="false")', text)
+    return [n for n in names if not n.startswith("debug_")]
+
+
 def main(locales: str, res: str):
+    expected = set(source_names(res))
+    produced = set(WEB) | set(APP)
+    missing, extra = sorted(expected - produced), sorted(produced - expected)
+    if missing or extra:
+        raise SystemExit(f"Korean source and translations differ.\n  missing translations: {missing}\n  not in the source: {extra}")
+    for rid, values in APP.items():
+        if len(values) != len(LANGS):
+            raise SystemExit(f"{rid}: {len(values)} values for {len(LANGS)} languages")
     base = {}
     for domain in ("demo", "site"):
         base[domain] = list(json.load(open(os.path.join(locales, domain, "en.json"), encoding="utf-8")).keys())

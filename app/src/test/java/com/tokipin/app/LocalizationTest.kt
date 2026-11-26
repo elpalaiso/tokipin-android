@@ -34,6 +34,38 @@ class LocalizationTest {
         assertEquals(17, AppLocale.supported.size)
     }
 
+    @Test fun datesUseTheDeviceRegionWhenItSpeaksTheAppLanguage() {
+        val l = { a: String, d: String -> AppLocale.formatFor(Locale.forLanguageTag(a), Locale.forLanguageTag(d)).toLanguageTag() }
+        assertEquals("en-GB", l("en", "en-GB"))
+        assertEquals("en", l("en", "it-IT")) // device language not supported: English words, no Italian region
+        assertEquals("es-MX", l("es-419", "es-MX"))
+        assertEquals("zh-Hant-HK", l("zh-Hant-HK", "zh-Hans-CN")) // another script: keep the app's own
+        assertEquals("ko-KR", l("ko", "ko-KR"))
+        // British English formats with the British pattern.
+        val gb = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM).withLocale(Locale.forLanguageTag("en-GB"))
+        assertEquals("25 Nov 2026", gb.format(java.time.LocalDate.of(2026, 11, 25)))
+    }
+
+    @Test fun searchMatchesLocalizedKindNamesAndTheWrittenDate() {
+        val day = java.time.LocalDate.of(2026, 11, 25)
+        val journal = com.tokipin.app.data.Journal().withDay(day, listOf(
+            com.tokipin.app.data.Entry(kind = com.tokipin.app.data.EntryKind.WORD, value = "Meer"),
+            com.tokipin.app.data.Entry(kind = com.tokipin.app.data.EntryKind.PLACE, value = "Hafen"),
+        ))
+        val german = mapOf(
+            com.tokipin.app.data.EntryKind.WORD to "Wort", com.tokipin.app.data.EntryKind.EMOJI to "Emoji",
+            com.tokipin.app.data.EntryKind.PLACE to "Ort", com.tokipin.app.data.EntryKind.TIME to "Uhrzeit",
+        )
+        // "Ort", "ort", "ORT": every place of the journal.
+        listOf("Ort", "ort", "ORT").forEach { q ->
+            assertEquals(q, listOf("Hafen"), com.tokipin.app.ui.search(journal, q, german).map { it.entry.value })
+        }
+        // The date as the app writes it, including the weekday in the app language.
+        assertEquals(2, com.tokipin.app.ui.search(journal, "2026.11.25", german).size)
+        val weekday = day.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, AppLocale.format)
+        assertEquals(2, com.tokipin.app.ui.search(journal, "($weekday)", german).size)
+    }
+
     private val res = File("src/main/res")
     private val folders = mapOf(
         "en" to "values", "ja" to "values-ja", "de" to "values-de", "fr" to "values-fr", "id" to "values-in",
@@ -73,6 +105,10 @@ class LocalizationTest {
 
     @Test fun everyLanguageHasEveryUserFacingStringWithTheSameArguments() {
         val base = read("values-ko").filterKeys { !it.startsWith("debug_") }
+        // Korean itself has every string the default (English) has: no Korean phrase falls back to English.
+        val english = read("values").filterKeys { !it.startsWith("debug_") }
+        assertTrue("Korean missing: ${english.keys - base.keys}", (english.keys - base.keys).isEmpty())
+        base.filterValues { it.first }.forEach { (name, v) -> assertTrue("ko $name plural has other", v.second.isNotEmpty()) }
         assertEquals("folders = locales_config minus ko", AppLocale.supported - "ko", folders.keys.toList().let { k -> AppLocale.supported.filter { it in k } })
         val config = File(res, "xml/locales_config.xml").readText()
         AppLocale.supported.forEach { assertTrue("$it in locales_config", config.contains("android:name=\"$it\"")) }
