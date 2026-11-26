@@ -57,12 +57,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -125,7 +128,11 @@ fun EditorScreen(vm: AppViewModel) {
     }
 
     LaunchedEffect(draft.kind, draft.editId, selection == null) {
-        if (selection == null && draft.kind != EntryKind.TIME) focusField()
+        if (selection == null && draft.kind != EntryKind.TIME) {
+            // The tool's own field is laid out on the next frame; focus it then.
+            androidx.compose.runtime.withFrameNanos { }
+            focusField()
+        }
     }
 
     TkBackground {
@@ -170,7 +177,7 @@ fun EditorScreen(vm: AppViewModel) {
                     }
                 }
                 if (draft.editId == null && selection == null && draft.kind != EntryKind.TIME) {
-                    item(key = "composer") {
+                    item(key = "composer_${draft.kind}") {
                         Composer(draft.kind, field, focus, onChange = { onFieldChange(it) }, onDone = {
                             if (vm.commitRaw()) focusField()
                         })
@@ -190,7 +197,7 @@ fun EditorScreen(vm: AppViewModel) {
                 if (draft.kind == EntryKind.EMOJI && selection == null && (field.text.isEmpty() || emojiBlocked)) {
                     // Android cannot open an arbitrary keyboard on its emoji panel, so a short hint shows
                     // only while it helps: the field is empty, or something that is not an emoji was typed.
-                    Text(stringResource(R.string.editor_emoji_prompt), style = TkType.label, modifier = Modifier.padding(horizontal = 6.dp))
+                    EmojiKeyHint()
                 }
                 if (draft.kind == EntryKind.TIME && selection == null) {
                     TimePanel(
@@ -267,7 +274,14 @@ private fun Composer(
         textStyle = kind.textStyle(),
         cursorBrush = SolidColor(Tk.Primary),
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        // Each tool is its own input session with its own options, so switching tools makes the
+        // keyboard restart: word and place come back to letters (even if the emoji panel was open),
+        // and the emoji tool starts a session without suggestions for emoji input.
+        keyboardOptions = if (kind == EntryKind.EMOJI) {
+            KeyboardOptions(keyboardType = KeyboardType.Text, autoCorrectEnabled = false, imeAction = ImeAction.Done)
+        } else {
+            KeyboardOptions(keyboardType = KeyboardType.Text, autoCorrectEnabled = true, imeAction = ImeAction.Done)
+        },
         // Enter confirms one item. The IME finishes a Hangul composition before it sends the action.
         keyboardActions = KeyboardActions(onDone = { onDone() }),
         modifier = Modifier
@@ -410,6 +424,28 @@ fun KindToolbar(current: EntryKind, onSelect: (EntryKind) -> Unit) {
                 contentAlignment = Alignment.Center,
             ) { TkIcon(kind.icon(), tint = if (active) Tk.OnFocus else Tk.Primary) }
         }
+    }
+}
+
+/**
+ * Android has no API that opens another app's keyboard (Gboard, Samsung Keyboard…) on its emoji
+ * panel, so the emoji tool opens the person's keyboard and this bubble, tied to the emoji tool,
+ * tells them to switch it themselves. It names no key position, so it fits any keyboard.
+ */
+@Composable
+private fun EmojiKeyHint() {
+    Row(
+        Modifier
+            .padding(start = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Tk.Focus)
+            .semantics { liveRegion = LiveRegionMode.Polite }
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TkIcon(R.drawable.ic_emoji, tint = Tk.OnFocus, size = 18.dp)
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.editor_emoji_prompt), style = TkType.label.copy(color = Tk.OnFocus, fontWeight = FontWeight.Medium))
     }
 }
 
