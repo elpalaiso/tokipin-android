@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle as DateTextStyle
+import com.tokipin.app.AppLocale
 import java.util.Locale
 
 /** Figma 01 · 기본 팔레트 (세이지 차콜 / 다크 퍼스트). */
@@ -113,10 +114,10 @@ fun Modifier.glass(shape: Shape = CircleShape): Modifier = this
 
 // region Dates — Figma 04 · 화면 속 표기: YYYY.MM, YYYY.MM.DD(요일), cards "DD / 요일"; weekday from the locale.
 
-fun LocalDate.fullLabel(locale: Locale = Locale.getDefault()): String =
+fun LocalDate.fullLabel(locale: Locale = AppLocale.current): String =
     "%04d.%02d.%02d(%s)".format(year, monthValue, dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
 
-fun LocalDate.cardLabel(locale: Locale = Locale.getDefault()): String =
+fun LocalDate.cardLabel(locale: Locale = AppLocale.current): String =
     "%02d / %s".format(dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
 
 fun YearMonth.label(): String = "%04d.%02d".format(year, monthValue)

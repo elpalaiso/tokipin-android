@@ -15,8 +15,8 @@ android {
     }
 
     defaultConfig {
-        // GUESS: matches the iOS bundle ID. Confirm before the first Play Console upload; it cannot change afterwards.
-        applicationId = "com.elpalaiso.tokipin"
+        // Confirmed by the owner (2026-11-26). It cannot change after the first Play Console upload.
+        applicationId = "com.tokipin.app"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

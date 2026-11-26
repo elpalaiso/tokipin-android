@@ -1,6 +1,16 @@
 package com.tokipin.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -74,12 +84,13 @@ import java.time.YearMonth
 import java.time.format.TextStyle as DateTextStyle
 import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
+import com.tokipin.app.AppLocale
 import java.util.Locale
 
-private fun firstDayOfWeek(): DayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek
+private fun firstDayOfWeek(): DayOfWeek = WeekFields.of(AppLocale.current).firstDayOfWeek
 private fun LocalDate.weekStart(): LocalDate = with(TemporalAdjusters.previousOrSame(firstDayOfWeek()))
 private fun weekdays(): List<DayOfWeek> = (0L until 7L).map { firstDayOfWeek().plus(it) }
-private fun DayOfWeek.short(): String = getDisplayName(DateTextStyle.NARROW, Locale.getDefault())
+private fun DayOfWeek.short(): String = getDisplayName(DateTextStyle.NARROW, AppLocale.current)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -269,37 +280,56 @@ private fun DailyView(vm: AppViewModel) {
             vm.selectDate(date.plusWeeks(weeks.toLong())); haptics.tick()
         })
         HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 20.dp))
-        // Body: swipe left for the next day, right for the previous day.
-        var dragTotal by remember { mutableStateOf(0f) }
-        Column(
-            Modifier
+        // Body: swipe left for the next day, right for the previous day. The page follows the finger,
+        // then the new day slides in from the side it came from (Figma 04 · 일간 · 날짜를 옆으로).
+        var dragTotal by remember { mutableFloatStateOf(0f) }
+        val follow by animateFloatAsState(dragTotal, label = "dayDrag")
+        AnimatedContent(
+            targetState = date,
+            transitionSpec = {
+                val forward = targetState > initialState
+                (slideInHorizontally(tween(220)) { w -> if (forward) w / 3 else -w / 3 } + fadeIn(tween(220))) togetherWith
+                    (slideOutHorizontally(tween(220)) { w -> if (forward) -w / 3 else w / 3 } + fadeOut(tween(160)))
+            },
+            modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(date) {
                     detectHorizontalDragGestures(
                         onDragStart = { dragTotal = 0f },
+                        onDragCancel = { dragTotal = 0f },
                         onDragEnd = {
-                            if (dragTotal < -120f) { vm.selectDate(date.plusDays(1)); haptics.tick() }
-                            else if (dragTotal > 120f) { vm.selectDate(date.minusDays(1)); haptics.tick() }
+                            val moved = dragTotal
+                            dragTotal = 0f
+                            if (moved < -120f) { vm.selectDate(date.plusDays(1)); haptics.tick() }
+                            else if (moved > 120f) { vm.selectDate(date.minusDays(1)); haptics.tick() }
                         },
-                        onHorizontalDrag = { _, amount -> dragTotal += amount },
+                        onHorizontalDrag = { change, amount -> change.consume(); dragTotal += amount },
+                    )
+                },
+            label = "day",
+        ) { shown ->
+            val shownItems = vm.journal.itemsOn(shown)
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { translationX = follow * 0.5f }
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
+                    .padding(bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (shownItems.isEmpty()) {
+                    Text(stringResource(R.string.day_empty), style = TkType.body.copy(color = Tk.Secondary))
+                }
+                shownItems.forEachIndexed { index, entry ->
+                    DailyItem(
+                        entry = entry,
+                        lead = index == 0,
+                        highlighted = vm.highlightId == entry.id,
+                        onEdit = { vm.editSavedItem(shown, entry) },
+                        onDelete = { vm.deleteSavedItem(shown, entry) },
                     )
                 }
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 20.dp)
-                .padding(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            if (items.isEmpty()) {
-                Text(stringResource(R.string.day_empty), style = TkType.body.copy(color = Tk.Secondary))
-            }
-            items.forEachIndexed { index, entry ->
-                DailyItem(
-                    entry = entry,
-                    lead = index == 0,
-                    highlighted = vm.highlightId == entry.id,
-                    onEdit = { vm.editSavedItem(date, entry) },
-                    onDelete = { vm.deleteSavedItem(date, entry) },
-                )
             }
         }
     }
@@ -307,19 +337,37 @@ private fun DailyView(vm: AppViewModel) {
 
 @Composable
 private fun WeekStrip(date: LocalDate, onSelect: (LocalDate) -> Unit, onShiftWeek: (Int) -> Unit) {
-    val start = date.weekStart()
-    var drag by remember { mutableStateOf(0f) }
-    Row(
-        Modifier
+    var drag by remember { mutableFloatStateOf(0f) }
+    val follow by animateFloatAsState(drag, label = "weekDrag")
+    // Dragging the strip to another week keeps the same weekday selected.
+    AnimatedContent(
+        targetState = date.weekStart(),
+        transitionSpec = {
+            val forward = targetState > initialState
+            (slideInHorizontally(tween(220)) { w -> if (forward) w / 2 else -w / 2 } + fadeIn(tween(220))) togetherWith
+                (slideOutHorizontally(tween(220)) { w -> if (forward) -w / 2 else w / 2 } + fadeOut(tween(160)))
+        },
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
             .pointerInput(date) {
                 detectHorizontalDragGestures(
                     onDragStart = { drag = 0f },
-                    onDragEnd = { if (drag < -80f) onShiftWeek(1) else if (drag > 80f) onShiftWeek(-1) },
-                    onHorizontalDrag = { _, amount -> drag += amount },
+                    onDragCancel = { drag = 0f },
+                    onDragEnd = {
+                        val moved = drag
+                        drag = 0f
+                        if (moved < -80f) onShiftWeek(1) else if (moved > 80f) onShiftWeek(-1)
+                    },
+                    onHorizontalDrag = { change, amount -> change.consume(); drag += amount },
                 )
             },
+        label = "week",
+    ) { start ->
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .graphicsLayer { translationX = follow * 0.5f }
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         (0L until 7L).map { start.plusDays(it) }.forEach { day ->
@@ -347,6 +395,7 @@ private fun WeekStrip(date: LocalDate, onSelect: (LocalDate) -> Unit, onShiftWee
                 }
             }
         }
+    }
     }
 }
 

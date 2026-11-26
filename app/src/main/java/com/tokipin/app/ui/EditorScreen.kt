@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -66,13 +65,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tokipin.app.R
 import com.tokipin.app.data.Entry
 import com.tokipin.app.data.EntryKind
-import kotlin.math.roundToInt
 
 // Same row as the homepage trial and the iOS app.
 private val quickEmoji = listOf("🍊", "🧣", "🎧", "☕", "🌿", "📷", "🌙")
@@ -318,8 +315,10 @@ private fun EditorRow(
         }
         Row(
             Modifier
-                .offset { IntOffset(if (selecting) 0 else animated.roundToInt(), 0) }
+                // The row keeps its text in place and its edge pulls back to uncover the delete button
+                // (Figma 04 · 밀어서 삭제).
                 .fillMaxWidth()
+                .padding(end = with(LocalDensity.current) { (if (selecting) 0f else -animated).toDp() })
                 .clip(RoundedCornerShape(12.dp))
                 .background(
                     when {

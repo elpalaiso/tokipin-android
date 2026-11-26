@@ -1,6 +1,6 @@
 # Tokipin Android
 
-Native Android app for Tokipin: leave a small mark (word, emoji, place, time) on the moments you want to remember. Kotlin + Jetpack Compose, Android 8.0+ (minSdk 26, targetSdk 36), no account, no network, no permissions.
+Native Android app for Tokipin: leave a small mark (word, emoji, place, time) on the moments you want to remember. Kotlin + Jetpack Compose, Android 8.0+ (minSdk 26, targetSdk 36), package `com.tokipin.app`, no account, no network, no permissions.
 
 Design source: Figma "Tokipin — Brand · Native App" (pages 01 브랜드, 02 기록 입력, 03 기록 탐색, 04 제품 기준). Copy, policies and editor rules are shared with the homepage in `../tokipin`; behavior and the data format match the iOS app in `../tokipin-ios`.
 
@@ -23,7 +23,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - **Search**: words, emoji, places, times, kind names ("장소") and dates ("11.25"), newest first. Opening a result highlights the item; "검색 결과" returns to the list.
 - **Settings** (last entry of the view menu): touch feedback, JSON export (system file picker), storage note, privacy policy and terms.
 - **Haptics**: one `SEGMENT_TICK` (API 34+, `CLOCK_TICK` before) when the day or level settles; off when the setting is off.
-- **Languages**: Korean (`values-ko`) and English (`values`, default). Dates use `YYYY.MM.DD(요일)` and cards `DD / 요일`; weekday names and the first day of the week follow the device locale.
+- **Language**: Korean only for now. Every string is in `res/values/strings.xml` and dates use `YYYY.MM.DD(요일)` / cards `DD / 요일` from the app locale, so devices in other languages still get a fully Korean app. To add a language: translate `strings.xml` into `values-<lang>/`, add the code to `AppLocale.supported` and `res/xml/locales_config.xml`.
 
 ## Data format
 
@@ -53,8 +53,6 @@ Palette 세이지 차콜: Canvas `#39453D`, Surface `#252C29`, Primary `#F3F3EC`
 
 ## Guesses to confirm
 
-- `applicationId` is `com.elpalaiso.tokipin` (same as the iOS bundle ID). It cannot change after the first Play upload.
 - Adaptive icon: the 1024 artwork inset 9% on `#4A6461`; the monochrome (themed) icon uses the peek-rabbit outline. Figma's "Android 표시 영역과 안전원" spec was not exported.
-- English copy is a first-pass translation.
 - Background gradient, card sizes, view-menu icons and the pinch thresholds (1.25× / 0.8×) were taken by eye from Figma screenshots.
 - No release signing is configured yet.
