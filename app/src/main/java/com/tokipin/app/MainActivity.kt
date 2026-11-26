@@ -15,6 +15,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.tokipin.app.ui.AppViewModel
@@ -56,7 +58,16 @@ class MainActivity : ComponentActivity() {
             TokipinTheme {
                 val view = LocalView.current
                 val haptics = remember(view) { Haptics(view) { vm.hapticsEnabled } }
-                CompositionLocalProvider(LocalHaptics provides haptics) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                // Re-read the 12/24-hour setting whenever the app comes back to the foreground.
+                var resumes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { resumes++; onPauseOrDispose { } }
+                val timeDisplay = androidx.compose.runtime.remember(resumes) { com.tokipin.app.ui.TimeDisplay.from(context) }
+                CompositionLocalProvider(
+                    LocalHaptics provides haptics,
+                    com.tokipin.app.ui.LocalReduceMotion provides reduceMotion,
+                    com.tokipin.app.ui.LocalTimeDisplay provides timeDisplay,
+                ) {
                     LaunchedEffect(vm.transientMessage) {
                         vm.transientMessage?.let {
                             Toast.makeText(this@MainActivity, it, Toast.LENGTH_SHORT).show()
@@ -69,7 +80,7 @@ class MainActivity : ComponentActivity() {
                         return@CompositionLocalProvider
                     }
                     // Editor ↔ home: a short fade (Figma 04 · 180–240ms 시작값), instant when motion is reduced.
-                    val duration = if (reduceMotion) 0 else 200
+                    val duration = if (reduceMotion) com.tokipin.app.rules.UxSpec.REDUCED_MOTION_FADE_MS else com.tokipin.app.rules.UxSpec.COMMIT_MS
                     AnimatedContent(
                         targetState = vm.screen,
                         transitionSpec = { fadeIn(tween(duration)) togetherWith fadeOut(tween(duration)) },

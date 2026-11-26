@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
+import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -65,9 +66,19 @@ class PinchTest {
         compose.waitForIdle()
     }
 
-    private fun centerOf(description: String): Offset =
-        compose.onNode(hasContentDescription(description, substring = true), useUnmergedTree = false)
-            .fetchSemanticsNode().boundsInRoot.center
+    private fun centerOf(description: String): Offset {
+        val node = compose.onNode(hasContentDescription(description, substring = true), useUnmergedTree = false)
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val y = node.fetchSemanticsNode().boundsInRoot.center.y
+        // Keep the pinch over the calendar, clear of the floating 오늘/+ bar on short screens.
+        if (y > root.height * 0.55f) {
+            compose.onNode(androidx.compose.ui.test.hasScrollAction()).performTouchInput {
+                swipeUp(startY = centerY, endY = centerY - (y - root.height * 0.45f), durationMillis = 600)
+            }
+            compose.waitForIdle()
+        }
+        return node.fetchSemanticsNode().boundsInRoot.center
+    }
 
     private fun screenCenter(): Offset = compose.onRoot().fetchSemanticsNode().boundsInRoot.center
 

@@ -1,24 +1,14 @@
 package com.tokipin.app.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -53,18 +43,26 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -75,69 +73,123 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tokipin.app.AppLocale
 import com.tokipin.app.R
 import com.tokipin.app.data.Entry
 import com.tokipin.app.data.EntryKind
+import com.tokipin.app.rules.CalendarRules
+import com.tokipin.app.rules.Level
+import com.tokipin.app.rules.NavEvent
+import com.tokipin.app.rules.UxSpec
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle as DateTextStyle
 import java.time.temporal.TemporalAdjusters
-import java.time.temporal.WeekFields
-import com.tokipin.app.AppLocale
-import java.util.Locale
 
-private fun firstDayOfWeek(): DayOfWeek = WeekFields.of(AppLocale.current).firstDayOfWeek
+/** Week start follows the device region (UX v0.1 §4), weekday names the app language. */
+private fun firstDayOfWeek(): DayOfWeek = AppLocale.firstDayOfWeek
 private fun LocalDate.weekStart(): LocalDate = with(TemporalAdjusters.previousOrSame(firstDayOfWeek()))
 private fun weekdays(): List<DayOfWeek> = (0L until 7L).map { firstDayOfWeek().plus(it) }
 private fun DayOfWeek.short(): String = getDisplayName(DateTextStyle.NARROW, AppLocale.current)
+
+/** Month cells keep a 96dp minimum (same as iOS 96pt) and grow with larger text. */
+private val MONTH_CELL_MIN = 96.dp
+private val MONTH_TITLE = 38.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowseScreen(vm: AppViewModel) {
     val haptics = LocalHaptics.current
+    val reduceMotion = LocalReduceMotion.current
+    val scope = rememberCoroutineScope()
     var dayMenuFor by remember { mutableStateOf<LocalDate?>(null) }
-    var pinchScale by remember { mutableFloatStateOf(1f) }
     val pinchTargets = remember { PinchTargets() }
+    // Live pinch: the content scales around the first finger midpoint; on release the next view
+    // eases in from that same point (or settles back on cancel).
+    val scale = remember { Animatable(1f) }
+    val alpha = remember { Animatable(1f) }
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    var boxSize by remember { mutableStateOf(IntSize.Zero) }
 
     BackHandler(enabled = vm.level == Level.DAILY || (vm.level != Level.YEAR && !vm.journal.isEmpty)) {
-        vm.goUp(); haptics.tick()
+        haptics.commitIf(vm.goUp(), NavEvent.LEVEL_COMMIT)
     }
 
-    TkBackground {
-      CompositionLocalProvider(LocalPinchTargets provides pinchTargets) {
-        Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            BrowseTopBar(vm, onDayMenu = { dayMenuFor = vm.selectedDate })
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .testTag("level_${vm.level.name}")
-                    .graphicsLayer {
-                        // Follow the fingers a little so the pinch reads before the level switches.
-                        val s = pinchScale.coerceIn(0.92f, 1.08f)
-                        scaleX = s; scaleY = s
+    val listener = remember(vm) {
+        object : PinchListener {
+            override fun onStart(origin0: Offset) { origin = origin0 }
+            override fun onScale(scale0: Float) {
+                scope.launch { scale.snapTo(if (reduceMotion) 1f else scale0.coerceIn(0.5f, 2f)) }
+            }
+            override fun onCancel() {
+                scope.launch { scale.animateTo(1f, tween(if (reduceMotion) 0 else UxSpec.CANCEL_MS)) }
+            }
+            override fun onEnd(next: Level, target: Any?, origin: Offset) {
+                val zoomIn = next.ordinal > vm.level.ordinal
+                val changed = vm.pinchTo(next, target, origin.y)
+                if (!changed) { onCancel(); return }
+                haptics.report(NavEvent.LEVEL_COMMIT)
+                scope.launch {
+                    if (reduceMotion) {
+                        scale.snapTo(1f)
+                        alpha.snapTo(0f)
+                        alpha.animateTo(1f, tween(UxSpec.REDUCED_MOTION_FADE_MS))
+                    } else {
+                        // The new level starts slightly smaller (zoom in) or larger (zoom out) around the
+                        // same point and settles to 1×, so the pinched date grows or shrinks into place.
+                        scale.snapTo(if (zoomIn) 0.82f else 1.2f)
+                        alpha.snapTo(0.4f)
+                        launch { alpha.animateTo(1f, tween(UxSpec.COMMIT_MS)) }
+                        scale.animateTo(1f, tween(UxSpec.COMMIT_MS))
                     }
-                    .pinchLevels(
-                        onProgress = { pinchScale = it },
-                        onPinch = { zoomIn, at ->
-                            val target = pinchTargets.at(at)
-                            if (if (zoomIn) vm.zoomIn(target) else vm.zoomOut(target)) haptics.tick()
-                        },
-                    ),
-            ) {
-                when {
-                    vm.journal.isEmpty && (vm.level == Level.RECORDS || vm.level == Level.YEAR) -> EmptyHome(vm)
-                    vm.level == Level.DAILY -> DailyView(vm)
-                    vm.level == Level.RECORDS -> RecordsView(vm, onLongPress = { dayMenuFor = it })
-                    vm.level == Level.MONTH -> MonthView(vm)
-                    else -> YearView(vm)
                 }
             }
         }
-      }
+    }
+
+    TkBackground {
+        CompositionLocalProvider(LocalPinchTargets provides pinchTargets) {
+            Column(Modifier.fillMaxSize().statusBarsPadding()) {
+                BrowseTopBar(vm, onDayMenu = { dayMenuFor = vm.selectedDate })
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .onSizeChanged { boxSize = it }
+                        .testTag("level_${vm.level.name}")
+                        // Measure the pinch outside the scaling layer, so the live zoom never feeds back
+                        // into the measured finger spread.
+                        .pinchLevels(
+                            level = { vm.level },
+                            targets = pinchTargets,
+                            preferred = { vm.selectedDate },
+                            listener = listener,
+                        )
+                        .graphicsLayer {
+                            scaleX = scale.value; scaleY = scale.value
+                            this.alpha = alpha.value
+                            transformOrigin = if (boxSize.width > 0) TransformOrigin(
+                                (origin.x / boxSize.width).coerceIn(0f, 1f),
+                                (origin.y / boxSize.height).coerceIn(0f, 1f),
+                            ) else TransformOrigin.Center
+                        },
+                ) {
+                    when {
+                        vm.journal.isEmpty && (vm.level == Level.RECORDS || vm.level == Level.YEAR) -> EmptyHome(vm)
+                        vm.level == Level.DAILY -> DailyView(vm)
+                        vm.level == Level.RECORDS -> RecordsView(vm, onLongPress = { dayMenuFor = it })
+                        vm.level == Level.MONTH -> MonthView(vm)
+                        else -> YearView(vm)
+                    }
+                }
+            }
+        }
         BottomActions(vm)
     }
 
@@ -177,7 +229,8 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
     val parent = when (vm.level) {
         Level.DAILY -> if (vm.openedFromSearch) null else vm.selectedDate.monthValue.toString()
-        Level.RECORDS, Level.MONTH -> vm.selectedDate.year.toString()
+        // The top bar names the year in view; scrolling never changes the selected day.
+        Level.RECORDS, Level.MONTH -> vm.visibleMonth.year.toString()
         Level.YEAR -> null
     }
     Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -185,7 +238,7 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
             val backLabel = stringResource(R.string.cd_back_to, parent)
             Row(
                 Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
-                    .clickable(role = Role.Button) { vm.goUp(); haptics.tick() }
+                    .clickable(role = Role.Button) { haptics.commitIf(vm.goUp(), NavEvent.LEVEL_COMMIT) }
                     .semantics(mergeDescendants = true) { contentDescription = backLabel }
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -228,10 +281,10 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
                         text = { Text(stringResource(label), style = TkType.body) },
                         leadingIcon = { TkIcon(icon, size = 20.dp) },
                         trailingIcon = if (current) ({ TkIcon(R.drawable.ic_check, size = 18.dp, tint = Tk.Secondary) }) else null,
-                        modifier = Modifier.semantics { selected = current },
+                        modifier = Modifier.semantics { selected = current }.testTag("menu_${lvl.name}"),
                         onClick = {
                             menuOpen = false
-                            if (!current) { vm.changeLevel(lvl); haptics.tick() }
+                            haptics.commitIf(vm.changeLevel(lvl), NavEvent.LEVEL_COMMIT)
                         },
                     )
                 }
@@ -248,6 +301,7 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
 
 @Composable
 private fun BoxScope.BottomActions(vm: AppViewModel) {
+    val haptics = LocalHaptics.current
     Column(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -255,7 +309,8 @@ private fun BoxScope.BottomActions(vm: AppViewModel) {
         vm.undo?.let { UndoBar(it) }
         if (!vm.journal.isEmpty || vm.level == Level.DAILY || vm.level == Level.MONTH) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                GlassPill(stringResource(R.string.today), onClick = vm::goToday)
+                // Today keeps the view and is silent (UX v0.1 §3).
+                GlassPill(stringResource(R.string.today), onClick = { vm.goToday(); haptics.report(NavEvent.TODAY) })
                 Spacer(Modifier.weight(1f))
                 RoundIconButton(
                     R.drawable.ic_plus, stringResource(R.string.cd_new_record), { vm.openEditor() },
@@ -283,114 +338,98 @@ private fun EmptyHome(vm: AppViewModel) {
     }
 }
 
+/** Places list item [index] so its top sits [y] px below the list top (pinch continuity). */
+private suspend fun LazyListState.placeAt(index: Int, y: Float?, innerOffset: Float = 0f) {
+    scrollToItem(index)
+    if (y != null) scrollBy(-(y - innerOffset))
+    else if (innerOffset > 0f) scrollBy(innerOffset - 24f)
+}
+
+/**
+ * Remembers this list's position for its level and, on appearing, either restores it (back from a
+ * day) or brings the selected date to the pinch point / default spot.
+ */
+@Composable
+private fun TrackScroll(vm: AppViewModel, level: Level, state: LazyListState, anchor: suspend (Float?) -> Unit) {
+    LaunchedEffect(vm.focusRequest) {
+        val saved = vm.savedScroll(level)
+        val entry = vm.entry
+        if (entry is AppViewModel.ListEntry.Restore && saved != null) state.scrollToItem(saved.index, saved.offset)
+        else anchor((entry as? AppViewModel.ListEntry.Anchor)?.y)
+    }
+    DisposableEffect(state) {
+        onDispose {
+            vm.rememberScroll(level, AppViewModel.ScrollPos(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset))
+        }
+    }
+}
+
 // region Daily
 
 @Composable
 private fun DailyView(vm: AppViewModel) {
     val haptics = LocalHaptics.current
+    val reduceMotion = LocalReduceMotion.current
     val date = vm.selectedDate
-    val items = vm.journal.itemsOn(date)
     Column(Modifier.fillMaxSize()) {
-        WeekStrip(date, onSelect = { if (it != date) { vm.selectDate(it); haptics.tick() } }, onShiftWeek = { weeks ->
-            vm.selectDate(date.plusWeeks(weeks.toLong())); haptics.tick()
-        })
+        // Week rail: ±1 week, keeping the weekday (UX v0.1 §2).
+        SwipePager(
+            page = date.weekStart(),
+            neighbor = { start, d -> start.plusWeeks(d.toLong()) },
+            onCommit = { dir -> if (vm.selectDate(date.plusWeeks(dir.toLong()))) haptics.report(NavEvent.WEEK_SWIPE_COMMIT) },
+            reduceMotion = reduceMotion,
+            modifier = Modifier.fillMaxWidth().testTag("weekRail"),
+        ) { start ->
+            WeekRow(start, date) { day -> haptics.commitIf(vm.selectDate(day), NavEvent.TAP_DATE) }
+        }
         HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 20.dp))
-        // Body: swipe left for the next day, right for the previous day. The page follows the finger,
-        // then the new day slides in from the side it came from (Figma 04 · 일간 · 날짜를 옆으로).
-        var dragTotal by remember { mutableFloatStateOf(0f) }
-        val follow by animateFloatAsState(dragTotal, label = "dayDrag")
-        AnimatedContent(
-            targetState = date,
-            transitionSpec = {
-                val forward = targetState > initialState
-                (slideInHorizontally(tween(220)) { w -> if (forward) w / 3 else -w / 3 } + fadeIn(tween(220))) togetherWith
-                    (slideOutHorizontally(tween(220)) { w -> if (forward) -w / 3 else w / 3 } + fadeOut(tween(160)))
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(date) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragTotal = 0f },
-                        onDragCancel = { dragTotal = 0f },
-                        onDragEnd = {
-                            val moved = dragTotal
-                            dragTotal = 0f
-                            if (moved < -120f) { vm.selectDate(date.plusDays(1)); haptics.tick() }
-                            else if (moved > 120f) { vm.selectDate(date.minusDays(1)); haptics.tick() }
-                        },
-                        onHorizontalDrag = { change, amount -> change.consume(); dragTotal += amount },
-                    )
-                },
-            label = "day",
-        ) { shown ->
-            val shownItems = vm.journal.itemsOn(shown)
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { translationX = follow * 0.5f }
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 20.dp)
-                    .padding(bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                if (shownItems.isEmpty()) {
-                    Text(stringResource(R.string.day_empty), style = TkType.body.copy(color = Tk.Secondary))
-                }
-                shownItems.forEachIndexed { index, entry ->
-                    DailyItem(
-                        entry = entry,
-                        lead = index == 0,
-                        highlighted = vm.highlightId == entry.id,
-                        onEdit = { vm.editSavedItem(shown, entry) },
-                        onDelete = { vm.deleteSavedItem(shown, entry) },
-                    )
-                }
-            }
+        // Day body: ±1 day; the neighbouring days sit beside it and follow the finger 1:1.
+        SwipePager(
+            page = date,
+            neighbor = { d, step -> d.plusDays(step.toLong()) },
+            onCommit = { dir -> if (vm.selectDate(date.plusDays(dir.toLong()))) haptics.report(NavEvent.DAY_SWIPE_COMMIT) },
+            reduceMotion = reduceMotion,
+            modifier = Modifier.fillMaxSize().testTag("dayBody"),
+        ) { shown -> DayBody(vm, shown) }
+    }
+}
+
+@Composable
+private fun DayBody(vm: AppViewModel, shown: LocalDate) {
+    val items = vm.journal.itemsOn(shown)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 20.dp)
+            .padding(bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (items.isEmpty()) {
+            Text(stringResource(R.string.day_empty), style = TkType.body.copy(color = Tk.Secondary))
+        }
+        items.forEachIndexed { index, entry ->
+            DailyItem(
+                entry = entry,
+                lead = index == 0,
+                highlighted = vm.highlightId == entry.id,
+                onEdit = { vm.editSavedItem(shown, entry) },
+                onDelete = { vm.deleteSavedItem(shown, entry) },
+            )
         }
     }
 }
 
 @Composable
-private fun WeekStrip(date: LocalDate, onSelect: (LocalDate) -> Unit, onShiftWeek: (Int) -> Unit) {
-    var drag by remember { mutableFloatStateOf(0f) }
-    val follow by animateFloatAsState(drag, label = "weekDrag")
-    // Dragging the strip to another week keeps the same weekday selected.
-    AnimatedContent(
-        targetState = date.weekStart(),
-        transitionSpec = {
-            val forward = targetState > initialState
-            (slideInHorizontally(tween(220)) { w -> if (forward) w / 2 else -w / 2 } + fadeIn(tween(220))) togetherWith
-                (slideOutHorizontally(tween(220)) { w -> if (forward) -w / 2 else w / 2 } + fadeOut(tween(160)))
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .pointerInput(date) {
-                detectHorizontalDragGestures(
-                    onDragStart = { drag = 0f },
-                    onDragCancel = { drag = 0f },
-                    onDragEnd = {
-                        val moved = drag
-                        drag = 0f
-                        if (moved < -80f) onShiftWeek(1) else if (moved > 80f) onShiftWeek(-1)
-                    },
-                    onHorizontalDrag = { change, amount -> change.consume(); drag += amount },
-                )
-            },
-        label = "week",
-    ) { start ->
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .graphicsLayer { translationX = follow * 0.5f }
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
+private fun WeekRow(start: LocalDate, date: LocalDate, onSelect: (LocalDate) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         (0L until 7L).map { start.plusDays(it) }.forEach { day ->
             val active = day == date
             val label = day.fullLabel()
             Column(
                 Modifier
                     .weight(1f)
+                    .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(role = Role.Tab) { onSelect(day) }
                     .semantics(mergeDescendants = true) { contentDescription = label; selected = active }
@@ -411,13 +450,13 @@ private fun WeekStrip(date: LocalDate, onSelect: (LocalDate) -> Unit, onShiftWee
             }
         }
     }
-    }
 }
 
 @Composable
 private fun DailyItem(entry: Entry, lead: Boolean, highlighted: Boolean, onEdit: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    val more = stringResource(R.string.cd_item_menu, entry.value)
+    val text = entry.shown()
+    val more = stringResource(R.string.cd_item_menu, text)
     val shape = RoundedCornerShape(if (lead) 22.dp else 10.dp)
     Box {
         Row(
@@ -440,7 +479,7 @@ private fun DailyItem(entry: Entry, lead: Boolean, highlighted: Boolean, onEdit:
                     TkIcon(entry.kind.icon(), tint = Tk.Secondary, size = 16.dp)
                     Spacer(Modifier.width(12.dp))
                 }
-                Text(entry.value, style = if (lead) TkType.word else TkType.title)
+                Text(text, style = if (lead) TkType.word else TkType.title)
             }
             MoreButton(more, onClick = { menu = true }, modifier = Modifier.padding(top = if (lead) 4.dp else 0.dp))
         }
@@ -488,22 +527,30 @@ private fun recordRows(dates: List<LocalDate>): List<RecordRow> {
     return rows
 }
 
+private fun RecordRow.month(): YearMonth = when (this) {
+    is RecordRow.Header -> month
+    is RecordRow.Cards -> YearMonth.from(dates.first())
+}
+
 @Composable
 private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
     val haptics = LocalHaptics.current
     val rows = remember(vm.journal) { recordRows(vm.journal.recordedDates()) }
     val state = rememberLazyListState()
-    LaunchedEffect(vm.focusRequest, rows.size) {
-        val target = rows.indexOfFirst { it is RecordRow.Cards && vm.selectedDate in it.dates }
-            .let { idx -> if (idx > 0 && rows[idx - 1] is RecordRow.Header) idx - 1 else idx }
-        if (target >= 0) state.scrollToItem(target)
-        else {
-            val month = YearMonth.from(vm.selectedDate)
-            val header = rows.indexOfFirst { it is RecordRow.Header && it.month <= month }
-            if (header >= 0) state.scrollToItem(header)
-        }
+    TrackScroll(vm, Level.RECORDS, state) { y ->
+        // The selected day's card; an empty day shows the nearest real record of its month, and the
+        // selected day itself stays as it is.
+        val idx = rows.indexOfFirst { it is RecordRow.Cards && vm.selectedDate in it.dates }
+            .takeIf { it >= 0 }
+            ?: rows.indexOfFirst { it.month() <= YearMonth.from(vm.selectedDate) }.takeIf { it >= 0 }
+            ?: return@TrackScroll
+        state.placeAt(idx, y)
     }
-    YearTracker(state, rows) { vm.selectDate(it) }
+    LaunchedEffect(state, rows) {
+        snapshotFlow { rows.getOrNull(state.firstVisibleItemIndex)?.month() }
+            .distinctUntilChanged()
+            .collect { m -> if (m != null && state.isScrollInProgress) vm.scrolledTo(m) }
+    }
     LazyColumn(state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 110.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         itemsIndexed(rows, key = { _, row -> if (row is RecordRow.Header) "h${row.month}" else "c${(row as RecordRow.Cards).dates.first()}" }) { _, row ->
             when (row) {
@@ -518,7 +565,7 @@ private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
                             items = vm.journal.itemsOn(date),
                             wide = row.dates.size == 1,
                             selected = date == vm.selectedDate,
-                            onClick = { vm.openDay(date); haptics.tick() },
+                            onClick = { haptics.commitIf(vm.openDay(date), NavEvent.TAP_DATE) },
                             onLongClick = { onLongPress(date) },
                             modifier = Modifier.weight(1f),
                         )
@@ -526,16 +573,6 @@ private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
                 }
             }
         }
-    }
-}
-
-/** Keeps the top-bar year in step with the month at the top of the list. */
-@Composable
-private fun YearTracker(state: LazyListState, rows: List<RecordRow>, onMonth: (LocalDate) -> Unit) {
-    val first by remember(rows) { derivedStateOf { rows.getOrNull(state.firstVisibleItemIndex) } }
-    LaunchedEffect(first) {
-        val row = first
-        if (state.isScrollInProgress && row is RecordRow.Cards) onMonth(row.dates.first())
     }
 }
 
@@ -550,12 +587,14 @@ private fun DayCard(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(20.dp)
+    val time = LocalTimeDisplay.current
     val title = items.firstOrNull()
     val rest = items.drop(1)
-    val description = date.fullLabel() + ", " + items.joinToString(", ") { it.value }
+    val description = date.fullLabel() + ", " + items.joinToString(", ") { time.text(it) }
     Column(
         modifier
             .pinchTarget(date)
+            .testTag("card_$date")
             .heightIn(min = if (wide) 140.dp else 120.dp)
             .clip(shape)
             .background(Tk.Card)
@@ -568,14 +607,14 @@ private fun DayCard(
         Spacer(Modifier.height(14.dp))
         if (title != null) {
             Text(
-                title.value, style = if (wide) TkType.title.copy(fontSize = 26.sp) else TkType.title,
+                time.text(title), style = if (wide) TkType.title.copy(fontSize = 26.sp) else TkType.title,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
         if (rest.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
             Text(
-                rest.joinToString("  ·  ") { it.value }, style = TkType.label,
+                rest.joinToString("  ·  ") { time.text(it) }, style = TkType.label,
                 maxLines = if (wide) 2 else 1, overflow = TextOverflow.Ellipsis,
             )
         }
@@ -589,22 +628,27 @@ private fun DayCard(
 @Composable
 private fun MonthView(vm: AppViewModel) {
     val haptics = LocalHaptics.current
+    val density = LocalDensity.current
     val today = LocalDate.now()
     val dates = vm.journal.recordedDates()
-    val first = YearMonth.from(minOf(dates.lastOrNull() ?: today, today)).minusMonths(12)
-    val last = YearMonth.from(maxOf(dates.firstOrNull() ?: today, today)).plusMonths(12)
+    val first = YearMonth.from(minOf(dates.lastOrNull() ?: today, today, vm.selectedDate)).minusMonths(12)
+    val last = YearMonth.from(maxOf(dates.firstOrNull() ?: today, today, vm.selectedDate)).plusMonths(12)
     val months = remember(first, last) {
         generateSequence(first) { it.plusMonths(1) }.takeWhile { it <= last }.toList()
     }
     val state = rememberLazyListState()
-    LaunchedEffect(vm.focusRequest) {
-        val idx = months.indexOf(YearMonth.from(vm.selectedDate))
-        if (idx >= 0) state.scrollToItem(idx)
+    TrackScroll(vm, Level.MONTH, state) { y ->
+        val month = YearMonth.from(vm.selectedDate)
+        val idx = months.indexOf(month).takeIf { it >= 0 } ?: return@TrackScroll
+        // Keep the selected date's row where the fingers were.
+        val row = (CalendarRules.firstDayColumn(month, firstDayOfWeek()) + vm.selectedDate.dayOfMonth - 1) / 7
+        val inner = with(density) { (MONTH_TITLE + MONTH_CELL_MIN * row).toPx() }
+        state.placeAt(idx, y, inner)
     }
-    val topMonth by remember { derivedStateOf { months.getOrNull(state.firstVisibleItemIndex) } }
-    LaunchedEffect(topMonth) {
-        val m = topMonth ?: return@LaunchedEffect
-        if (state.isScrollInProgress && m.year != vm.selectedDate.year) vm.selectDate(m.atDay(1))
+    LaunchedEffect(state, months) {
+        snapshotFlow { months.getOrNull(state.firstVisibleItemIndex) }
+            .distinctUntilChanged()
+            .collect { m -> if (m != null && state.isScrollInProgress) vm.scrolledTo(m) }
     }
     Column(Modifier.fillMaxSize()) {
         // Weekday header stays fixed while months scroll underneath (Figma 04 · 월간 해가 바뀌는 경계).
@@ -613,7 +657,7 @@ private fun MonthView(vm: AppViewModel) {
         }
         LazyColumn(state = state, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 110.dp)) {
             itemsIndexed(months, key = { _, m -> m.toString() }) { _, month ->
-                MonthBlock(month, vm, onOpenDay = { vm.openDay(it); haptics.tick() })
+                MonthBlock(month, vm, onOpenDay = { haptics.commitIf(vm.openDay(it), NavEvent.TAP_DATE) })
             }
         }
     }
@@ -621,34 +665,35 @@ private fun MonthView(vm: AppViewModel) {
 
 @Composable
 private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate) -> Unit) {
-    val lead = (month.atDay(1).dayOfWeek.value - firstDayOfWeek().value + 7) % 7
+    val lead = CalendarRules.firstDayColumn(month, firstDayOfWeek())
     val cells = lead + month.lengthOfMonth()
     val weeks = (cells + 6) / 7
     val monthDescription = stringResource(R.string.cd_month, month.monthValue)
-    Column(Modifier.padding(top = 18.dp)) {
+    Column(Modifier.testTag("month_$month")) {
         // The month number sits outside the frame, above the column of the 1st.
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+        Row(Modifier.fillMaxWidth().height(MONTH_TITLE).padding(horizontal = 4.dp), verticalAlignment = Alignment.Bottom) {
             repeat(7) { col ->
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     if (col == lead) {
                         Text(
                             month.monthValue.toString(),
                             style = TkType.title.copy(fontSize = 20.sp),
-                            modifier = Modifier.semantics { contentDescription = "${month.year} $monthDescription"; heading() },
+                            modifier = Modifier
+                                .testTag("monthLabel_$month")
+                                .semantics { contentDescription = "${month.year} $monthDescription"; heading() },
                         )
                     }
                 }
             }
         }
-        Spacer(Modifier.height(6.dp))
         val shape = RoundedCornerShape(20.dp)
-        Column(Modifier.clip(shape).background(Tk.Surface.copy(alpha = 0.55f)).border(0.8.dp, Tk.CardBorder, shape).padding(4.dp)) {
+        Column(Modifier.padding(top = 6.dp).clip(shape).background(Tk.Surface.copy(alpha = 0.55f)).border(0.8.dp, Tk.CardBorder, shape).padding(4.dp)) {
             repeat(weeks) { week ->
                 if (week > 0) HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 6.dp))
-                Row(Modifier.fillMaxWidth().heightIn(min = 82.dp)) {
+                Row(Modifier.fillMaxWidth().heightIn(min = MONTH_CELL_MIN)) {
                     repeat(7) { col ->
                         val day = week * 7 + col - lead + 1
-                        Box(Modifier.weight(1f).heightIn(min = 82.dp)) {
+                        Box(Modifier.weight(1f).heightIn(min = MONTH_CELL_MIN)) {
                             if (day in 1..month.lengthOfMonth()) {
                                 val date = month.atDay(day)
                                 MonthCell(date, vm.journal.itemsOn(date), date == vm.selectedDate, date == LocalDate.now()) { onOpenDay(date) }
@@ -658,17 +703,21 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
                 }
             }
         }
+        Spacer(Modifier.height(12.dp))
     }
 }
 
 @Composable
 private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, today: Boolean, onClick: () -> Unit) {
-    val label = date.fullLabel() + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { it.value }
+    val time = LocalTimeDisplay.current
+    val (shown, more) = CalendarRules.preview(items)
+    val label = date.fullLabel() + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { time.text(it) }
     Column(
         Modifier
             .pinchTarget(date)
+            .testTag("day_$date")
             .fillMaxWidth()
-            .heightIn(min = 82.dp)
+            .heightIn(min = MONTH_CELL_MIN)
             .padding(2.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) Color(0xFF4A5C6B) else Color.Transparent)
@@ -684,10 +733,10 @@ private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, to
                 fontWeight = if (items.isNotEmpty() || today) FontWeight.SemiBold else FontWeight.Normal,
             ),
         )
-        items.take(3).forEach {
-            Text(it.value, style = TkType.small.copy(fontSize = 10.sp, lineHeight = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        shown.forEach {
+            Text(time.text(it), style = TkType.small.copy(fontSize = 10.sp, lineHeight = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (items.size > 3) Text(stringResource(R.string.more_count, items.size - 3), style = TkType.small.copy(fontSize = 10.sp))
+        if (more > 0) Text(stringResource(R.string.more_count, more), style = TkType.small.copy(fontSize = 10.sp))
     }
 }
 
@@ -700,18 +749,24 @@ private fun YearView(vm: AppViewModel) {
     val haptics = LocalHaptics.current
     val today = LocalDate.now()
     val dates = vm.journal.recordedDates()
-    val firstYear = minOf(dates.lastOrNull()?.year ?: today.year, today.year) - 1
-    val lastYear = maxOf(dates.firstOrNull()?.year ?: today.year, today.year) + 1
+    val firstYear = minOf(dates.lastOrNull()?.year ?: today.year, today.year, vm.selectedDate.year) - 1
+    val lastYear = maxOf(dates.firstOrNull()?.year ?: today.year, today.year, vm.selectedDate.year) + 1
     val years = (firstYear..lastYear).toList()
     val recorded = remember(vm.journal) { dates.toSet() }
     val state = rememberLazyListState()
-    LaunchedEffect(vm.focusRequest) {
+    TrackScroll(vm, Level.YEAR, state) { y ->
         val idx = years.indexOf(vm.selectedDate.year)
-        if (idx >= 0) state.scrollToItem(idx)
+        if (idx >= 0) state.placeAt(idx, y?.let { it - 200f })
+    }
+    LaunchedEffect(state, years) {
+        snapshotFlow { years.getOrNull(state.firstVisibleItemIndex) }
+            .distinctUntilChanged()
+            .collect { yr -> if (yr != null && state.isScrollInProgress) vm.scrolledTo(YearMonth.of(yr, 1)) }
     }
     LazyColumn(state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 110.dp)) {
         itemsIndexed(years, key = { _, y -> y }) { _, year ->
-            Column(Modifier.padding(top = 12.dp, bottom = 12.dp)) {
+            // The year title scrolls together with its twelve months.
+            Column(Modifier.padding(top = 12.dp, bottom = 12.dp).testTag("year_$year")) {
                 Text(year.toString(), style = TkType.title.copy(fontSize = 30.sp), modifier = Modifier.padding(start = 4.dp, bottom = 8.dp).semantics { heading() })
                 (1..12).chunked(3).forEach { row ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -721,7 +776,7 @@ private fun YearView(vm: AppViewModel) {
                                 month, recorded,
                                 selected = YearMonth.from(vm.selectedDate) == month,
                                 modifier = Modifier.weight(1f),
-                            ) { vm.openMonth(month); haptics.tick() }
+                            ) { haptics.commitIf(vm.openMonth(month), NavEvent.LEVEL_COMMIT) }
                         }
                     }
                 }
@@ -732,12 +787,13 @@ private fun YearView(vm: AppViewModel) {
 
 @Composable
 private fun MiniMonth(month: YearMonth, recorded: Set<LocalDate>, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val lead = (month.atDay(1).dayOfWeek.value - firstDayOfWeek().value + 7) % 7
+    val lead = CalendarRules.firstDayColumn(month, firstDayOfWeek())
     val count = recorded.count { YearMonth.from(it) == month }
-    val description = stringResource(R.string.cd_month, month.monthValue) + if (count > 0) ", $count" else ""
+    val description = "${month.year} " + stringResource(R.string.cd_month, month.monthValue) + if (count > 0) ", $count" else ""
     Column(
         modifier
             .pinchTarget(month)
+            .testTag("mini_$month")
             .clip(RoundedCornerShape(12.dp))
             .background(if (selected) Color(0xFF4A5C6B).copy(alpha = 0.8f) else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)

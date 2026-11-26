@@ -63,53 +63,40 @@ data class Draft(
 }
 
 object EntryRules {
-    private val timePattern = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
-
     /**
-     * Mirrors the web demo's validation: blank → "", invalid time/emoji → null, otherwise the trimmed value.
+     * Blank → "", invalid → null, otherwise the value to store. Times must be canonical "HH:mm";
+     * the emoji field keeps only its valid emoji sequences (UX v0.1 · 이모지 입력 계약), so an old
+     * mixed draft such as "비☕" is saved as "☕" when the user confirms it.
      */
     fun normalized(kind: EntryKind, raw: String): String? {
         val value = raw.trim()
         if (value.isEmpty()) return ""
         return when (kind) {
-            EntryKind.TIME -> if (timePattern.matches(value)) value else null
-            EntryKind.EMOJI -> if (containsEmoji(value)) value else null
+            EntryKind.TIME -> if (com.tokipin.app.rules.TimeRules.isCanonical(value)) value else null
+            EntryKind.EMOJI -> com.tokipin.app.rules.EmojiRules.filter(value).ifEmpty { null }
             else -> value
         }
     }
+}
 
-    /** Keeps only whole emoji (grapheme clusters with a pictograph, incl. ZWJ sequences, flags, skin tones). */
-    fun emojiOnly(value: String): String {
-        val it = java.text.BreakIterator.getCharacterInstance()
-        it.setText(value)
-        val out = StringBuilder()
-        var start = it.first()
-        var end = it.next()
-        while (end != java.text.BreakIterator.DONE) {
-            val cluster = value.substring(start, end)
-            if (containsEmoji(cluster)) out.append(cluster)
-            start = end
-            end = it.next()
-        }
-        return out.toString()
+/** The outcome of confirming the pending value (Enter, +, switching tools, or ✓). */
+sealed interface Commit {
+    data class Ok(val draft: Draft) : Commit
+    data class Invalid(val kind: EntryKind) : Commit
+    data object EmptyEdit : Commit
+}
+
+object DraftRules {
+    fun commit(d: Draft): Commit {
+        val value = EntryRules.normalized(d.kind, d.raw) ?: return Commit.Invalid(d.kind)
+        if (value.isEmpty()) return if (d.editId != null) Commit.EmptyEdit else Commit.Ok(d)
+        val items = d.items.toMutableList()
+        val index = items.indexOfFirst { it.id == d.editId }
+        if (index >= 0) items[index] = items[index].copy(kind = d.kind, value = value)
+        else items += Entry(kind = d.kind, value = value)
+        return Commit.Ok(d.copy(items = items, raw = "", editId = null, changed = true))
     }
 
-    fun containsEmoji(value: String): Boolean {
-        var i = 0
-        while (i < value.length) {
-            val cp = value.codePointAt(i)
-            if (isPictographic(cp)) return true
-            i += Character.charCount(cp)
-        }
-        return false
-    }
-
-    private fun isPictographic(cp: Int): Boolean =
-        cp in 0x1F000..0x1FAFF || // emoticons, symbols & pictographs, transport, supplemental
-            cp in 0x2600..0x27BF || // misc symbols, dingbats
-            cp in 0x2300..0x23FF || // misc technical (⌚ ⏰)
-            cp in 0x2B00..0x2BFF || // arrows & stars (⭐)
-            cp in 0x1F1E6..0x1F1FF || // regional indicators
-            cp == 0x20E3 || cp == 0x00A9 || cp == 0x00AE || cp == 0x3030 || cp == 0x303D ||
-            Character.getType(cp) == Character.OTHER_SYMBOL.toInt() && cp > 0x2000
+    /** Leaving a pending value or an edit without confirming it keeps the items as they were. */
+    fun cancelPending(d: Draft): Draft = d.copy(raw = "", editId = null)
 }

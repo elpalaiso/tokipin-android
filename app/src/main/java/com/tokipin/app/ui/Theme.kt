@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.tokipin.app.R
+import com.tokipin.app.rules.HapticRules
+import com.tokipin.app.rules.NavEvent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
@@ -126,14 +128,38 @@ fun searchableDate(date: LocalDate): String = "%04d.%02d.%02d".format(date.year,
 
 // endregion
 
-/** Figma 04 · 조작과 햅틱: one tick when the day or the view level is settled, never while dragging. */
+/**
+ * The only place the app asks for vibration (UX v0.1 §3). Each user action reports what it did;
+ * [HapticRules] turns that into at most one light selection tick, and none when the app setting is
+ * off. performHapticFeedback also respects the system touch-feedback setting. Keyboards and the time
+ * picker give their own feedback; the app never adds to it.
+ */
 class Haptics(private val view: View, private val enabled: () -> Boolean) {
-    fun tick() {
-        if (!enabled()) return
-        val constant = if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.SEGMENT_TICK
-        else HapticFeedbackConstants.CLOCK_TICK
-        view.performHapticFeedback(constant)
+    var requested = 0
+        private set
+
+    fun report(vararg events: NavEvent) {
+        repeat(HapticRules.ticks(events.toList(), enabled())) {
+            requested++
+            totalRequested++
+            val constant = if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.SEGMENT_TICK
+            else HapticFeedbackConstants.CLOCK_TICK
+            view.performHapticFeedback(constant)
+        }
+    }
+
+    companion object {
+        /** Ticks the app asked for since launch; read by the instrumented tests. */
+        @Volatile var totalRequested = 0
+    }
+
+    /** Convenience: a committed navigation when [changed], silent otherwise. */
+    fun commitIf(changed: Boolean, event: NavEvent) {
+        if (changed) report(event) else report(NavEvent.RESELECT)
     }
 }
 
 val LocalHaptics = staticCompositionLocalOf<Haptics> { error("no haptics") }
+
+/** System "remove animations": transitions snap or fade within 100 ms (UX v0.1 · settling). */
+val LocalReduceMotion = staticCompositionLocalOf { false }

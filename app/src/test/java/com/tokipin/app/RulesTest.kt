@@ -30,9 +30,9 @@ class RulesTest {
     }
 
     @Test fun emojiOnlyDropsEverythingElse() {
-        assertEquals("🌧️☕", EntryRules.emojiOnly("비🌧️ a1☕"))
-        assertEquals("👩‍👩‍👧🇰🇷👍🏽", EntryRules.emojiOnly("가👩‍👩‍👧 🇰🇷x👍🏽"))
-        assertEquals("", EntryRules.emojiOnly("산책"))
+        assertEquals("🌧️☕", com.tokipin.app.rules.EmojiRules.filter("비🌧️ a1☕"))
+        assertEquals("👩‍👩‍👧🇰🇷👍🏽", com.tokipin.app.rules.EmojiRules.filter("가👩‍👩‍👧 🇰🇷x👍🏽"))
+        assertEquals("", com.tokipin.app.rules.EmojiRules.filter("산책"))
     }
 
     private val journal = Journal()

@@ -2,8 +2,6 @@ package com.tokipin.app.ui
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculateCentroid
-import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -11,17 +9,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.isSpecified
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import com.tokipin.app.rules.Level
+import com.tokipin.app.rules.PinchAnchor
+import com.tokipin.app.rules.PinchRules
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Where each date (or month, in the year view) is on screen, so a pinch can zoom around the date
- * between the two fingers (Figma 04 · 핀치 중에는 날짜를 기준으로).
+ * under the fingers (UX v0.1 §2 · 핀치 시작·추적). A midpoint in a gap picks the nearest visible
+ * cell; on a tie the current selection wins.
  */
 class PinchTargets {
     private val bounds = mutableMapOf<Any, Rect>()
@@ -29,9 +31,19 @@ class PinchTargets {
     fun put(key: Any, rect: Rect) { bounds[key] = rect }
     fun remove(key: Any) { bounds.remove(key) }
 
-    fun at(point: Offset): Any? =
-        bounds.entries.firstOrNull { it.value.contains(point) }?.key
-            ?: bounds.entries.minByOrNull { (it.value.center - point).getDistanceSquared() }?.key
+    fun at(point: Offset, preferred: Any? = null): Any? {
+        bounds.entries.firstOrNull { it.value.contains(point) }?.let { return it.key }
+        val nearest = bounds.entries.minByOrNull { distanceTo(it.value, point) } ?: return null
+        val best = distanceTo(nearest.value, point)
+        val preferredRect = preferred?.let { bounds[it] }
+        return if (preferredRect != null && distanceTo(preferredRect, point) <= best) preferred else nearest.key
+    }
+
+    private fun distanceTo(r: Rect, p: Offset): Float {
+        val dx = maxOf(r.left - p.x, 0f, p.x - r.right)
+        val dy = maxOf(r.top - p.y, 0f, p.y - r.bottom)
+        return dx * dx + dy * dy
+    }
 }
 
 val LocalPinchTargets = staticCompositionLocalOf { PinchTargets() }
@@ -43,46 +55,73 @@ fun Modifier.pinchTarget(key: Any): Modifier = composed {
     onGloballyPositioned { targets.put(key, it.boundsInRoot()) }
 }
 
+/** Callbacks for one pinch, in the coordinates of the pinched area. */
+interface PinchListener {
+    /** First valid two-finger midpoint: the target is fixed from here on. */
+    fun onStart(origin: Offset)
+    fun onScale(scale: Float)
+    /** Released with two fingers lifting normally; [next] already applies the one-level rule. */
+    fun onEnd(next: Level, target: Any?, origin: Offset)
+    /** OS cancel, a third finger, or any abnormal end: nothing changes. */
+    fun onCancel()
+}
+
+private fun PointerEvent.twoPointerSpan(): Pair<Offset, Float>? {
+    val down = changes.filter { it.pressed }
+    if (down.size != 2) return null
+    val a = down[0].position
+    val b = down[1].position
+    return Offset((a.x + b.x) / 2, (a.y + b.y) / 2) to (a - b).getDistance()
+}
+
 /**
- * Two-finger pinch that changes the view level once per gesture (Figma 04 · 네 단계로 확대하고 축소하기).
- * Single-finger drags pass through so lists keep scrolling. While pinching, [onProgress] reports the
- * live zoom so the view can follow the fingers; a pinch released near 1× changes nothing.
- * [onPinch] gets `true` for zoom in, and the centroid in root coordinates.
+ * Two-finger pinch over the calendar content (UX v0.1 §2). The scale is relative to the first valid
+ * two-finger spacing, the decision uses the last valid two-finger scale, and only a normal release
+ * commits. Once a pinch starts every pointer change is consumed until all fingers lift, so the
+ * remaining finger never becomes a date tap or a swipe. One-finger drags pass through untouched.
  */
 fun Modifier.pinchLevels(
-    onProgress: (Float) -> Unit,
-    onPinch: (zoomIn: Boolean, centroidInRoot: Offset) -> Unit,
+    level: () -> Level,
+    targets: PinchTargets,
+    preferred: () -> Any?,
+    listener: PinchListener,
 ): Modifier = composed {
     val holder = remember { arrayOfNulls<LayoutCoordinates>(1) }
     onGloballyPositioned { holder[0] = it }.pointerInput(Unit) {
         awaitEachGesture {
             awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-            var zoom = 1f
-            var pinching = false
-            var centroid = Offset.Unspecified
-            do {
-                val event = awaitPointerEvent(PointerEventPass.Initial)
-                if (event.changes.count { it.pressed } >= 2) {
-                    pinching = true
-                    zoom *= event.calculateZoom()
-                    val c = event.calculateCentroid(useCurrent = true)
-                    if (c.isSpecified) centroid = c
-                    onProgress(zoom)
-                    event.changes.forEach { if (it.positionChanged()) it.consume() }
-                }
-            } while (event.changes.any { it.pressed })
-            onProgress(1f)
-            if (pinching) {
-                val root = holder[0]?.takeIf { it.isAttached && centroid.isSpecified }?.localToRoot(centroid) ?: centroid
-                when {
-                    zoom > ZOOM_IN -> onPinch(true, root)
-                    zoom < ZOOM_OUT -> onPinch(false, root)
-                }
+            var started = false
+            var startSpan = 0f
+            var lastScale = 1f
+            var origin = Offset.Zero
+            var abnormal = false
+            val anchor = PinchAnchor()
+            try {
+                do {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val pressed = event.changes.count { it.pressed }
+                    if (pressed > 2) abnormal = true
+                    val span = event.twoPointerSpan()
+                    if (!started && span != null && span.second > 0f) {
+                        started = true
+                        startSpan = span.second
+                        origin = span.first
+                        val root = holder[0]?.takeIf { it.isAttached }?.localToRoot(origin) ?: origin
+                        anchor.hit(targets.at(root, preferred()))
+                        listener.onStart(origin)
+                    } else if (started && span != null && !abnormal) {
+                        lastScale = span.second / startSpan
+                        listener.onScale(lastScale)
+                    }
+                    if (started) event.changes.forEach { it.consume() }
+                } while (event.changes.any { it.pressed })
+            } catch (e: CancellationException) {
+                if (started) listener.onCancel()
+                throw e
             }
+            if (!started) return@awaitEachGesture
+            if (abnormal) { listener.onCancel(); return@awaitEachGesture }
+            listener.onEnd(PinchRules.decide(level(), lastScale), anchor.target, origin)
         }
     }
 }
-
-// GUESS: thresholds are not in Figma; tuned so a deliberate pinch switches and a nudge does not.
-private const val ZOOM_IN = 1.25f
-private const val ZOOM_OUT = 0.8f

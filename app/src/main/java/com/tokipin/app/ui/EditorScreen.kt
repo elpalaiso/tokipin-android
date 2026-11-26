@@ -69,7 +69,8 @@ import androidx.compose.ui.unit.sp
 import com.tokipin.app.R
 import com.tokipin.app.data.Entry
 import com.tokipin.app.data.EntryKind
-import com.tokipin.app.data.EntryRules
+import com.tokipin.app.rules.EmojiRules
+import androidx.compose.material3.TimeInput
 
 
 fun EntryKind.textStyle(): TextStyle = when (this) {
@@ -84,7 +85,7 @@ fun EditorScreen(vm: AppViewModel) {
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = remember { FocusRequester() }
     var revealedId by remember { mutableStateOf<String?>(null) }
-    var showTimePicker by remember { mutableStateOf(false) }
+    var emojiBlocked by remember { mutableStateOf(false) }
     var field by remember(draft.editId, draft.kind) {
         mutableStateOf(TextFieldValue(draft.raw, TextRange(draft.raw.length)))
     }
@@ -97,13 +98,22 @@ fun EditorScreen(vm: AppViewModel) {
     }
 
     fun onFieldChange(value: TextFieldValue) {
-        // The emoji tool accepts only emoji; letters, digits and Hangul are dropped as they arrive.
-        val next = if (draft.kind == EntryKind.EMOJI && value.composition == null) {
-            val kept = EntryRules.emojiOnly(value.text)
-            if (kept == value.text) value else TextFieldValue(kept, TextRange(kept.length))
+        // Emoji tool (UX v0.1 §4): an IME composition (e.g. Hangul) is left alone; once committed,
+        // typed or pasted text keeps only its emoji, and a change that adds nothing valid keeps the
+        // previous text and selection as they were.
+        val next = if (draft.kind == EntryKind.EMOJI) {
+            val before = EmojiRules.Edit(field.text, field.selection.start, field.selection.end)
+            val after = EmojiRules.Edit(value.text, value.selection.start, value.selection.end)
+            val result = EmojiRules.fieldChange(before, after, composing = value.composition != null)
+            emojiBlocked = result != after
+            when (result) {
+                after -> value
+                before -> field
+                else -> TextFieldValue(result.text, TextRange(result.selectionStart, result.selectionEnd))
+            }
         } else value
         field = next
-        vm.updateRaw(next.text)
+        if (next.text != draft.raw) vm.updateRaw(next.text)
     }
 
     BackHandler {
@@ -130,7 +140,9 @@ fun EditorScreen(vm: AppViewModel) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(draft.items, key = { it.id }) { item ->
-                    if (item.id == draft.editId && selection == null) {
+                    if (item.id == draft.editId && selection == null && draft.kind == EntryKind.TIME) {
+                        PendingTime(draft.raw.ifEmpty { item.value })
+                    } else if (item.id == draft.editId && selection == null) {
                         Composer(draft.kind, field, focus, onChange = { onFieldChange(it) }, onDone = {
                             if (vm.commitRaw()) focusField()
                         })
@@ -145,7 +157,6 @@ fun EditorScreen(vm: AppViewModel) {
                                 revealedId = null
                                 when {
                                     selection != null -> vm.toggleSelected(item.id)
-                                    item.kind == EntryKind.TIME -> { vm.startEditing(item); showTimePicker = true }
                                     else -> vm.startEditing(item)
                                 }
                             },
@@ -176,17 +187,26 @@ fun EditorScreen(vm: AppViewModel) {
                 }
                 if (vm.saveFailed) SaveFailedBanner(onRetry = vm::saveDraft)
                 vm.undo?.let { UndoBar(it) }
-                if (draft.kind == EntryKind.EMOJI && selection == null) {
-                    // Android has no API to open a keyboard on its emoji panel, so the hint points at the
-                    // keyboard's own emoji key; anything that is not an emoji is dropped as it is typed.
+                if (draft.kind == EntryKind.EMOJI && selection == null && (field.text.isEmpty() || emojiBlocked)) {
+                    // Android cannot open an arbitrary keyboard on its emoji panel, so a short hint shows
+                    // only while it helps: the field is empty, or something that is not an emoji was typed.
                     Text(stringResource(R.string.editor_emoji_prompt), style = TkType.label, modifier = Modifier.padding(horizontal = 6.dp))
+                }
+                if (draft.kind == EntryKind.TIME && selection == null) {
+                    TimePanel(
+                        key = Triple(draft.editId, draft.items.size, draft.raw.isEmpty()),
+                        initial = draft.raw.takeIf { it.isNotEmpty() },
+                        onChoose = { vm.updateRaw(it) },
+                        onAdd = { value -> vm.updateRaw(value); vm.commitRaw() },
+                        onCancel = vm::cancelPending,
+                    )
                 }
                 KindToolbar(draft.kind) { kind ->
                     revealedId = null
                     if (vm.setKind(kind)) {
                         when (kind) {
-                            EntryKind.TIME -> { keyboard?.hide(); showTimePicker = true }
-                                                        else -> focusField()
+                            EntryKind.TIME -> keyboard?.hide()
+                            else -> focusField()
                         }
                     }
                 }
@@ -195,20 +215,6 @@ fun EditorScreen(vm: AppViewModel) {
         }
     }
 
-    if (showTimePicker) {
-        val editing = draft.items.firstOrNull { it.id == draft.editId && it.kind == EntryKind.TIME }
-        TimeDialog(
-            initial = editing?.value,
-            onDismiss = {
-                showTimePicker = false
-                if (editing != null) vm.commitRaw()
-            },
-            onConfirm = { value ->
-                showTimePicker = false
-                if (editing != null) { vm.updateRaw(value); vm.commitRaw() } else vm.addValue(EntryKind.TIME, value)
-            },
-        )
-    }
 }
 
 @Composable
@@ -295,6 +301,7 @@ private fun EditorRow(
     val animated by animateFloatAsState(if (drag != 0f) drag else target, label = "reveal")
     val draggableState = rememberDraggableState { delta -> drag = ((if (drag == 0f) target else drag) + delta).coerceIn(-revealWidth, 0f) }
     val kindLabel = stringResource(item.kind.label())
+    val shownText = item.shown()
     val selectedText = stringResource(R.string.cd_selected)
 
     Box(Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
@@ -306,7 +313,7 @@ private fun EditorRow(
                     .clip(RoundedCornerShape(12.dp))
                     .background(Tk.Danger)
                     .clickable(role = Role.Button, onClick = onDelete)
-                    .semantics { contentDescription = "$kindLabel ${item.value}" },
+                    .semantics { contentDescription = "$kindLabel $shownText" },
                 contentAlignment = Alignment.Center,
             ) { TkIcon(R.drawable.ic_trash) }
         }
@@ -335,7 +342,7 @@ private fun EditorRow(
                 )
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
                 .semantics {
-                    contentDescription = "$kindLabel, ${item.value}"
+                    contentDescription = "$kindLabel, $shownText"
                     if (selecting) {
                         selected = checked
                         stateDescription = if (checked) selectedText else ""
@@ -355,7 +362,7 @@ private fun EditorRow(
                 ) { if (checked) TkIcon(R.drawable.ic_check, tint = Tk.Surface, size = 14.dp) }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(item.value, style = if (selecting) TkType.title else item.kind.textStyle())
+            Text(item.shown(), style = if (selecting) TkType.title else item.kind.textStyle())
         }
     }
 }
@@ -406,35 +413,68 @@ fun KindToolbar(current: EntryKind, onSelect: (EntryKind) -> Unit) {
     }
 }
 
+@Composable
+private fun PendingTime(value: String) {
+    Box(
+        Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
+            .background(Tk.SheetRow.copy(alpha = 0.8f)).padding(horizontal = 4.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) { Text(LocalTimeDisplay.current.format(value), style = EntryKind.TIME.textStyle()) }
+}
+
+/**
+ * Time tool (UX v0.1 §4 · 시간): Material's numeric time input inline above the tools, following the
+ * device 12/24-hour setting. Only an explicit choice becomes pending (so ✓ never adds the default
+ * time of an untouched picker); "+" confirms one time fragment (the current value, if untouched);
+ * ✕ leaves everything as it was. Stored values are ASCII "HH:mm".
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimeDialog(initial: String?, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
-    val now = java.time.LocalTime.now()
-    val (h, m) = initial?.split(":")?.map { it.toInt() } ?: listOf(now.hour, now.minute)
-    val state = rememberTimePickerState(initialHour = h, initialMinute = m, is24Hour = true)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Tk.Sheet,
-        confirmButton = {
-            TextButton(onClick = { onConfirm("%02d:%02d".format(state.hour, state.minute)) }) {
-                Text(stringResource(R.string.time_picker_ok), color = Tk.Focus)
+private fun TimePanel(
+    key: Any,
+    initial: String?,
+    onChoose: (String) -> Unit,
+    onAdd: (String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    val is24 = LocalTimeDisplay.current.is24Hour
+    val start = initial?.let { com.tokipin.app.rules.TimeRules.parse(it) } ?: java.time.LocalTime.now()
+    val state = androidx.compose.runtime.key(key, is24) {
+        rememberTimePickerState(initialHour = start.hour, initialMinute = start.minute, is24Hour = is24)
+    }
+    LaunchedEffect(state) {
+        androidx.compose.runtime.snapshotFlow { state.hour to state.minute }
+            .collect { (h, m) ->
+                val value = com.tokipin.app.rules.TimeRules.canonical(h, m)
+                if (value != initial && !(initial == null && h == start.hour && m == start.minute)) onChoose(value)
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.time_picker_cancel), color = Tk.Secondary) }
-        },
-        text = {
-            TimePicker(
-                state = state,
-                colors = TimePickerDefaults.colors(
-                    clockDialColor = Tk.SheetRow,
-                    selectorColor = Tk.Focus,
-                    timeSelectorSelectedContainerColor = Tk.Focus,
-                    timeSelectorSelectedContentColor = Tk.OnFocus,
-                    timeSelectorUnselectedContainerColor = Tk.SheetRow,
-                    timeSelectorUnselectedContentColor = Tk.Primary,
-                ),
+    }
+    Row(
+        Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).background(Tk.Surface.copy(alpha = 0.6f))
+            .padding(start = 12.dp, end = 6.dp, top = 10.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TimeInput(
+            state = state,
+            modifier = Modifier.weight(1f),
+            colors = TimePickerDefaults.colors(
+                timeSelectorSelectedContainerColor = Tk.Focus,
+                timeSelectorSelectedContentColor = Tk.OnFocus,
+                timeSelectorUnselectedContainerColor = Tk.SheetRow,
+                timeSelectorUnselectedContentColor = Tk.Primary,
+                periodSelectorSelectedContainerColor = Tk.Focus,
+                periodSelectorSelectedContentColor = Tk.OnFocus,
+                periodSelectorUnselectedContentColor = Tk.Primary,
+                periodSelectorBorderColor = Tk.GlassBorder,
+            ),
+        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            RoundIconButton(
+                R.drawable.ic_plus, stringResource(R.string.cd_add_time),
+                { onAdd(com.tokipin.app.rules.TimeRules.canonical(state.hour, state.minute)) },
+                background = Tk.SheetRow,
             )
-        },
-    )
+            RoundIconButton(R.drawable.ic_close, stringResource(R.string.time_picker_cancel), onCancel, glass = false)
+        }
+    }
 }

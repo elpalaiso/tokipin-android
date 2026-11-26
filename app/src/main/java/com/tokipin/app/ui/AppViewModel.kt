@@ -11,7 +11,9 @@ import com.tokipin.app.R
 import com.tokipin.app.data.Draft
 import com.tokipin.app.data.Entry
 import com.tokipin.app.data.EntryKind
-import com.tokipin.app.data.EntryRules
+import com.tokipin.app.data.Commit
+import com.tokipin.app.data.DraftRules
+import com.tokipin.app.rules.Level
 import com.tokipin.app.data.Journal
 import com.tokipin.app.data.JournalStore
 import kotlinx.coroutines.Job
@@ -22,8 +24,6 @@ import java.time.YearMonth
 
 enum class Screen { Loading, LoadFailed, Editor, Browse, Search }
 
-/** The four zoom levels of the browse screen, from widest to closest. */
-enum class Level { YEAR, MONTH, RECORDS, DAILY }
 
 enum class Policy { PRIVACY, TERMS }
 
@@ -131,28 +131,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** Commits the typed value as one item. Returns false (and shows why) if it is invalid. */
     fun commitRaw(): Boolean {
         val d = draft ?: return false
-        val value = EntryRules.normalized(d.kind, d.raw)
-        if (value == null) {
-            editorMessage = res.getString(
-                if (d.kind == EntryKind.TIME) R.string.editor_invalid_time else R.string.editor_invalid_emoji,
-            )
-            return false
-        }
-        if (value.isEmpty()) {
-            if (d.editId != null) {
-                editorMessage = res.getString(R.string.editor_empty_edit)
-                return false
+        return when (val result = DraftRules.commit(d)) {
+            is Commit.Invalid -> {
+                editorMessage = res.getString(
+                    if (result.kind == EntryKind.TIME) R.string.editor_invalid_time else R.string.editor_invalid_emoji,
+                )
+                false
             }
-            return true
+            Commit.EmptyEdit -> { editorMessage = res.getString(R.string.editor_empty_edit); false }
+            is Commit.Ok -> {
+                if (result.draft != d) { draft = result.draft; persistDraft() }
+                editorMessage = null
+                true
+            }
         }
-        val items = d.items.toMutableList()
-        val index = items.indexOfFirst { it.id == d.editId }
-        if (index >= 0) items[index] = items[index].copy(kind = d.kind, value = value)
-        else items += Entry(kind = d.kind, value = value)
-        draft = d.copy(items = items, raw = "", editId = null, changed = true)
+    }
+
+    /** Closes a pending value or edit without changing any item (time picker cancel). */
+    fun cancelPending() {
+        val d = draft ?: return
+        draft = DraftRules.cancelPending(d)
         editorMessage = null
         persistDraft()
-        return true
     }
 
     /** Switching tools first commits a valid pending value, then opens the next kind. */
@@ -260,63 +260,90 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // region Browse
 
-    fun changeLevel(next: Level) {
-        if (next == level) return
+    /**
+     * How a list view should position itself when it appears: [Restore] puts it back where the
+     * person left it (back from a day), [Anchor] brings the selected date to [Anchor.y] px from the
+     * top (pinch: the date stays where the fingers were; null = default spot).
+     */
+    sealed interface ListEntry {
+        data object Restore : ListEntry
+        data class Anchor(val y: Float?) : ListEntry
+    }
+
+    data class ScrollPos(val index: Int, val offset: Int)
+
+    /** Selected day, visible month/year and per-level scroll position are kept apart (UX v0.1 §2). */
+    var visibleMonth by mutableStateOf(YearMonth.now()); private set
+    var entry by mutableStateOf<ListEntry>(ListEntry.Anchor(null)); private set
+    private val scrollMemory = mutableMapOf<Level, ScrollPos>()
+
+    fun rememberScroll(level: Level, pos: ScrollPos) { scrollMemory[level] = pos }
+    fun savedScroll(level: Level): ScrollPos? = scrollMemory[level]
+
+    /** Scrolling only changes what is visible; the selected day stays (12월 → 1월 included). */
+    fun scrolledTo(month: YearMonth) { visibleMonth = month }
+
+    /** Returns whether the level changed, i.e. whether this is a committed navigation (one tick). */
+    fun changeLevel(next: Level, entryMode: ListEntry = ListEntry.Anchor(null)): Boolean {
+        if (next == level) return false
         if (next == Level.DAILY) dailyReturnLevel = level
         level = next
+        entry = entryMode
+        visibleMonth = YearMonth.from(selectedDate)
         openedFromSearch = false
         highlightId = null
         focusRequest++
+        return true
     }
 
-    fun zoomIn(target: Any? = null): Boolean = zoom(level.ordinal + 1, target)
-    fun zoomOut(target: Any? = null): Boolean = zoom(level.ordinal - 1, target)
-
     /**
-     * Pinch keeps the date between the fingers in view: the year view opens that month, the month
-     * calendar and recorded days select that date, and daily ↔ recorded days keep the selected day.
-     * Returns whether the level changed (for the single haptic tick).
+     * Pinch: one level per gesture around the date or month first under the fingers. [anchorY] is
+     * where that date was on screen, so the next view can keep it there.
      */
-    private fun zoom(ordinal: Int, target: Any?): Boolean {
-        val next = Level.entries.getOrNull(ordinal) ?: return false
+    fun pinchTo(next: Level, target: Any?, anchorY: Float?): Boolean {
+        if (next == level) return false
         when (target) {
             is LocalDate -> selectedDate = target
             is YearMonth -> if (YearMonth.from(selectedDate) != target) {
                 selectedDate = journal.recordedDates().firstOrNull { YearMonth.from(it) == target } ?: target.atDay(1)
             }
         }
-        changeLevel(next)
+        return changeLevel(next, ListEntry.Anchor(anchorY))
+    }
+
+    /** The "< parent" button and system back. Closing a day returns to the view and spot it was opened from. */
+    fun goUp(): Boolean = when {
+        level == Level.DAILY && openedFromSearch -> { reopenSearch(); false }
+        level == Level.DAILY -> changeLevel(dailyReturnLevel.takeIf { it != Level.DAILY } ?: Level.RECORDS, ListEntry.Restore)
+        level == Level.RECORDS || level == Level.MONTH -> changeLevel(Level.YEAR)
+        else -> false
+    }
+
+    /** Returns whether the selected date actually changed (re-selecting is silent). */
+    fun selectDate(date: LocalDate): Boolean {
+        highlightId = null
+        if (date == selectedDate) return false
+        selectedDate = date
         return true
     }
 
-    /** The "< parent" button in the top bar. */
-    fun goUp() {
-        when {
-            level == Level.DAILY && openedFromSearch -> reopenSearch()
-            level == Level.DAILY -> changeLevel(dailyReturnLevel.takeIf { it != Level.DAILY } ?: Level.RECORDS)
-            level == Level.RECORDS || level == Level.MONTH -> changeLevel(Level.YEAR)
-        }
+    fun openDay(date: LocalDate): Boolean {
+        val changed = selectDate(date)
+        return changeLevel(Level.DAILY) || changed
     }
 
-    fun selectDate(date: LocalDate) {
-        selectedDate = date
-        highlightId = null
-    }
-
-    fun openDay(date: LocalDate) {
-        selectedDate = date
-        changeLevel(Level.DAILY)
-    }
-
-    fun openMonth(month: YearMonth) {
-        selectedDate = if (selectedDate.year == month.year && selectedDate.month == month.month) selectedDate
+    fun openMonth(month: YearMonth): Boolean {
+        selectedDate = if (YearMonth.from(selectedDate) == month) selectedDate
         else journal.recordedDates().firstOrNull { YearMonth.from(it) == month } ?: month.atDay(1)
-        changeLevel(Level.MONTH)
+        return changeLevel(Level.MONTH)
     }
 
+    /** Today keeps the current view and brings today back on screen, even if it is already selected. Silent. */
     fun goToday() {
         selectedDate = LocalDate.now()
+        visibleMonth = YearMonth.now()
         highlightId = null
+        entry = ListEntry.Anchor(null)
         focusRequest++
     }
 
@@ -376,6 +403,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         selectedDate = date
         if (level != Level.DAILY) dailyReturnLevel = level
         level = Level.DAILY
+        this.entry = ListEntry.Anchor(null)
         openedFromSearch = true
         highlightId = entry.id
         screen = Screen.Browse

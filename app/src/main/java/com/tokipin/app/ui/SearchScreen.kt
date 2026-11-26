@@ -136,7 +136,7 @@ fun SearchScreen(vm: AppViewModel) {
                                     TkIcon(hit.entry.kind.icon(), size = 16.dp, tint = Tk.Secondary)
                                     Spacer(Modifier.width(10.dp))
                                 }
-                                Text(hit.entry.value, style = TkType.body, modifier = Modifier.weight(1f))
+                                Text(hit.entry.shown(), style = TkType.body, modifier = Modifier.weight(1f))
                                 TkIcon(R.drawable.ic_chevron_right, size = 16.dp, tint = Tk.Secondary)
                             }
                             HorizontalDivider(color = Tk.Divider)

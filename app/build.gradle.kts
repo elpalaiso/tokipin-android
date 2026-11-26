@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.android.application)
@@ -42,6 +43,33 @@ android {
     }
 }
 
+/**
+ * Native UX v0.1 shared with iOS: one copy lives in the web repo (../tokipin/native-spec/v0.1), not
+ * in this repository. Tests read it from there; the SHA-256 pin makes a changed or missing spec fail
+ * the build instead of silently testing against another version.
+ */
+val uxSpecDir = rootProject.file("../tokipin/native-spec/v0.1")
+val uxSpecSha256 = "33c5f8d64e76b345fbc49ad7a76fc5ac5cc6556b6f0a7db061bfb2540e37c452"
+
+val verifyUxSpec by tasks.registering {
+    group = "verification"
+    val spec = uxSpecDir.resolve("Tokipin-Native-UX-v0.1.json")
+    inputs.file(spec)
+    doLast {
+        if (!spec.isFile) throw GradleException("UX spec not found at $spec (clone elpalaiso/tokipin next to this repo)")
+        val digest = MessageDigest.getInstance("SHA-256").digest(spec.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        if (digest != uxSpecSha256) throw GradleException("UX spec SHA-256 mismatch: $digest (pinned $uxSpecSha256)")
+    }
+}
+
+android.sourceSets.getByName("test").resources.directories.add(uxSpecDir.path)
+android.sourceSets.getByName("androidTest").assets.directories.add(uxSpecDir.path)
+
+tasks.matching { it.name.startsWith("test") || it.name.startsWith("connected") }.configureEach {
+    dependsOn(verifyUxSpec)
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
@@ -63,6 +91,7 @@ dependencies {
     debugImplementation(libs.compose.ui.test.manifest)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.serialization.json)
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
