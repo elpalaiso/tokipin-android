@@ -83,6 +83,7 @@ class UxSpecDeviceTest {
         File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(data)
         context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit()
             .putBoolean("launched", true).putBoolean("haptics", haptics).commit()
+        TestLocale.set("ko")
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(5_000) { exists(level("RECORDS")) }
     }
@@ -558,7 +559,9 @@ class UxSpecDeviceTest {
             assertTrue("keyboard still open after '$c'", imeVisible())
             assertTrue("field still focused after '$c'", !noFocusedField())
         }
-        compose.onNodeWithText("bam").assertExists()
+        // With the app in Korean the keyboard may compose the keys as Hangul; what matters is that
+        // three characters arrived without the keyboard closing.
+        scenario!!.onActivity { assertTrue("typed text arrived", it.vm.draft!!.raw.isNotEmpty()) }
     }
 
     /** Figma 267-1270: "진동" with its explanation, toggling the app's haptics, on every device. */

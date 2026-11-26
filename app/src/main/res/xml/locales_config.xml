@@ -1,5 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Add a <locale> per translated values-<lang> folder. -->
+<!-- The 17 app languages (same list as AppLocale.supported and the web). Korean is the source. -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="ko" />
+    <locale android:name="en" />
+    <locale android:name="ja" />
+    <locale android:name="de" />
+    <locale android:name="fr" />
+    <locale android:name="id" />
+    <locale android:name="vi" />
+    <locale android:name="tr" />
+    <locale android:name="ru" />
+    <locale android:name="hi" />
+    <locale android:name="th" />
+    <locale android:name="pt-BR" />
+    <locale android:name="es-ES" />
+    <locale android:name="es-419" />
+    <locale android:name="zh-Hans" />
+    <locale android:name="zh-Hant-TW" />
+    <locale android:name="zh-Hant-HK" />
 </locale-config>

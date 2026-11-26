@@ -138,6 +138,23 @@ fun YearMonth.label(): String = "%04d.%02d".format(year, monthValue)
 
 fun searchableDate(date: LocalDate): String = "%04d.%02d.%02d".format(date.year, date.monthValue, date.dayOfMonth)
 
+/**
+ * What TalkBack reads for years and months, in the app language's own date order (handoff
+ * TP-0205, TP-0247, TP-0316, TP-0341): "2026년 11월", "November 2026", "2026年11月", "noviembre de
+ * 2026"… The screen keeps the design's fixed numeric headers.
+ */
+object DateWords {
+    private fun pattern(skeleton: String): java.time.format.DateTimeFormatter {
+        val locale = AppLocale.current
+        return java.time.format.DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, skeleton), locale)
+    }
+
+    fun yearMonth(month: YearMonth): String = pattern("yMMMM").format(month)
+    fun year(year: Int): String = pattern("y").format(java.time.Year.of(year))
+    /** The month on its own, in the nominative/stand-alone form ("11월", "November", "ноябрь"). */
+    fun month(month: YearMonth): String = pattern("LLLL").format(month)
+}
+
 // endregion
 
 /**

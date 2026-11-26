@@ -44,6 +44,7 @@ class PinchTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(records)
         context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit().putBoolean("launched", true).commit()
+        TestLocale.set("ko")
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(5_000) { level("RECORDS").exists() }
     }

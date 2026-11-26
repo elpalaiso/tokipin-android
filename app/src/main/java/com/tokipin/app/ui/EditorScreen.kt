@@ -67,6 +67,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -376,7 +377,7 @@ private fun SelectionHeader(vm: AppViewModel, selection: Set<String>) {
             Text(stringResource(R.string.editor_cancel), style = TkType.body.copy(color = Tk.Secondary))
         }
         Text(
-            stringResource(R.string.editor_selected_count, selection.size),
+            pluralStringResource(R.plurals.editor_selected_count, selection.size, selection.size),
             style = TkType.body.copy(fontWeight = FontWeight.Medium),
             modifier = Modifier.align(Alignment.Center),
         )
@@ -399,7 +400,15 @@ private fun Composer(
     onDone: () -> Unit,
 ) {
     val label = stringResource(kind.label())
-    val description = stringResource(R.string.cd_kind_tool, label)
+    // Each tool uses the web's own phrase (TP-0108…0111) so word order fits every language.
+    val description = stringResource(
+        when (kind) {
+            EntryKind.WORD -> R.string.cd_tool_word
+            EntryKind.EMOJI -> R.string.cd_tool_emoji
+            EntryKind.PLACE -> R.string.cd_tool_place
+            EntryKind.TIME -> R.string.cd_tool_time
+        },
+    )
     BasicTextField(
         value = value,
         onValueChange = onChange,
@@ -466,6 +475,8 @@ private fun EditorRow(
     val moveUp = stringResource(R.string.move_up)
     val moveDown = stringResource(R.string.move_down)
     val deleteText = stringResource(R.string.item_delete)
+    // The swipe-revealed button deletes this one fragment: TalkBack hears the action and its target.
+    val deleteTarget = stringResource(R.string.cd_delete_item, "$kindLabel $shownText")
 
     var lifted by remember { mutableStateOf(false) }
     var liftY by remember { mutableFloatStateOf(0f) }
@@ -495,7 +506,7 @@ private fun EditorRow(
                     .clip(RoundedCornerShape(12.dp))
                     .background(Tk.Danger)
                     .clickable(role = Role.Button, onClick = onDelete)
-                    .semantics { contentDescription = "$kindLabel $shownText" },
+                    .semantics { contentDescription = deleteTarget },
                 contentAlignment = Alignment.Center,
             ) { TkIcon(R.drawable.ic_trash) }
         }
