@@ -37,16 +37,27 @@ class JournalStore(context: Context) {
         write(journalFile, json.encodeToString(RecordsFile.serializer(), RecordsFile.from(journal)))
     }
 
-    /** A broken draft is dropped rather than blocking the app; saved records are untouched. */
-    suspend fun loadDraft(): Draft? = withContext(Dispatchers.IO) {
-        if (!draftFile.baseFile.exists()) return@withContext null
-        runCatching { json.decodeFromString(Draft.serializer(), draftFile.readFully().decodeToString()) }.getOrNull()
+    /**
+     * Drafts are kept per date, so a draft left on one day never opens on another or gets lost when
+     * a different day is edited. [DraftsFile.active] is the day whose editor was open, reopened
+     * after the process is killed. A broken file is dropped; saved records are untouched. Reads the
+     * single-draft file of earlier builds too.
+     */
+    suspend fun loadDrafts(): DraftsFile = withContext(Dispatchers.IO) {
+        if (!draftFile.baseFile.exists()) return@withContext DraftsFile()
+        val text = runCatching { draftFile.readFully().decodeToString() }.getOrNull() ?: return@withContext DraftsFile()
+        runCatching { json.decodeFromString(DraftsFile.serializer(), text) }.getOrNull()
+            ?: runCatching { json.decodeFromString(Draft.serializer(), text) }.getOrNull()?.let { DraftsFile(it.date, listOf(it)) }
+            ?: DraftsFile()
     }
 
-    suspend fun saveDraft(draft: Draft?) = withContext(Dispatchers.IO) {
+    /** Blocking write; call from a single background writer so states land in order. */
+    fun writeDrafts(file: DraftsFile) {
         runCatching {
-            if (draft == null) draftFile.delete()
-            else write(draftFile, json.encodeToString(Draft.serializer(), draft))
+            synchronized(draftFile) {
+                if (file.drafts.isEmpty()) draftFile.delete()
+                else write(draftFile, json.encodeToString(DraftsFile.serializer(), file))
+            }
         }
     }
 
@@ -90,6 +101,9 @@ class JournalStore(context: Context) {
             exportFormat.encodeToString(RecordsFile.serializer(), RecordsFile.from(journal))
     }
 }
+
+@Serializable
+data class DraftsFile(val active: String? = null, val drafts: List<Draft> = emptyList())
 
 @Serializable
 private data class RecordsFile(val version: Int = 1, val days: List<DayRecord> = emptyList()) {

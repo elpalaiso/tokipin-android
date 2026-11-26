@@ -322,10 +322,20 @@ private fun BoxScope.BottomActions(vm: AppViewModel) {
                 // Today keeps the view and is silent (UX v0.1 §3).
                 GlassPill(stringResource(R.string.today), onClick = { vm.goToday(); haptics.report(NavEvent.TODAY) })
                 Spacer(Modifier.weight(1f))
-                RoundIconButton(
-                    R.drawable.ic_plus, stringResource(R.string.cd_new_record), { vm.openEditor() },
-                    modifier = Modifier.size(56.dp), background = Tk.SheetRow.copy(alpha = 0.95f),
-                )
+                // Daily: "+" opens an empty day; a filled day shows one pencil that opens all of its
+                // fragments with the keyboard closed. Other views keep "+".
+                val filled = vm.level == Level.DAILY && vm.journal.itemsOn(vm.selectedDate).isNotEmpty()
+                if (filled) {
+                    RoundIconButton(
+                        R.drawable.ic_pencil, stringResource(R.string.cd_edit_day), { vm.openEditor(vm.selectedDate, focus = false) },
+                        modifier = Modifier.size(56.dp).testTag("editDay"), background = Tk.SheetRow.copy(alpha = 0.95f),
+                    )
+                } else {
+                    RoundIconButton(
+                        R.drawable.ic_plus, stringResource(R.string.cd_new_record), { vm.openEditor() },
+                        modifier = Modifier.size(56.dp).testTag("addRecord"), background = Tk.SheetRow.copy(alpha = 0.95f),
+                    )
+                }
             }
         }
     }
@@ -421,6 +431,11 @@ private fun DailyView(vm: AppViewModel) {
 @Composable
 private fun DayBody(vm: AppViewModel, shown: LocalDate) {
     val items = vm.journal.itemsOn(shown)
+    if (items.isEmpty()) {
+        // Empty day: the shared rabbit card, read once by TalkBack; "+" below opens this day.
+        EmptyStateArea(stringResource(R.string.day_empty), tag = "dayEmpty_$shown")
+        return
+    }
     Column(
         Modifier
             .fillMaxSize()
@@ -429,17 +444,8 @@ private fun DayBody(vm: AppViewModel, shown: LocalDate) {
             .padding(bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (items.isEmpty()) {
-            Text(stringResource(R.string.day_empty), style = TkType.body.copy(color = Tk.Secondary))
-        }
         items.forEachIndexed { index, entry ->
-            DailyItem(
-                entry = entry,
-                lead = index == 0,
-                highlighted = vm.highlightId == entry.id,
-                onEdit = { vm.editSavedItem(shown, entry) },
-                onDelete = { vm.deleteSavedItem(shown, entry) },
-            )
+            DailyItem(entry = entry, lead = index == 0, highlighted = vm.highlightId == entry.id)
         }
     }
 }
@@ -476,13 +482,12 @@ private fun WeekRow(start: LocalDate, date: LocalDate, onSelect: (LocalDate) -> 
     }
 }
 
+/** Reading only: editing goes through the pencil at the bottom (no per-fragment ⋯ any more). */
 @Composable
-private fun DailyItem(entry: Entry, lead: Boolean, highlighted: Boolean, onEdit: () -> Unit, onDelete: () -> Unit) {
-    var menu by remember { mutableStateOf(false) }
+private fun DailyItem(entry: Entry, lead: Boolean, highlighted: Boolean) {
     val text = entry.shown()
-    val more = stringResource(R.string.cd_item_menu, text)
     val shape = RoundedCornerShape(if (lead) 22.dp else 10.dp)
-    Box {
+    Box(Modifier.testTag("dayItem_${entry.id}")) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -495,7 +500,7 @@ private fun DailyItem(entry: Entry, lead: Boolean, highlighted: Boolean, onEdit:
                     },
                 )
                 .then(if (highlighted) Modifier.border(1.dp, Tk.Focus.copy(alpha = 0.7f), shape) else Modifier)
-                .padding(start = if (lead) 22.dp else 4.dp),
+                .padding(start = if (lead) 22.dp else 4.dp, end = 16.dp),
             verticalAlignment = if (lead) Alignment.Top else Alignment.CenterVertically,
         ) {
             Row(Modifier.weight(1f).padding(top = if (lead) 32.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -505,23 +510,8 @@ private fun DailyItem(entry: Entry, lead: Boolean, highlighted: Boolean, onEdit:
                 }
                 Text(text, style = if (lead) TkType.word else TkType.title)
             }
-            MoreButton(more, onClick = { menu = true }, modifier = Modifier.padding(top = if (lead) 4.dp else 0.dp))
         }
         if (!lead) HorizontalDivider(color = Tk.Divider, modifier = Modifier.align(Alignment.BottomCenter))
-        Box(Modifier.align(Alignment.TopEnd)) {
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = Tk.Sheet, shape = RoundedCornerShape(16.dp)) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.item_edit), style = TkType.body) },
-                    leadingIcon = { TkIcon(R.drawable.ic_pencil, size = 18.dp) },
-                    onClick = { menu = false; onEdit() },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.item_delete), style = TkType.body) },
-                    leadingIcon = { TkIcon(R.drawable.ic_trash, size = 18.dp) },
-                    onClick = { menu = false; onDelete() },
-                )
-            }
-        }
     }
 }
 
@@ -559,6 +549,13 @@ private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
     val reduceMotion = LocalReduceMotion.current
     val haptics = LocalHaptics.current
     var dragFraction by remember { mutableStateOf(0f) }
+    val view = androidx.compose.ui.platform.LocalView.current
+    val emptyText = stringResource(R.string.month_empty_cd, vm.recordedMonth.monthValue)
+    LaunchedEffect(vm.recordedMonth) {
+        // Only the settled month is announced; months passed while dragging or cancelled are not.
+        val empty = vm.journal.recordedDates().none { YearMonth.from(it) == vm.recordedMonth }
+        if (empty) view.announceForAccessibility(emptyText)
+    }
     Column(Modifier.fillMaxSize()) {
         MonthRail(vm, dragFraction)
         SwipePager(
@@ -681,11 +678,9 @@ private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDat
         }
     }
     if (rows.isEmpty()) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(month.label(), style = TkType.body.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium))
-            Text(stringResource(R.string.month_empty), style = TkType.body.copy(color = Tk.Secondary), modifier = Modifier.testTag("monthEmpty"))
-            GlassPill(stringResource(R.string.show_calendar), onClick = { haptics.commitIf(vm.openMonth(month), NavEvent.LEVEL_COMMIT) })
-        }
+        // Empty month: the same rabbit card inside this month's page, so it slides with the page
+        // and comes back with it on cancel. No words on screen; TalkBack hears it once on settling.
+        EmptyStateArea(stringResource(R.string.month_empty_cd, month.monthValue), tag = "monthEmpty")
         return
     }
     LazyColumn(

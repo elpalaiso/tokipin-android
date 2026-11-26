@@ -123,6 +123,8 @@ enum class NavEvent(val specName: String, val commits: Boolean) {
     RESELECT("reselect", false),
     TODAY("today", false),
     RECORDED_MONTH_COMMIT("recordedDaysMonthCommit", true),
+    /** Editor: a fragment picked up by a long press (one tick; none while passing places). */
+    FRAGMENT_PICK_UP("fragmentPickUp", true),
     RECORDED_MONTH_PREVIEW("recordedDaysMonthPreview", false),
     RECORDED_RAIL_COAST("recordedDaysRailCoast", false);
 

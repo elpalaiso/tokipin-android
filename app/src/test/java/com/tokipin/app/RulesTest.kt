@@ -59,6 +59,26 @@ class RulesTest {
         assertTrue(text.contains("\"updatedAt\""))
     }
 
+    private fun e(id: String, kind: EntryKind, v: String) = Entry(id = id, kind = kind, value = v)
+    private val mixed = com.tokipin.app.data.Draft(
+        date = "2026-10-01",
+        items = listOf(e("a", EntryKind.WORD, "산책"), e("b", EntryKind.PLACE, "공원"), e("c", EntryKind.EMOJI, "🌿"), e("d", EntryKind.TIME, "16:20"), e("e", EntryKind.WORD, "산책")),
+    )
+
+    @Test fun moveKeepsIdsAcrossKindsAndCountsAsAChange() {
+        val moved = com.tokipin.app.data.DraftRules.move(mixed, 0, 4)
+        assertEquals(listOf("b", "c", "d", "e", "a"), moved.items.map { it.id })
+        assertTrue(moved.changed)
+        assertEquals(mixed, com.tokipin.app.data.DraftRules.move(mixed, 2, 2))
+    }
+
+    @Test fun undoRestoresOnlyTheDeletedFragmentAndKeepsLaterReorders() {
+        val (removed, gone) = com.tokipin.app.data.DraftRules.remove(mixed, setOf("b"))
+        val reordered = com.tokipin.app.data.DraftRules.move(removed, 3, 0) // e to the top
+        val restored = com.tokipin.app.data.DraftRules.restore(reordered, gone)
+        assertEquals(listOf("e", "b", "a", "c", "d"), restored.items.map { it.id })
+    }
+
     @Test fun emptyDayIsRemoved() {
         assertTrue(journal.withDay(LocalDate.of(2026, 11, 18), emptyList()).itemsOn(LocalDate.of(2026, 11, 18)).isEmpty())
         assertEquals(1, journal.withDay(LocalDate.of(2026, 11, 18), emptyList()).days.size)

@@ -76,7 +76,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             showSkeleton = false
             loaded.onFailure { screen = Screen.LoadFailed; return@launch }
             journal = loaded.getOrThrow()
-            draft = store.loadDraft()
+            val drafts = store.loadDrafts()
+            keptDrafts = drafts.drafts.filter { it.hasContent }.associateBy { it.date }
+            draft = drafts.active?.let { keptDrafts[it] }
             val firstLaunch = !store.hasLaunchedBefore
             store.hasLaunchedBefore = true
             selectedDate = journal.recordedDates().firstOrNull() ?: LocalDate.now()
@@ -94,25 +96,46 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // region Editor
 
-    /** "+" on the home: resume the kept draft, otherwise start on the selected day (today by default). */
-    fun openEditor(date: LocalDate = if (level == Level.DAILY) selectedDate else LocalDate.now()) {
-        val kept = draft
-        draft = if (kept != null && kept.hasContent) kept
-        else Draft(date = date.toString(), items = journal.itemsOn(date))
+    /** Unsaved drafts by date ("yyyy-MM-dd"); each day keeps its own. */
+    private var keptDrafts: Map<String, Draft> = emptyMap()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val draftWriter = kotlinx.coroutines.Dispatchers.IO.limitedParallelism(1)
+
+    /** Whether the editor should focus its field and open the keyboard when it appears. */
+    var editorAutoFocus by mutableStateOf(true); private set
+
+    /**
+     * Opens the editor for [date]: that day's kept draft if there is one, otherwise its saved
+     * fragments in their order (or an empty draft). "+" on an empty day focuses the word field;
+     * the pencil on a filled day ([focus] = false) opens with the keyboard closed.
+     */
+    fun openEditor(date: LocalDate = if (level == Level.DAILY) selectedDate else LocalDate.now(), focus: Boolean = true) {
+        draft = keptDrafts[date.toString()]?.takeIf { it.hasContent }
+            ?: Draft(date = date.toString(), items = journal.itemsOn(date))
+        editorAutoFocus = focus
         resetEditorFeedback()
         screen = Screen.Editor
         persistDraft()
     }
 
-    /** Opens an existing day's item straight into edit mode (daily view → item menu → 수정). */
+    /** Opens an existing day's item straight into edit mode. */
     fun editSavedItem(date: LocalDate, entry: Entry) {
         draft = Draft(
             date = date.toString(), items = journal.itemsOn(date),
             kind = entry.kind, raw = entry.value, editId = entry.id,
         )
+        editorAutoFocus = true
         resetEditorFeedback()
         screen = Screen.Editor
         persistDraft()
+    }
+
+    /** Long-press drag or TalkBack "위로/아래로 이동": move one fragment within the draft. */
+    fun moveDraftItem(id: String, to: Int) {
+        val d = draft ?: return
+        val from = d.items.indexOfFirst { it.id == id }
+        val next = DraftRules.move(d, from, to)
+        if (next != d) { draft = next; persistDraft() }
     }
 
     private fun resetEditorFeedback() {
@@ -194,21 +217,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteDraftItems(ids: Set<String>) {
         val d = draft ?: return
         if (ids.isEmpty()) return
-        val before = d.items
-        val raw = if (d.editId in ids) "" else d.raw
-        val editId = if (d.editId in ids) null else d.editId
-        draft = d.copy(items = before.filterNot { it.id in ids }, changed = true, raw = raw, editId = editId)
+        val (next, removed) = DraftRules.remove(d, ids)
+        draft = next
         selection = null
         persistDraft()
         val message = if (ids.size == 1) res.getString(R.string.editor_item_deleted)
         else res.getString(R.string.editor_items_deleted, ids.size)
         offerUndo(message) {
+            // Only the deleted fragments come back; later edits and reorders stay.
             val current = draft ?: return@offerUndo
-            // Restore in the original entry order, keeping anything typed since.
-            val kept = current.items.associateBy { it.id }
-            val restored = before.filter { it.id in ids || it.id in kept } +
-                current.items.filter { c -> before.none { it.id == c.id } }
-            draft = current.copy(items = restored)
+            draft = DraftRules.restore(current, removed)
             persistDraft()
         }
     }
@@ -219,7 +237,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val d = draft ?: return
         if (!d.changed) {
             if (d.items.isEmpty()) { editorMessage = res.getString(R.string.editor_need_one); return }
-            closeEditor(d.localDate, keepDraft = false)
+            closeEditor(d.localDate, keepDraft = false, saved = true)
             return
         }
         val next = journal.withDay(d.localDate, d.items)
@@ -230,7 +248,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             journal = next
-            closeEditor(d.localDate, keepDraft = false)
+            closeEditor(d.localDate, keepDraft = false, saved = true)
         }
     }
 
@@ -241,21 +259,36 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         closeEditor(d.localDate, keepDraft = pending)
     }
 
-    private fun closeEditor(date: LocalDate, keepDraft: Boolean) {
-        if (!keepDraft) draft = null
+    /**
+     * [saved]: ✓ succeeded, so this day's draft is gone and the day view of the same date opens
+     * (empty again if its last fragment was removed). Otherwise (back) the draft is kept for that
+     * date only if it has unsaved changes, and the previous view stays.
+     */
+    private fun closeEditor(date: LocalDate, keepDraft: Boolean, saved: Boolean = false) {
+        val d = draft
+        keptDrafts = if (keepDraft && d != null) keptDrafts + (d.date to d) else keptDrafts - date.toString()
+        draft = null
         persistDraft()
         saveFailed = false
         selection = null
         clearUndo()
-        if (journal.itemsOn(date).isNotEmpty()) selectedDate = date
+        if (saved || journal.itemsOn(date).isNotEmpty() || level == Level.DAILY) selectedDate = date
         recordedMonth = YearMonth.from(selectedDate)
         screen = Screen.Browse
+        if (saved && level != Level.DAILY) {
+            dailyReturnLevel = level
+            level = Level.DAILY
+            entry = ListEntry.Anchor(null)
+        }
         focusRequest++
     }
 
     private fun persistDraft() {
-        val d = draft
-        viewModelScope.launch { store.saveDraft(d) }
+        val current = draft
+        val all = (keptDrafts + (current?.let { mapOf(it.date to it) } ?: emptyMap())).values.filter { it.hasContent || it == current }
+        val file = com.tokipin.app.data.DraftsFile(active = current?.date, drafts = all.toList())
+        // One writer, in order, so a later state is never overwritten by an earlier one.
+        viewModelScope.launch(draftWriter) { store.writeDrafts(file) }
     }
 
     // endregion
@@ -474,6 +507,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun replaceAll(next: Journal, message: Int) {
         draft = null
+        keptDrafts = emptyMap()
         persistDraft()
         clearUndo()
         persistJournal(next) {

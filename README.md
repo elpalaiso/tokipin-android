@@ -27,6 +27,12 @@ With an emulator or device connected, `./gradlew :app:connectedDebugAndroidTest`
 - **Haptics**: one `SEGMENT_TICK` (API 34+, `CLOCK_TICK` before) when the day or level settles; off when the setting is off.
 - **Language**: Korean only for now. Every string is in `res/values/strings.xml` and dates use `YYYY.MM.DD(요일)` / cards `DD / 요일` from the app locale, so devices in other languages still get a fully Korean app. To add a language: translate `strings.xml` into `values-<lang>/`, add the code to `AppLocale.supported` and `res/xml/locales_config.xml`.
 
+## Daily reading and editing
+
+- **Day view:** an empty day shows the shared empty-state picture (peek rabbit behind a glass card, `ui/EmptyState.kt`: 172×120dp group, 90×90 rabbit, 44% of the page width up to 172dp, centred at 30% of the space between the band and the bottom buttons) and `+`; TalkBack reads "이날 남긴 기록이 없어요". A filled day shows its fragments for reading only and one pencil ("이날 기록 편집") that opens all of them with the keyboard closed.
+- **Editor:** tap a fragment to edit it; long press and release in place for a 삭제 menu; long press and drag to reorder across kinds (one tick on pick-up, edge auto-scroll); swipe left still deletes. TalkBack has 위로 이동 / 아래로 이동 / 삭제 actions. Undo brings back only the deleted fragment and keeps later edits. ✓ saves and returns to the same day (empty again after removing the last fragment). Drafts are kept per date.
+- **Empty month in 기록한 날:** the same picture inside the month page (it slides with the page); "12월에 남긴 기록이 없어요" is announced once when that month settles.
+
 ## Native UX v0.2 (shared with iOS)
 
 The interaction rules come from `Tokipin-Native-UX-v0.2` (md + json with 82 cases: the 59 of v0.1 plus 23 for recorded days), kept once in the web repo at `../tokipin/native-spec/v0.2/`, not copied here. The build pins its SHA-256 (`verifyUxSpec`), unit tests run every case against `rules/UxRules.kt`, and `UxSpecDeviceTest` drives the cases that need a screen with real touches.

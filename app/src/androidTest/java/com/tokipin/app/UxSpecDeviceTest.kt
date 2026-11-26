@@ -22,6 +22,9 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -478,6 +481,192 @@ class UxSpecDeviceTest {
 
     // endregion
 
+
+    // region 일간 읽기·편집
+
+    private val editData: String by lazy {
+        val days = listOf(
+            """{"date":"2026-10-01","updatedAt":"2026-10-01T10:00:00Z","items":[${item("word", "산책", "a")},${item("place", "공원", "b")},${item("emoji", "🌿", "c")},${item("time", "16:20", "d")},${item("word", "산책", "e")}]}""",
+            """{"date":"2026-11-25","updatedAt":"2026-11-25T10:00:00Z","items":[${item("word", "살구잼", "f")},${item("place", "연남동", "g")}]}""",
+            """{"date":"2026-11-26","updatedAt":"2026-11-26T10:00:00Z","items":[${item("word", "귤", "h")}]}""",
+        )
+        """{"version":1,"days":[${days.joinToString(",")}]}"""
+    }
+
+    private fun savedValues(date: String) = dayItems(date)
+
+    /** Runs a TalkBack custom action ("위로 이동", "아래로 이동", "삭제") on a node. */
+    private fun customAction(tag: String, label: String) {
+        val node = compose.onNodeWithTag(tag).fetchSemanticsNode()
+        val action = node.config[androidx.compose.ui.semantics.SemanticsActions.CustomActions].first { it.label == label }
+        compose.runOnUiThread { action.action() }
+        compose.waitForIdle()
+    }
+    private fun noFocusedField() = compose.onAllNodes(androidx.compose.ui.test.isFocused() and androidx.compose.ui.test.hasSetTextAction())
+        .fetchSemanticsNodes().isEmpty()
+
+    private fun openDayOnRail(fromCard: String, day: String) {
+        openDayFromRecords(fromCard)
+        compose.onNode(hasContentDescription(day) and hasAnyAncestor(hasTestTag("weekRail"))).performClick()
+        compose.waitForIdle()
+    }
+
+    private fun centerFraction(tag: String, area: String): Float {
+        val a = bounds(compose.onNodeWithTag(area))
+        val c = bounds(compose.onNodeWithTag(tag)).center.y
+        return (c - a.top) / a.height
+    }
+
+    @Test fun emptyDayPlusSavesTheFirstFragmentAndPencilReopensItWithoutKeyboard() {
+        launch(data = editData)
+        openDayOnRail("2026-11-25", "2026.11.24(화)")
+        val empty = compose.onNodeWithTag("dayEmpty_2026-11-24")
+        empty.assertExists()
+        assertEquals("이날 남긴 기록이 없어요", empty.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
+        // Picture centre at about 30% of the space between the date band and the bottom buttons.
+        assertTrue(centerFraction("dayEmpty_2026-11-24", "dayBody") in 0.18f..0.36f)
+        compose.onNodeWithTag("addRecord").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("단어 입력").performTextInput("산책")
+        compose.onNodeWithContentDescription("기록 저장").performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        assertTrue(railDaySelected("2026.11.24(화)"))
+        compose.onNodeWithTag("dayEmpty_2026-11-24").assertDoesNotExist()
+        compose.onNodeWithText("산책").assertExists()
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitForIdle(); Thread.sleep(400)
+        assertTrue("pencil opens with the keyboard closed", noFocusedField())
+        compose.onNodeWithText("산책").performClick()
+        compose.waitForIdle(); Thread.sleep(300)
+        assertTrue("tapping a fragment edits it", !noFocusedField())
+    }
+
+    @Test fun deletingTheLastFragmentAndSavingShowsTheEmptyDayAgain() {
+        launch(data = editData)
+        openDayFromRecords("2026-11-26")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("editRow_h").performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("deleteMenu").performClick()
+        compose.onNodeWithContentDescription("기록 저장").performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        compose.onNodeWithTag("dayEmpty_2026-11-26").assertExists()
+        compose.onNodeWithTag("addRecord").assertExists()
+        assertEquals(emptyList<String>(), savedValues("2026-11-26"))
+    }
+
+    @Test fun longPressInPlaceOpensDeleteButDoesNotDeleteUntilChosen() {
+        launch(data = editData)
+        openDayFromRecords("2026-11-25")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.onNodeWithTag("editRow_f").performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("deleteMenu").assertExists()
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+        compose.waitForIdle()
+        compose.onNodeWithTag("editRow_f").assertExists()
+    }
+
+    @Test fun dragReordersAcrossKindsAndTheOrderSurvivesARelaunch() {
+        launch(data = editData)
+        openDayFromRecords("2026-10-01")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitForIdle()
+        val first = bounds(compose.onNodeWithTag("editRow_a"))
+        val last = bounds(compose.onNodeWithTag("editRow_e"))
+        val before = ticks()
+        compose.onNodeWithTag("editRow_a").performTouchInput {
+            down(center)
+            advanceEventTime(800) // long press: pick up
+            val dy = last.center.y - first.center.y + 20f
+            repeat(20) { moveBy(androidx.compose.ui.geometry.Offset(0f, dy / 20), 30) }
+            up()
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("deleteMenu").assertDoesNotExist()
+        assertEquals("one tick when picked up", before + 1, ticks())
+        compose.onNodeWithContentDescription("기록 저장").performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        assertEquals(listOf("공원", "🌿", "16:20", "산책", "산책"), savedValues("2026-10-01"))
+        scenario!!.close()
+        launch(data = File(context.filesDir, "tokipin/records.json").readText())
+        openDayFromRecords("2026-10-01")
+        val ids = compose.onAllNodes(hasTestTag("dayItem_b") or hasTestTag("dayItem_a")).fetchSemanticsNodes()
+        assertEquals(2, ids.size)
+        assertTrue("공원 now first", bounds(compose.onNodeWithTag("dayItem_b")).top < bounds(compose.onNodeWithTag("dayItem_a")).top)
+    }
+
+    @Test fun talkBackActionsMoveAndDelete() {
+        launch(data = editData)
+        openDayFromRecords("2026-11-25")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitForIdle()
+        customAction("editRow_f", "아래로 이동")
+        compose.waitForIdle()
+        assertTrue(bounds(compose.onNodeWithTag("editRow_g")).top < bounds(compose.onNodeWithTag("editRow_f")).top)
+        customAction("editRow_f", "삭제")
+        compose.waitForIdle()
+        compose.onNodeWithTag("editRow_f").assertDoesNotExist()
+        compose.onNodeWithContentDescription("기록 저장").performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        assertEquals(listOf("연남동"), savedValues("2026-11-25"))
+    }
+
+    @Test fun undoBringsBackOnlyTheDeletedFragment() {
+        launch(data = editData)
+        openDayFromRecords("2026-10-01")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("editRow_b").performTouchInput { longClick() }
+        compose.onNodeWithTag("deleteMenu").performClick()
+        // Reorder after deleting: move the last 산책 (e) to the top.
+        customAction("editRow_e", "위로 이동")
+        customAction("editRow_e", "위로 이동")
+        compose.onNodeWithText("실행 취소").performClick()
+        compose.onNodeWithContentDescription("기록 저장").performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        // 공원 is back at its old place; the later move of e is kept.
+        assertEquals(listOf("산책", "공원", "산책", "🌿", "16:20"), savedValues("2026-10-01"))
+    }
+
+    @Test fun aDraftLeftOnOneDayStaysWithThatDay() {
+        launch(data = editData)
+        openDayFromRecords("2026-11-25")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.onNodeWithContentDescription("단어").performClick()
+        compose.onNodeWithContentDescription("단어 입력").performTextInput("초안A")
+        back()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        compose.onNode(hasContentDescription("2026.11.24(화)") and hasAnyAncestor(hasTestTag("weekRail"))).performClick()
+        compose.onNodeWithTag("addRecord").performClick()
+        compose.onNodeWithContentDescription("단어 입력").performTextInput("초안B")
+        back()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        compose.onNode(hasContentDescription("2026.11.25(수)") and hasAnyAncestor(hasTestTag("weekRail"))).performClick()
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("초안A").assertExists()
+        compose.onNodeWithText("초안B").assertDoesNotExist()
+        assertEquals("saved records untouched", listOf("살구잼", "연남동"), savedValues("2026-11-25"))
+    }
+
+    @Test fun emptyMonthPictureSitsInThePageAndTheCalendarStillShowsEveryDay() {
+        launch(data = editData)
+        showRecordedMonth("2026-12")
+        compose.onNodeWithTag("monthEmpty").assertExists()
+        assertEquals("12월에 남긴 기록이 없어요", compose.onNodeWithTag("monthEmpty").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
+        assertTrue(centerFraction("monthEmpty", "recordsBody") in 0.18f..0.36f)
+        compose.onNodeWithText("이달에 남긴 기록이 없어요.").assertDoesNotExist()
+        menu("MONTH")
+        scrollTo("day_2026-12-15")
+        compose.onNodeWithTag("day_2026-12-15").performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        compose.onNodeWithTag("dayEmpty_2026-12-15").assertExists()
+    }
+
+    // endregion
+
     // region time
 
     @Test fun timesFollowTheDevice12Or24HourSetting() {
@@ -497,7 +686,7 @@ class UxSpecDeviceTest {
     @Test fun openingTheTimeToolAloneAddsNothing() {
         launch()
         openDayFromRecords("2026-11-26")
-        compose.onNodeWithContentDescription("기록 추가").performClick()
+        compose.onNodeWithContentDescription("이날 기록 편집").performClick()
         compose.onNodeWithContentDescription("시간").performClick()
         compose.onNodeWithContentDescription("기록 저장").performClick()
         compose.waitUntil(3_000) { exists(level("DAILY")) }
@@ -507,7 +696,7 @@ class UxSpecDeviceTest {
     @Test fun plusThenCheckAddsTheTimeOnce() {
         launch()
         openDayFromRecords("2026-11-26")
-        compose.onNodeWithContentDescription("기록 추가").performClick()
+        compose.onNodeWithContentDescription("이날 기록 편집").performClick()
         compose.onNodeWithContentDescription("시간").performClick()
         compose.onNodeWithContentDescription("시간 추가").performClick()
         compose.onNodeWithContentDescription("기록 저장").performClick()

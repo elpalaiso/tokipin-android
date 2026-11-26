@@ -99,4 +99,40 @@ object DraftRules {
 
     /** Leaving a pending value or an edit without confirming it keeps the items as they were. */
     fun cancelPending(d: Draft): Draft = d.copy(raw = "", editId = null)
+
+    /**
+     * Moves one fragment to [to] (indexes in the saved order). Any kinds can trade places; ids,
+     * values and kinds stay as they are, and a reorder alone is a change worth saving.
+     */
+    fun move(d: Draft, from: Int, to: Int): Draft {
+        if (from !in d.items.indices) return d
+        val target = to.coerceIn(0, d.items.lastIndex)
+        if (target == from) return d
+        val items = d.items.toMutableList()
+        val moved = items.removeAt(from)
+        items.add(target, moved)
+        return d.copy(items = items, changed = true)
+    }
+
+    /** Removes fragments, remembering where each one was so undo can put back only those. */
+    fun remove(d: Draft, ids: Set<String>): Pair<Draft, List<IndexedValue<Entry>>> {
+        val removed = d.items.withIndex().filter { it.value.id in ids }
+        val clearEdit = d.editId in ids
+        return d.copy(
+            items = d.items.filterNot { it.id in ids }, changed = true,
+            raw = if (clearEdit) "" else d.raw, editId = if (clearEdit) null else d.editId,
+        ) to removed
+    }
+
+    /**
+     * Undo of [remove]: the removed fragments go back at their old positions, and everything done
+     * since (edits, reorders, new fragments) is kept as it is now.
+     */
+    fun restore(d: Draft, removed: List<IndexedValue<Entry>>): Draft {
+        val items = d.items.toMutableList()
+        removed.sortedBy { it.index }.forEach { (index, entry) ->
+            if (items.none { it.id == entry.id }) items.add(index.coerceIn(0, items.size), entry)
+        }
+        return d.copy(items = items, changed = true)
+    }
 }

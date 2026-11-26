@@ -1,6 +1,20 @@
 package com.tokipin.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -86,6 +100,7 @@ fun EditorScreen(vm: AppViewModel) {
     val draft = vm.draft ?: return
     val selection = vm.selection
     val keyboard = LocalSoftwareKeyboardController.current
+    val haptics = LocalHaptics.current
     val focus = remember { FocusRequester() }
     var revealedId by remember { mutableStateOf<String?>(null) }
     var emojiBlocked by remember { mutableStateOf(false) }
@@ -127,8 +142,11 @@ fun EditorScreen(vm: AppViewModel) {
         }
     }
 
+    // "+" opens with the keyboard; the pencil opens with it closed until a fragment or tool is tapped.
+    var allowFocus by remember { mutableStateOf(vm.editorAutoFocus) }
     LaunchedEffect(draft.kind, draft.editId, selection == null) {
-        if (selection == null && draft.kind != EntryKind.TIME) {
+        if (draft.editId != null) allowFocus = true
+        if (allowFocus && selection == null && draft.kind != EntryKind.TIME) {
             // The tool's own field is laid out on the next frame; focus it then.
             androidx.compose.runtime.withFrameNanos { }
             focusField()
@@ -140,9 +158,24 @@ fun EditorScreen(vm: AppViewModel) {
             if (selection != null) SelectionHeader(vm, selection) else EditorHeader(vm, draft.items.isNotEmpty())
 
             val listState = rememberLazyListState()
+            val edge = with(LocalDensity.current) { 64.dp.toPx() }
+            val listBounds = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
+            fun edgeScroll(windowY: Float): Float {
+                val b = listBounds[0] ?: return 0f
+                val delta = when {
+                    windowY < b.top + edge -> -(b.top + edge - windowY) * 0.3f
+                    windowY > b.bottom - edge -> (windowY - (b.bottom - edge)) * 0.3f
+                    else -> 0f
+                }
+                return if (delta == 0f) 0f else listState.dispatchRawDelta(delta)
+            }
             LazyColumn(
                 state = listState,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .testTag("editorList")
+                    .onGloballyPositioned { listBounds[0] = it.boundsInWindow() },
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -156,23 +189,24 @@ fun EditorScreen(vm: AppViewModel) {
                     } else {
                         EditorRow(
                             item = item,
+                            index = draft.items.indexOf(item),
+                            count = draft.items.size,
                             selecting = selection != null,
                             checked = selection?.contains(item.id) == true,
                             revealed = revealedId == item.id,
                             onReveal = { revealedId = if (it) item.id else null },
                             onClick = {
                                 revealedId = null
+                                allowFocus = true
                                 when {
                                     selection != null -> vm.toggleSelected(item.id)
                                     else -> vm.startEditing(item)
                                 }
                             },
-                            onLongClick = {
-                                revealedId = null
-                                if (selection == null) vm.beginSelection()
-                                vm.toggleSelected(item.id)
-                            },
                             onDelete = { revealedId = null; vm.deleteDraftItems(setOf(item.id)) },
+                            onMove = { to -> revealedId = null; vm.moveDraftItem(item.id, to) },
+                            onPickUp = { haptics.report(com.tokipin.app.rules.NavEvent.FRAGMENT_PICK_UP) },
+                            edgeScroll = { y -> edgeScroll(y) },
                         )
                     }
                 }
@@ -215,6 +249,7 @@ fun EditorScreen(vm: AppViewModel) {
                 }
                 KindToolbar(draft.kind) { kind ->
                     revealedId = null
+                    allowFocus = true
                     if (vm.setKind(kind)) {
                         when (kind) {
                             EntryKind.TIME -> keyboard?.hide()
@@ -303,18 +338,31 @@ private fun Composer(
     )
 }
 
+/**
+ * One fragment in the editor. Tap: edit it. Long press and release in place: a 삭제 menu (delete
+ * only when chosen). Long press and drag up/down: carry it to another place, across kinds; a
+ * dropped drag never opens the menu, and a cancelled one returns to where it started. Swipe left
+ * still uncovers delete. TalkBack gets 위로 이동 / 아래로 이동 / 삭제 actions.
+ */
 @Composable
 private fun EditorRow(
     item: Entry,
+    index: Int,
+    count: Int,
     selecting: Boolean,
     checked: Boolean,
     revealed: Boolean,
     onReveal: (Boolean) -> Unit,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
     onDelete: () -> Unit,
+    onMove: (Int) -> Unit,
+    onPickUp: () -> Unit,
+    edgeScroll: (Float) -> Float,
 ) {
-    val revealWidth = with(LocalDensity.current) { 76.dp.toPx() }
+    val density = LocalDensity.current
+    val reduceMotion = LocalReduceMotion.current
+    val revealWidth = with(density) { 76.dp.toPx() }
+    val spacing = with(density) { 4.dp.toPx() }
     var drag by remember { mutableFloatStateOf(0f) }
     val target = if (revealed) -revealWidth else 0f
     val animated by animateFloatAsState(if (drag != 0f) drag else target, label = "reveal")
@@ -322,8 +370,29 @@ private fun EditorRow(
     val kindLabel = stringResource(item.kind.label())
     val shownText = item.shown()
     val selectedText = stringResource(R.string.cd_selected)
+    val moveUp = stringResource(R.string.move_up)
+    val moveDown = stringResource(R.string.move_down)
+    val deleteText = stringResource(R.string.item_delete)
 
-    Box(Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+    var lifted by remember { mutableStateOf(false) }
+    var liftY by remember { mutableFloatStateOf(0f) }
+    var rowHeight by remember { mutableFloatStateOf(0f) }
+    var menuOpen by remember { mutableStateOf(false) }
+    val currentIndex by androidx.compose.runtime.rememberUpdatedState(index)
+    val currentCount by androidx.compose.runtime.rememberUpdatedState(count)
+    val coords = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .onGloballyPositioned { coords[0] = it; rowHeight = it.size.height.toFloat() }
+            .zIndex(if (lifted) 1f else 0f)
+            .graphicsLayer {
+                translationY = liftY
+                if (lifted && !reduceMotion) { scaleX = 1.02f; scaleY = 1.02f; shadowElevation = 12f }
+            },
+    ) {
         if (!selecting && (revealed || drag != 0f)) {
             Box(
                 Modifier
@@ -338,33 +407,82 @@ private fun EditorRow(
         }
         Row(
             Modifier
-                // The row keeps its text in place and its edge pulls back to uncover the delete button
-                // (Figma 04 · 밀어서 삭제).
+                // The row keeps its text in place and its edge pulls back to uncover the delete button.
                 .fillMaxWidth()
-                .padding(end = with(LocalDensity.current) { (if (selecting) 0f else -animated).toDp() })
+                .padding(end = with(density) { (if (selecting) 0f else -animated).toDp() })
                 .clip(RoundedCornerShape(12.dp))
                 .background(
                     when {
+                        lifted || menuOpen -> Tk.SheetRow.copy(alpha = 0.95f)
                         selecting && checked -> Tk.SheetRow.copy(alpha = 0.85f)
                         revealed || drag != 0f -> Tk.Surface.copy(alpha = 0.5f)
                         else -> androidx.compose.ui.graphics.Color.Transparent
                     },
                 )
+                .testTag("editRow_${item.id}")
+                // One gesture handler for tap, long press in place (menu) and long-press drag (move).
+                .pointerInput(item.id, selecting) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val long = awaitLongPressOrCancellation(down.id)
+                        if (long == null) {
+                            // Lifted before the long-press time without anyone taking it: a tap.
+                            val up = currentEvent.changes.firstOrNull { it.id == down.id }
+                            if (up != null && !up.pressed && !up.isConsumed) { up.consume(); onClick() }
+                            return@awaitEachGesture
+                        }
+                        if (selecting) { onClick(); return@awaitEachGesture }
+                        lifted = true
+                        val start = currentIndex
+                        var at = start
+                        var travelled = 0f
+                        liftY = 0f
+                        onPickUp() // one light tick, only when picked up
+                        var cancelled = false
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change == null || change.isConsumed) { cancelled = true; break }
+                            if (!change.pressed) { change.consume(); break }
+                            val dy = change.position.y - change.previousPosition.y
+                            change.consume()
+                            travelled += kotlin.math.abs(dy)
+                            liftY += dy
+                            // Near the list's top or bottom edge, scroll so far places can be reached.
+                            coords[0]?.takeIf { it.isAttached }?.let { liftY += edgeScroll(it.localToWindow(change.position).y) }
+                            val step = rowHeight + spacing
+                            while (step > 0 && liftY > step / 2 && at < currentCount - 1) { at++; onMove(at); liftY -= step }
+                            while (step > 0 && liftY < -step / 2 && at > 0) { at--; onMove(at); liftY += step }
+                        }
+                        lifted = false
+                        liftY = 0f
+                        when {
+                            cancelled -> if (at != start) onMove(start) // back to where it began
+                            at == start && travelled < viewConfiguration.touchSlop -> menuOpen = true
+                        }
+                    }
+                }
                 .draggable(
                     state = draggableState,
                     orientation = Orientation.Horizontal,
-                    enabled = !selecting,
+                    enabled = !selecting && !lifted,
                     onDragStopped = {
                         onReveal(drag < -revealWidth / 2)
                         drag = 0f
                     },
                 )
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
                 .semantics {
                     contentDescription = "$kindLabel, $shownText"
+                    onClick { onClick(); true }
                     if (selecting) {
                         selected = checked
                         stateDescription = if (checked) selectedText else ""
+                    } else {
+                        customActions = buildList {
+                            if (currentIndex > 0) add(CustomAccessibilityAction(moveUp) { onMove(currentIndex - 1); true })
+                            if (currentIndex < currentCount - 1) add(CustomAccessibilityAction(moveDown) { onMove(currentIndex + 1); true })
+                            add(CustomAccessibilityAction(deleteText) { onDelete(); true })
+                        }
                     }
                 }
                 .padding(horizontal = if (selecting) 12.dp else 4.dp, vertical = 4.dp),
@@ -381,7 +499,22 @@ private fun EditorRow(
                 ) { if (checked) TkIcon(R.drawable.ic_check, tint = Tk.Surface, size = 14.dp) }
                 Spacer(Modifier.width(14.dp))
             }
-            Text(item.shown(), style = if (selecting) TkType.title else item.kind.textStyle())
+            Text(shownText, style = if (selecting) TkType.title else item.kind.textStyle())
+        }
+        Box(Modifier.align(Alignment.BottomStart)) {
+            DropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = { menuOpen = false },
+                containerColor = Tk.Sheet,
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                DropdownMenuItem(
+                    text = { Text(deleteText, style = TkType.body.copy(color = Tk.DangerText)) },
+                    leadingIcon = { TkIcon(R.drawable.ic_trash, size = 18.dp, tint = Tk.DangerText) },
+                    onClick = { menuOpen = false; onDelete() },
+                    modifier = Modifier.testTag("deleteMenu"),
+                )
+            }
         }
     }
 }
