@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GUESS: English copy is a first-pass translation of the Korean source (values-ko). Not yet reviewed. -->
+<resources>
+    <string name="app_name">Tokipin</string>
+
+    <string name="kind_word">Word</string>
+    <string name="kind_emoji">Emoji</string>
+    <string name="kind_place">Place</string>
+    <string name="kind_time">Time</string>
+    <string name="cd_kind_tool">Enter %1$s</string>
+    <string name="cd_selected">Selected</string>
+    <string name="cd_back_keep_draft">Back, keep draft</string>
+    <string name="cd_save_record">Save record</string>
+    <string name="cd_select_items">Select items</string>
+    <string name="cd_delete">Delete</string>
+    <string name="cd_confirm_item">Add item</string>
+    <string name="editor_cancel">Cancel</string>
+    <string name="editor_selected_count">%1$d selected</string>
+    <string name="editor_invalid_time">Choose a time.</string>
+    <string name="editor_invalid_emoji">Enter an emoji.</string>
+    <string name="editor_empty_edit">Enter a value or delete the item.</string>
+    <string name="editor_need_one">Leave a word or an emoji.</string>
+    <string name="editor_emoji_prompt">Pick an emoji to leave.</string>
+    <string name="editor_save_failed">Couldn\'t save.\nYour entry is still here.\nCheck your storage space.</string>
+    <string name="editor_retry">Try again</string>
+    <string name="editor_item_deleted">Item deleted.</string>
+    <string name="editor_items_deleted">%1$d items deleted.</string>
+    <string name="undo">Undo</string>
+    <string name="time_picker_ok">OK</string>
+    <string name="time_picker_cancel">Cancel</string>
+
+    <string name="home_empty">No records yet.</string>
+    <string name="home_first_record">Leave your first record</string>
+    <string name="today">Today</string>
+    <string name="cd_new_record">New record</string>
+    <string name="cd_search">Search records</string>
+    <string name="cd_view_menu">Views</string>
+    <string name="cd_day_menu">Day menu</string>
+    <string name="cd_item_menu">More for %1$s</string>
+    <string name="cd_back_to">Back to %1$s</string>
+    <string name="view_menu_title">Views</string>
+    <string name="view_daily">Day</string>
+    <string name="view_records">Recorded days</string>
+    <string name="view_month">Month</string>
+    <string name="view_year">Year</string>
+    <string name="settings">Settings</string>
+    <string name="day_empty">Nothing recorded this day.</string>
+    <string name="month_empty">Nothing recorded this month.</string>
+    <string name="show_calendar">Show calendar</string>
+    <string name="item_edit">Edit</string>
+    <string name="item_delete">Delete</string>
+    <string name="delete_day">Delete %1$d items from this day</string>
+    <string name="day_deleted">Deleted %1$d items from this day.</string>
+    <string name="cancel">Cancel</string>
+    <string name="more_count">+%1$d</string>
+    <string name="month_number">%1$d</string>
+    <string name="cd_month">Month %1$d</string>
+    <string name="search_results">Results</string>
+
+    <string name="loading">Loading your records.</string>
+    <string name="load_failed_title">Couldn\'t load your records</string>
+    <string name="load_failed_body">The records on this device can\'t be read.\nPlease try again in a moment.</string>
+
+    <string name="search_hint">Search words, places, dates</string>
+    <string name="search_none">No results.</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_close_search">Close search</string>
+
+    <string name="settings_haptics">Haptic feedback</string>
+    <string name="settings_export">Export records</string>
+    <string name="settings_export_body">Download your records as a JSON file.</string>
+    <string name="settings_export_empty">You can export once you leave a record.</string>
+    <string name="settings_export_done">Records exported.</string>
+    <string name="settings_export_failed">Couldn\'t export. Please try again.</string>
+    <string name="settings_storage_title">Storage and privacy</string>
+    <string name="settings_storage_body">Records and drafts are stored on this device and are deleted with the app data. Tokipin doesn\'t access your location or calendar.</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="terms">Terms of Use</string>
+    <string name="cd_close">Close</string>
+    <string name="policy_draft_badge">Pre-release draft · iOS and Android apps</string>
+    <string name="privacy_lead">Tokipin is a journaling app for iOS and Android that works without an account. Your records and drafts stay in the app\'s storage on your device.</string>
+    <string name="privacy_h1">What does Tokipin store?</string>
+    <string name="privacy_b1">The words, emoji, places and times you enter, with the record date and the order you entered them. This and any draft are used to keep writing offline and to find and edit records by date.</string>
+    <string name="privacy_h2">Does it access my location or calendar?</string>
+    <string name="privacy_b2">You type places yourself. Tokipin never asks for location or calendar access. The calendar in the app shows only your own records.</string>
+    <string name="privacy_h3">How are records kept and deleted?</string>
+    <string name="privacy_b3">You can find records in the calendar or search and delete one item or a whole day. Records stay until you delete them or clear the app data, which removes the records and drafts on that device.</string>
+    <string name="privacy_h4">Exported files and device backups</string>
+    <string name="privacy_b4">You can export your records as a JSON file from Settings. Exported files remain after you delete records in the app, so manage them where you saved them. Tokipin has no account sync. Whether records are included in device backups depends on your system and backup settings.</string>
+    <string name="privacy_h5">Operator and privacy contact</string>
+    <string name="privacy_b5">Operator details, contact and effective date will be announced at launch.</string>
+    <string name="terms_lead">These terms apply when you write and open personal records in the Tokipin app for iOS and Android.</string>
+    <string name="terms_h1">Using the app</string>
+    <string name="terms_b1">Without an account you can leave words, emoji, places and times in any order, reopen and search them in the year, month, recorded days and day views, and edit or delete them yourself.</string>
+    <string name="terms_h2">Rights to your records</string>
+    <string name="terms_b2">You own the records you create. When you share records containing other people\'s writing or personal information, respect their rights and privacy.</string>
+    <string name="terms_h3">Changing devices or clearing app data</string>
+    <string name="terms_b3">Tokipin does not sync records to an account. Before changing devices or clearing app data, export the records you want to keep from Settings.</string>
+    <string name="terms_h4">Operator and contact</string>
+    <string name="terms_b4">Operator details, contact and effective date will be announced at launch.</string>
+</resources>

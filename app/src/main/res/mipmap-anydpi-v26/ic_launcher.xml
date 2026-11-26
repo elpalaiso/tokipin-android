@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GUESS: Figma "Android 표시 영역과 안전원" was not exported; the 1024 artwork is inset so both ears stay inside the safe circle. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/icon_background" />
+    <foreground>
+        <inset android:drawable="@drawable/ic_launcher_art" android:inset="9%" />
+    </foreground>
+    <monochrome>
+        <inset android:drawable="@drawable/ic_peek_rabbit" android:inset="22%" />
+    </monochrome>
+</adaptive-icon>

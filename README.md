@@ -1,0 +1,60 @@
+# Tokipin Android
+
+Native Android app for Tokipin: leave a small mark (word, emoji, place, time) on the moments you want to remember. Kotlin + Jetpack Compose, Android 8.0+ (minSdk 26, targetSdk 36), no account, no network, no permissions.
+
+Design source: Figma "Tokipin — Brand · Native App" (pages 01 브랜드, 02 기록 입력, 03 기록 탐색, 04 제품 기준). Copy, policies and editor rules are shared with the homepage in `../tokipin`; behavior and the data format match the iOS app in `../tokipin-ios`.
+
+## Run
+
+Open the folder in Android Studio and run `app`, or from a shell (uses Android Studio's bundled JDK 21):
+
+```sh
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+./gradlew :app:assembleDebug :app:testDebugUnitTest
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+## What's in v0.1
+
+- **Start**: the Android system splash shows the peek-rabbit icon. A slow read shows a bento skeleton; a read failure shows "기록을 불러오지 못했어요" with 다시 시도 and never overwrites saved records.
+- **First run** opens the editor for today with the word tool; later launches open 기록한 날. An unfinished draft (also after the process is killed) reopens the editor.
+- **Editor**: items stack in entered order. The four tools (단어 · 이모지 · 장소 · 시간) stay above the keyboard; switching tool confirms the current value first. Enter confirms one item (after Hangul composition ends), ✓ saves the whole day including the value being typed. Tap an item to edit it, swipe left to reveal delete, long-press or `…` to multi-select. Deletes can be undone. Emoji tool shows the quick row 🍊🧣🎧☕🌿📷🌙; time tool opens a 24-hour Material time picker. Save failure keeps the input and offers 다시 시도. Back keeps the draft; `+` continues it.
+- **Browse** (four levels, pinch or the top-right view menu): 일간 (week strip, swipe the strip for weeks and the body for days, item `…` → 수정/삭제, day `…` → delete day), 기록한 날 (bento cards by month, long-press → "이날 기록 N개 삭제" with 8 s undo), 월간 달력 (vertical months, fixed weekday header, up to three entries + "+N"), 연간 (vertical years of mini calendars). `오늘` jumps back to today. Back goes up a level.
+- **Search**: words, emoji, places, times, kind names ("장소") and dates ("11.25"), newest first. Opening a result highlights the item; "검색 결과" returns to the list.
+- **Settings** (last entry of the view menu): touch feedback, JSON export (system file picker), storage note, privacy policy and terms.
+- **Haptics**: one `SEGMENT_TICK` (API 34+, `CLOCK_TICK` before) when the day or level settles; off when the setting is off.
+- **Languages**: Korean (`values-ko`) and English (`values`, default). Dates use `YYYY.MM.DD(요일)` and cards `DD / 요일`; weekday names and the first day of the week follow the device locale.
+
+## Data format
+
+Stored at `files/tokipin/records.json` (atomic writes) with the draft in `files/tokipin/draft.json`. Export writes the same JSON, identical to iOS so files are interchangeable:
+
+```json
+{
+  "version": 1,
+  "days": [
+    {
+      "date": "2026-11-25",
+      "updatedAt": "2026-11-25T10:00:00Z",
+      "items": [
+        { "id": "UUID", "kind": "word", "value": "살구잼" },
+        { "id": "UUID", "kind": "time", "value": "16:20" }
+      ]
+    }
+  ]
+}
+```
+
+Records are included in Android Auto Backup and device transfer (`res/xml/data_extraction_rules.xml`).
+
+## Brand
+
+Palette 세이지 차콜: Canvas `#39453D`, Surface `#252C29`, Primary `#F3F3EC`, Secondary `#C3CDC5`, Focus `#BBD2F2`. DM Sans (variable TTF, SIL OFL, `licenses/DMSans-OFL.txt`) for numbers and Latin; Hangul falls back to the system Noto Sans CJK instead of bundling the 10 MB Noto Sans KR. Icons are vector drawables traced from the homepage SVGs; the launcher icon is the homepage's 1024 px artwork.
+
+## Guesses to confirm
+
+- `applicationId` is `com.elpalaiso.tokipin` (same as the iOS bundle ID). It cannot change after the first Play upload.
+- Adaptive icon: the 1024 artwork inset 9% on `#4A6461`; the monochrome (themed) icon uses the peek-rabbit outline. Figma's "Android 표시 영역과 안전원" spec was not exported.
+- English copy is a first-pass translation.
+- Background gradient, card sizes, view-menu icons and the pinch thresholds (1.25× / 0.8×) were taken by eye from Figma screenshots.
+- No release signing is configured yet.
