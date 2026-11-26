@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +65,15 @@ fun SettingsSheet(vm: AppViewModel) {
         if (uri != null) vm.export(uri)
     }
     val canExport = !vm.journal.isEmpty
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val hasVibrator = remember {
+        val vibrator = if (android.os.Build.VERSION.SDK_INT >= 31) {
+            context.getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION") context.getSystemService(android.os.Vibrator::class.java)
+        }
+        vibrator?.hasVibrator() == true
+    }
     ModalBottomSheet(
         onDismissRequest = vm::closeSettings,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -80,13 +90,20 @@ fun SettingsSheet(vm: AppViewModel) {
                 RoundIconButton(R.drawable.ic_close, stringResource(R.string.cd_close), vm::closeSettings, glass = false, background = Tk.SheetRow)
             }
             Group {
+                // Figma 267-1270: "진동" with a one-line explanation, only on devices that can vibrate.
+                if (hasVibrator) {
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                        .clickable(role = Role.Switch) { vm.setHaptics(!vm.hapticsEnabled) }
-                        .padding(horizontal = 16.dp),
+                    Modifier.fillMaxWidth().heightIn(min = 62.dp)
+                        .toggleable(value = vm.hapticsEnabled, role = Role.Switch) { vm.setHaptics(it) }
+                        .testTag("hapticsRow")
+                        .padding(horizontal = 16.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(stringResource(R.string.settings_haptics), style = TkType.body, modifier = Modifier.weight(1f))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.settings_haptics), style = TkType.body)
+                        Text(stringResource(R.string.settings_haptics_body), style = TkType.small.copy(fontSize = 13.sp, lineHeight = 18.sp))
+                    }
+                    Spacer(Modifier.width(8.dp))
                     Switch(
                         checked = vm.hapticsEnabled,
                         onCheckedChange = null,
@@ -94,6 +111,7 @@ fun SettingsSheet(vm: AppViewModel) {
                     )
                 }
                 HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
+                }
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 64.dp)
                         .clickable(enabled = canExport, role = Role.Button) {

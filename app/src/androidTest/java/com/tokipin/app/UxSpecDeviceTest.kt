@@ -561,6 +561,25 @@ class UxSpecDeviceTest {
         compose.onNodeWithText("bam").assertExists()
     }
 
+    /** Figma 267-1270: "진동" with its explanation, toggling the app's haptics; absent without a vibrator. */
+    @Test fun vibrationRowTogglesHapticsOnlyWhereTheDeviceCanVibrate() {
+        launch(data = editData)
+        compose.onNodeWithContentDescription("탐색 보기").performClick()
+        compose.onNodeWithText("설정").performClick()
+        compose.waitForIdle()
+        val vibrator = (context.getSystemService(android.os.VibratorManager::class.java)).defaultVibrator
+        if (!vibrator.hasVibrator()) {
+            compose.onNodeWithTag("hapticsRow").assertDoesNotExist()
+            return
+        }
+        compose.onNodeWithText("진동").assertExists()
+        compose.onNodeWithText("날짜를 넘기거나 보기를 바꿀 때 가볍게 진동해요.").assertExists()
+        compose.onNodeWithTag("hapticsRow").performClick()
+        scenario!!.onActivity { assertEquals(false, it.vm.hapticsEnabled) }
+        compose.onNodeWithTag("hapticsRow").performClick()
+        scenario!!.onActivity { assertEquals(true, it.vm.hapticsEnabled) }
+    }
+
     /** Tokipin에 한마디 (Figma 267-1266): under 기록 내보내기, copy confirms for ~2s, back keeps the sheet. */
     @Test fun feedbackCopiesTheAddressAndBackReturnsToSettings() {
         launch(data = editData)

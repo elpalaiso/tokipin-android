@@ -90,7 +90,8 @@
     <string name="cd_close_search">검색 닫기</string>
 
     <!-- 설정 -->
-    <string name="settings_haptics">터치 피드백</string>
+    <string name="settings_haptics">진동</string>
+    <string name="settings_haptics_body">날짜를 넘기거나 보기를 바꿀 때 가볍게 진동해요.</string>
     <string name="settings_export">기록 내보내기</string>
     <string name="settings_export_body">저장한 기록을 JSON 파일로 내려받아요.</string>
     <string name="settings_export_empty">기록을 남기면 내보낼 수 있어요.</string>
