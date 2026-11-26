@@ -30,8 +30,11 @@ class JournalStore(context: Context) {
     suspend fun loadJournal(): Journal = withContext(Dispatchers.IO) {
         if (!journalFile.baseFile.exists()) return@withContext Journal()
         val text = journalFile.readFully().decodeToString()
-        json.decodeFromString(RecordsFile.serializer(), text).toJournal()
+        decodeJournal(text)
     }
+
+    internal fun decodeJournal(text: String): Journal =
+        json.decodeFromString(RecordsFile.serializer(), text).toJournal()
 
     suspend fun saveJournal(journal: Journal) = withContext(Dispatchers.IO) {
         write(journalFile, json.encodeToString(RecordsFile.serializer(), RecordsFile.from(journal)))

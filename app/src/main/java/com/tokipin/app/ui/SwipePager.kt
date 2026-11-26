@@ -53,6 +53,8 @@ fun <T> SwipePager(
     modifier: Modifier = Modifier,
     /** Drag progress as a fraction of the width (negative = towards the next page), 0 at rest. */
     onProgress: (Float) -> Unit = {},
+    /** Whether there is a page in direction +1 (next) / -1 (previous); at an end the page resists and settles back. */
+    canMove: (T, Int) -> Boolean = { _, _ -> true },
     content: @Composable (T) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -102,7 +104,8 @@ fun <T> SwipePager(
                             if (axis == Axis.VERTICAL) return@awaitEachGesture
                             if (axis == Axis.HORIZONTAL) {
                                 change.consume()
-                                scope.launch { offset.snapTo(total.x) }
+                                val blocked = !canMove(page, if (total.x < 0) 1 else -1)
+                                scope.launch { offset.snapTo(if (blocked) total.x * 0.25f else total.x) }
                             }
                         }
                     } catch (e: CancellationException) {
@@ -112,6 +115,7 @@ fun <T> SwipePager(
                     if (axis != Axis.HORIZONTAL) return@awaitEachGesture
                     val dir = if (released) {
                         SwipeRules.commit(widthDp, total.x / density.density, tracker.calculateVelocity().x / density.density)
+                            .let { if (it != 0 && !canMove(page, it)) 0 else it }
                     } else 0
                     scope.launch {
                         if (dir != 0) {

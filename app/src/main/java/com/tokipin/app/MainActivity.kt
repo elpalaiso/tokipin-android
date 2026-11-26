@@ -35,7 +35,7 @@ import com.tokipin.app.ui.TokipinTheme
 import android.provider.Settings as SystemSettings
 
 class MainActivity : ComponentActivity() {
-    private val vm: AppViewModel by viewModels()
+    internal val vm: AppViewModel by viewModels()
 
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
                 val context = androidx.compose.ui.platform.LocalContext.current
                 // Re-read the 12/24-hour setting whenever the app comes back to the foreground.
                 var resumes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { resumes++; onPauseOrDispose { } }
+                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { resumes++; vm.refreshToday(); onPauseOrDispose { } }
                 val timeDisplay = androidx.compose.runtime.remember(resumes) { com.tokipin.app.ui.TimeDisplay.from(context) }
                 CompositionLocalProvider(
                     LocalHaptics provides haptics,

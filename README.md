@@ -27,6 +27,13 @@ With an emulator or device connected, `./gradlew :app:connectedDebugAndroidTest`
 - **Haptics**: one `SEGMENT_TICK` (API 34+, `CLOCK_TICK` before) when the day or level settles; off when the setting is off.
 - **Language**: Korean only for now. Every string is in `res/values/strings.xml` and dates use `YYYY.MM.DD(요일)` / cards `DD / 요일` from the app locale, so devices in other languages still get a fully Korean app. To add a language: translate `strings.xml` into `values-<lang>/`, add the code to `AppLocale.supported` and `res/xml/locales_config.xml`.
 
+## Calendar range
+
+- The calendar ends at the current month (records allowed up to its last day) and starts at the earlier of 11 months ago and the oldest saved record (`rules/CalendarRange.kt`, `AppClock` pins the date in tests).
+- Month view: before the recent 12 months, 6+ consecutive empty months fold into one row that opens in place; year view: whole past years with no records fold into one row, months outside the range are dimmed and disabled. The selected month focus, the per-day record dots and the year/month summary dots show together.
+- The editor's date opens the Material date picker (nothing after this month); new fragments move to the chosen day after its records, a saved day's edits stay as that day's draft.
+- Debug: Settings › 개발용 테스트 데이터 › 달력 범위 예시 넣기 loads the shared 512-day fixture (`app/src/debug/assets/calendar-range-records.json`, SHA-256 530bfab8…).
+
 ## Daily reading and editing
 
 - **Day view:** an empty day shows the shared empty-state picture (peek rabbit behind a glass card, `ui/EmptyState.kt`: 172×120dp group, 90×90 rabbit, 44% of the page width up to 172dp, centred at 30% of the space between the band and the bottom buttons) and `+`; TalkBack reads "이날 남긴 기록이 없어요". A filled day shows its fragments for reading only and one pencil ("이날 기록 편집") that opens all of them with the keyboard closed.

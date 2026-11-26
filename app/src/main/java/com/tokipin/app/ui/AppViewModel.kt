@@ -17,8 +17,10 @@ import com.tokipin.app.rules.Level
 import com.tokipin.app.data.Journal
 import com.tokipin.app.data.JournalStore
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -41,7 +43,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // Browse
     var level by mutableStateOf(Level.RECORDS); private set
-    var selectedDate by mutableStateOf(LocalDate.now()); private set
+    var selectedDate by mutableStateOf(com.tokipin.app.rules.AppClock.today()); private set
     /** Incremented to ask the current view to scroll back to [selectedDate] (e.g. the Today button). */
     var focusRequest by mutableStateOf(0); private set
     private var dailyReturnLevel = Level.RECORDS
@@ -81,12 +83,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             draft = drafts.active?.let { keptDrafts[it] }
             val firstLaunch = !store.hasLaunchedBefore
             store.hasLaunchedBefore = true
-            selectedDate = journal.recordedDates().firstOrNull() ?: LocalDate.now()
+            selectedDate = journal.recordedDates().firstOrNull() ?: com.tokipin.app.rules.AppClock.today()
             recordedMonth = YearMonth.from(selectedDate)
             when {
                 draft?.hasContent == true -> screen = Screen.Editor
                 firstLaunch && journal.isEmpty -> {
-                    draft = Draft(date = LocalDate.now().toString())
+                    draft = Draft(date = com.tokipin.app.rules.AppClock.today().toString())
                     screen = Screen.Editor
                 }
                 else -> screen = Screen.Browse
@@ -109,7 +111,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
      * fragments in their order (or an empty draft). "+" on an empty day focuses the word field;
      * the pencil on a filled day ([focus] = false) opens with the keyboard closed.
      */
-    fun openEditor(date: LocalDate = if (level == Level.DAILY) selectedDate else LocalDate.now(), focus: Boolean = true) {
+    fun openEditor(date: LocalDate = if (level == Level.DAILY) selectedDate else com.tokipin.app.rules.AppClock.today(), focus: Boolean = true) {
         draft = keptDrafts[date.toString()]?.takeIf { it.hasContent }
             ?: Draft(date = date.toString(), items = journal.itemsOn(date))
         editorAutoFocus = focus
@@ -127,6 +129,39 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         editorAutoFocus = true
         resetEditorFeedback()
         screen = Screen.Editor
+        persistDraft()
+    }
+
+    /**
+     * The editor's date picker confirmed [target] (the draft only; ✓ still saves):
+     * - a draft of new fragments moves to [target], after that day's saved fragments (or its kept
+     *   draft), without duplicating anything if done again;
+     * - while editing a saved day, that day's changes stay as its own draft and [target]'s editor
+     *   opens. Saved records and other days' drafts are never moved or overwritten.
+     * The calendar range is untouched until something is saved.
+     */
+    fun changeDraftDate(target: LocalDate) {
+        if (draft?.editId != null && !commitRaw()) return // finish an edit in progress where it belongs
+        val d = draft ?: return
+        if (target.toString() == d.date || !range.canWrite(target)) return
+        val saved = journal.itemsOn(d.localDate)
+        val savedIds = saved.map { it.id }.toSet()
+        val base = keptDrafts[target.toString()]?.takeIf { it.hasContent }
+            ?: Draft(date = target.toString(), items = journal.itemsOn(target))
+        // New fragments (and the value being typed) go to the target day, after what it has.
+        val carried = d.items.filter { it.id !in savedIds && base.items.none { b -> b.id == it.id } }
+        draft = base.copy(
+            items = base.items + carried,
+            raw = if (d.editId == null) d.raw else "", kind = d.kind, editId = null,
+            changed = base.changed || carried.isNotEmpty(),
+        )
+        // What was done to the old day's saved fragments stays there as that day's draft.
+        val left = d.copy(items = d.items.filter { it.id in savedIds }, raw = "", editId = null)
+        keptDrafts = keptDrafts - target.toString() - d.date +
+            (if (left.items != saved) mapOf(d.date to left.copy(changed = true)) else emptyMap())
+        editorMessage = null
+        selection = null
+        clearUndo()
         persistDraft()
     }
 
@@ -308,17 +343,47 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     data class ScrollPos(val index: Int, val offset: Int)
 
     /** Selected day, visible month/year and per-level scroll position are kept apart (UX v0.1 §2). */
-    var visibleMonth by mutableStateOf(YearMonth.now()); private set
+    var visibleMonth by mutableStateOf(com.tokipin.app.rules.AppClock.thisMonth()); private set
     var entry by mutableStateOf<ListEntry>(ListEntry.Anchor(null)); private set
     private val scrollMemory = mutableMapOf<Level, ScrollPos>()
 
     fun rememberScroll(level: Level, pos: ScrollPos) { scrollMemory[level] = pos }
     fun savedScroll(level: Level): ScrollPos? = scrollMemory[level]
 
+    // region Calendar range (Tokipin-Calendar-Range)
+
+    /** The device's local date; re-read when the app returns to the foreground. */
+    var today by mutableStateOf(com.tokipin.app.rules.AppClock.today()); private set
+    fun refreshToday() { today = com.tokipin.app.rules.AppClock.today() }
+
+    /** From the earlier of 11 months ago and the oldest saved record, to the current month. */
+    val range: com.tokipin.app.rules.CalendarRange
+        get() = com.tokipin.app.rules.CalendarRange.of(journal.days.keys.map(LocalDate::parse), today)
+
+    val recordedMonths: Set<YearMonth> get() = journal.days.keys.map { YearMonth.from(LocalDate.parse(it)) }.toSet()
+
+    var expandedMonthGaps by mutableStateOf<Set<YearMonth>>(emptySet()); private set
+    var expandedYearGaps by mutableStateOf<Set<Int>>(emptySet()); private set
+
+    fun toggleMonthGap(from: YearMonth) {
+        expandedMonthGaps = if (from in expandedMonthGaps) expandedMonthGaps - from else expandedMonthGaps + from
+    }
+
+    fun toggleYearGap(from: Int) {
+        expandedYearGaps = if (from in expandedYearGaps) expandedYearGaps - from else expandedYearGaps + from
+    }
+
+    /** Entering a month that sits in a folded gap (from the year view or a pinch) opens that gap. */
+    private fun revealMonth(month: YearMonth) {
+        com.tokipin.app.rules.CalendarFolding.gapHolding(range, recordedMonths, month)?.let { expandedMonthGaps = expandedMonthGaps + it }
+    }
+
+    // endregion
+
     // region 기록한 날 (v0.2): one committed month per page, separate from the selected day.
 
-    private val months = com.tokipin.app.rules.RecordedMonths(YearMonth.now(), LocalDate.now())
-    var recordedMonth by mutableStateOf(YearMonth.now()); private set
+    private val months = com.tokipin.app.rules.RecordedMonths(com.tokipin.app.rules.AppClock.thisMonth(), com.tokipin.app.rules.AppClock.today())
+    var recordedMonth by mutableStateOf(com.tokipin.app.rules.AppClock.thisMonth()); private set
     var recordedPreview by mutableStateOf<YearMonth?>(null); private set
 
     /** Where the person was reading when they opened a day from a card (month, top card, offset). */
@@ -356,9 +421,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun changeLevel(next: Level, entryMode: ListEntry = ListEntry.Anchor(null)): Boolean {
         if (next == level) return false
         if (next == Level.DAILY) dailyReturnLevel = level
+        if (next == Level.MONTH) revealMonth(YearMonth.from(selectedDate))
         if (next == Level.RECORDS) {
             val restore = recordedRestore
-            recordedMonth = if (entryMode is ListEntry.Restore && restore != null) restore.month else YearMonth.from(selectedDate)
+            val r = range
+            recordedMonth = (if (entryMode is ListEntry.Restore && restore != null) restore.month else YearMonth.from(selectedDate))
+                .let { if (it > r.last) r.last else if (it < r.first) r.first else it }
             recordedPreview = null
         }
         level = next
@@ -414,9 +482,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Today keeps the current view and brings today back on screen, even if it is already selected. Silent. */
     fun goToday() {
-        if (level == Level.RECORDS) { recorded { today(LocalDate.now()) }; return }
-        selectedDate = LocalDate.now()
-        visibleMonth = YearMonth.now()
+        if (level == Level.RECORDS) { recorded { today(com.tokipin.app.rules.AppClock.today()) }; return }
+        selectedDate = com.tokipin.app.rules.AppClock.today()
+        visibleMonth = com.tokipin.app.rules.AppClock.thisMonth()
         highlightId = null
         entry = ListEntry.Anchor(null)
         focusRequest++
@@ -502,17 +570,37 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** Debug builds (개발용 테스트 데이터): replace all records with the homepage's sample journal. */
     fun replaceWithSamples() = replaceAll(com.tokipin.app.data.SampleData.journal(), R.string.debug_samples_done)
 
+    fun replaceWithCalendarRangeSamples() {
+        if (!com.tokipin.app.data.SampleData.AVAILABLE) return
+        viewModelScope.launch {
+            val next = try {
+                withContext(Dispatchers.IO) {
+                    getApplication<Application>().assets.open("calendar-range-records.json").bufferedReader().use {
+                        store.decodeJournal(it.readText())
+                    }
+                }
+            } catch (e: java.io.IOException) {
+                transientMessage = res.getString(R.string.debug_range_failed)
+                return@launch
+            } catch (e: kotlinx.serialization.SerializationException) {
+                transientMessage = res.getString(R.string.debug_range_failed)
+                return@launch
+            }
+            replaceAll(next, R.string.debug_range_done)
+        }
+    }
+
     /** Debug builds: clear every record and the draft, to check the empty home. */
     fun clearAllRecords() = replaceAll(Journal(), R.string.debug_cleared)
 
     private fun replaceAll(next: Journal, message: Int) {
-        draft = null
-        keptDrafts = emptyMap()
-        persistDraft()
-        clearUndo()
         persistJournal(next) {
+            draft = null
+            keptDrafts = emptyMap()
+            persistDraft()
+            clearUndo()
             transientMessage = res.getString(message)
-            selectedDate = next.recordedDates().firstOrNull() ?: LocalDate.now()
+            selectedDate = next.recordedDates().firstOrNull() ?: com.tokipin.app.rules.AppClock.today()
             visibleMonth = YearMonth.from(selectedDate)
             recordedMonth = visibleMonth
             entry = ListEntry.Anchor(null)

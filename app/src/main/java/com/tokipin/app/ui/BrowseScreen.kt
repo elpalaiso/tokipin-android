@@ -75,6 +75,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -261,7 +262,7 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
             Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TkIcon(R.drawable.ic_back, size = 18.dp, tint = Tk.Primary.copy(alpha = 0.5f))
                 Spacer(Modifier.width(6.dp))
-                Text(LocalDate.now().year.toString(), style = TkType.title)
+                Text(com.tokipin.app.rules.AppClock.today().year.toString(), style = TkType.title)
             }
         }
         if (vm.openedFromSearch && vm.level == Level.DAILY) {
@@ -346,7 +347,7 @@ private fun EmptyHome(vm: AppViewModel) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text(stringResource(R.string.home_empty), style = TkType.title)
-            GlassPill(stringResource(R.string.home_first_record), onClick = { vm.openEditor(LocalDate.now()) }, leading = R.drawable.ic_plus)
+            GlassPill(stringResource(R.string.home_first_record), onClick = { vm.openEditor(com.tokipin.app.rules.AppClock.today()) }, leading = R.drawable.ic_plus)
         }
     }
 }
@@ -564,6 +565,7 @@ private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
             onCommit = { dir -> haptics.report(*vm.recorded { tap(committed.plusMonths(dir.toLong())) }.toTypedArray()) },
             reduceMotion = reduceMotion,
             onProgress = { dragFraction = it },
+            canMove = { m, d -> m.plusMonths(d.toLong()) in vm.range },
             modifier = Modifier.fillMaxSize().testTag("recordsBody"),
         ) { month -> MonthPage(vm, month, onLongPress) }
     }
@@ -575,11 +577,16 @@ private fun MonthRail(vm: AppViewModel, dragFraction: Float) {
     val haptics = LocalHaptics.current
     val reduceMotion = LocalReduceMotion.current
     val density = LocalDensity.current
+    // The rail runs over the calendar range only: from its first month to the current month.
+    val range = vm.range
+    val count = (range.last.year - range.first.year) * 12 + range.last.monthValue - range.first.monthValue + 1
+    fun indexOf(m: YearMonth) = ((m.year - range.first.year) * 12 + m.monthValue - range.first.monthValue).coerceIn(0, count - 1)
+    fun monthAt(i: Int): YearMonth = range.first.plusMonths(i.coerceIn(0, count - 1).toLong())
     BoxWithConstraints(Modifier.fillMaxWidth().height(52.dp).testTag("monthRail")) {
         // Neighbours on each side adapt to the width and the text size (2 on phones by default).
         val side = com.tokipin.app.rules.RecordedMonths.sideSlots(maxWidth.value, density.fontScale)
         val slot = maxWidth / (2 * side + 1)
-        val state = rememberLazyListState(initialFirstVisibleItemIndex = com.tokipin.app.rules.RecordedMonths.index(vm.recordedMonth))
+        val state = rememberLazyListState(initialFirstVisibleItemIndex = indexOf(vm.recordedMonth))
         val snap = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(
             state, androidx.compose.foundation.gestures.snapping.SnapPosition.Center,
         )
@@ -599,23 +606,23 @@ private fun MonthRail(vm: AppViewModel, dragFraction: Float) {
             snapshotFlow { state.isScrollInProgress }.collect { moving ->
                 if (!moving && touched) {
                     touched = false
-                    val month = com.tokipin.app.rules.RecordedMonths.at(centeredIndex())
+                    val month = monthAt(centeredIndex())
                     haptics.report(*vm.recorded { tap(month) }.toTypedArray())
                 }
             }
         }
         LaunchedEffect(state) {
             snapshotFlow { if (touched) centeredIndex() else -1 }.distinctUntilChanged().collect { i ->
-                if (i >= 0) vm.recorded { railCoast(com.tokipin.app.rules.RecordedMonths.at(i)) }
+                if (i >= 0) vm.recorded { railCoast(monthAt(i)) }
             }
         }
         // Follow the committed month and the body's drag progress (same fraction, same direction).
         LaunchedEffect(vm.recordedMonth, dragFraction) {
             if (touched) return@LaunchedEffect
-            val target = com.tokipin.app.rules.RecordedMonths.index(vm.recordedMonth)
+            val target = indexOf(vm.recordedMonth)
             val slotPx = with(density) { slot.toPx() }
             if (dragFraction != 0f) {
-                val pos = target - dragFraction
+                val pos = (target - dragFraction).coerceIn(0f, (count - 1).toFloat())
                 val whole = kotlin.math.floor(pos).toInt()
                 state.scrollToItem(whole, ((pos - whole) * slotPx).toInt())
             } else if (state.firstVisibleItemIndex != target || state.firstVisibleItemScrollOffset != 0) {
@@ -630,8 +637,8 @@ private fun MonthRail(vm: AppViewModel, dragFraction: Float) {
             contentPadding = PaddingValues(horizontal = slot * side),
             modifier = Modifier.fillMaxSize(),
         ) {
-            items(com.tokipin.app.rules.RecordedMonths.COUNT) { i ->
-                val month = com.tokipin.app.rules.RecordedMonths.at(i)
+            items(count) { i ->
+                val month = monthAt(i)
                 val current = month == vm.recordedMonth
                 val name = stringResource(R.string.cd_year_month, month.year, month.monthValue)
                 Box(
@@ -767,26 +774,30 @@ private fun DayCard(
 private fun MonthView(vm: AppViewModel) {
     val haptics = LocalHaptics.current
     val density = LocalDensity.current
-    val today = LocalDate.now()
-    val dates = vm.journal.recordedDates()
-    val first = YearMonth.from(minOf(dates.lastOrNull() ?: today, today, vm.selectedDate)).minusMonths(12)
-    val last = YearMonth.from(maxOf(dates.firstOrNull() ?: today, today, vm.selectedDate)).plusMonths(12)
-    val months = remember(first, last) {
-        generateSequence(first) { it.plusMonths(1) }.takeWhile { it <= last }.toList()
+    val range = vm.range
+    val recorded = vm.recordedMonths
+    // From the first month of the range (it stops there) to the current month; long empty
+    // stretches before the recent 12 months fold into one row.
+    val rows = remember(range, recorded, vm.expandedMonthGaps) {
+        com.tokipin.app.rules.CalendarFolding.months(range, recorded, vm.expandedMonthGaps)
     }
     val state = rememberLazyListState()
     TrackScroll(vm, Level.MONTH, state) { y ->
         val month = YearMonth.from(vm.selectedDate)
-        val idx = months.indexOf(month).takeIf { it >= 0 } ?: return@TrackScroll
+        val idx = rows.indexOfFirst { it is com.tokipin.app.rules.MonthRow.Month && it.month == month }.takeIf { it >= 0 } ?: return@TrackScroll
         // Keep the selected date's row where the fingers were.
         val row = (CalendarRules.firstDayColumn(month, firstDayOfWeek()) + vm.selectedDate.dayOfMonth - 1) / 7
         val inner = with(density) { (MONTH_TITLE + MONTH_CELL_MIN * row).toPx() }
         state.placeAt(idx, y, inner)
     }
-    LaunchedEffect(state, months) {
-        snapshotFlow { months.getOrNull(state.firstVisibleItemIndex) }
-            .distinctUntilChanged()
-            .collect { m -> if (m != null && state.isScrollInProgress) vm.scrolledTo(m) }
+    LaunchedEffect(state, rows) {
+        snapshotFlow {
+            when (val r = rows.getOrNull(state.firstVisibleItemIndex)) {
+                is com.tokipin.app.rules.MonthRow.Month -> r.month
+                is com.tokipin.app.rules.MonthRow.Gap -> r.from
+                null -> null
+            }
+        }.distinctUntilChanged().collect { m -> if (m != null && state.isScrollInProgress) vm.scrolledTo(m) }
     }
     Column(Modifier.fillMaxSize()) {
         // Weekday header stays fixed while months scroll underneath (Figma 04 · 월간 해가 바뀌는 경계).
@@ -794,10 +805,54 @@ private fun MonthView(vm: AppViewModel) {
             weekdays().forEach { Text(it.short(), style = TkType.small, textAlign = TextAlign.Center, modifier = Modifier.weight(1f)) }
         }
         LazyColumn(state = state, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 110.dp)) {
-            itemsIndexed(months, key = { _, m -> m.toString() }) { _, month ->
-                MonthBlock(month, vm, onOpenDay = { haptics.commitIf(vm.openDay(it), NavEvent.TAP_DATE) })
+            itemsIndexed(rows, key = { _, r ->
+                when (r) {
+                    is com.tokipin.app.rules.MonthRow.Month -> r.month.toString()
+                    is com.tokipin.app.rules.MonthRow.Gap -> "gap_${r.from}"
+                }
+            }) { _, r ->
+                when (r) {
+                    is com.tokipin.app.rules.MonthRow.Month ->
+                        MonthBlock(r.month, vm, onOpenDay = { haptics.commitIf(vm.openDay(it), NavEvent.TAP_DATE) })
+                    is com.tokipin.app.rules.MonthRow.Gap -> GapRow(
+                        tag = "gap_${r.from}",
+                        label = "%04d.%02d – %04d.%02d".format(r.from.year, r.from.monthValue, r.to.year, r.to.monthValue),
+                        description = stringResource(R.string.cd_gap_months, r.from.year, r.from.monthValue, r.to.year, r.to.monthValue, r.months),
+                        expanded = r.expanded,
+                        onToggle = { vm.toggleMonthGap(r.from) },
+                    )
+                }
             }
         }
+    }
+}
+
+/**
+ * One row standing in for a stretch of empty months or years. Tapping opens just that stretch in
+ * place (and closes it again); TalkBack reads the period and whether it is folded or open.
+ */
+@Composable
+private fun GapRow(tag: String, label: String, description: String, expanded: Boolean, onToggle: () -> Unit) {
+    val state = stringResource(if (expanded) R.string.cd_expanded else R.string.cd_collapsed)
+    val action = stringResource(if (expanded) R.string.cd_collapse else R.string.cd_expand)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp)
+            .heightIn(min = 48.dp)
+            .glass(RoundedCornerShape(16.dp))
+            .background(Tk.Surface.copy(alpha = 0.45f))
+            .clickable(onClickLabel = action, role = Role.Button, onClick = onToggle)
+            .testTag(tag)
+            .semantics(mergeDescendants = true) {
+                contentDescription = description
+                stateDescription = state
+            }
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = TkType.body, modifier = Modifier.weight(1f))
+        TkIcon(R.drawable.ic_chevron_right, size = 18.dp, tint = Tk.Secondary, modifier = Modifier.graphicsLayer { rotationZ = if (expanded) -90f else 90f })
     }
 }
 
@@ -834,7 +889,7 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
                         Box(Modifier.weight(1f).heightIn(min = MONTH_CELL_MIN)) {
                             if (day in 1..month.lengthOfMonth()) {
                                 val date = month.atDay(day)
-                                MonthCell(date, vm.journal.itemsOn(date), date == vm.selectedDate, date == LocalDate.now()) { onOpenDay(date) }
+                                MonthCell(date, vm.journal.itemsOn(date), date == vm.selectedDate, date == com.tokipin.app.rules.AppClock.today()) { onOpenDay(date) }
                             }
                         }
                     }
@@ -885,19 +940,20 @@ private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, to
 @Composable
 private fun YearView(vm: AppViewModel) {
     val haptics = LocalHaptics.current
-    val today = LocalDate.now()
+    val range = vm.range
     val dates = vm.journal.recordedDates()
-    val firstYear = minOf(dates.lastOrNull()?.year ?: today.year, today.year, vm.selectedDate.year) - 1
-    val lastYear = maxOf(dates.firstOrNull()?.year ?: today.year, today.year, vm.selectedDate.year) + 1
-    val years = (firstYear..lastYear).toList()
     val recorded = remember(vm.journal) { dates.toSet() }
+    val recordedYears = remember(vm.journal) { dates.map { it.year }.toSet() }
+    val rows = remember(range, recordedYears, vm.expandedYearGaps) {
+        com.tokipin.app.rules.CalendarFolding.years(range, recordedYears, vm.expandedYearGaps)
+    }
     val state = rememberLazyListState()
     TrackScroll(vm, Level.YEAR, state) { y ->
-        val idx = years.indexOf(vm.selectedDate.year)
+        val idx = rows.indexOfFirst { it is com.tokipin.app.rules.YearRow.Year && it.year == vm.selectedDate.year }
         if (idx >= 0) state.placeAt(idx, y?.let { it - 200f })
     }
-    LaunchedEffect(state, years) {
-        snapshotFlow { years.getOrNull(state.firstVisibleItemIndex) }
+    LaunchedEffect(state, rows) {
+        snapshotFlow { (rows.getOrNull(state.firstVisibleItemIndex) as? com.tokipin.app.rules.YearRow.Year)?.year }
             .distinctUntilChanged()
             .collect { yr -> if (yr != null && state.isScrollInProgress) vm.scrolledTo(YearMonth.of(yr, 1)) }
     }
@@ -905,19 +961,46 @@ private fun YearView(vm: AppViewModel) {
     BoxWithConstraints {
     val perRow = if (maxWidth >= 560.dp) 4 else 3
     LazyColumn(state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 110.dp)) {
-        itemsIndexed(years, key = { _, y -> y }) { _, year ->
-            // The year title scrolls together with its twelve months.
-            Column(Modifier.padding(top = 12.dp, bottom = 12.dp).testTag("year_$year")) {
-                Text(year.toString(), style = TkType.title.copy(fontSize = 30.sp), modifier = Modifier.padding(start = 4.dp, bottom = 8.dp).semantics { heading() })
-                (1..12).chunked(perRow).forEach { row ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { m ->
-                            val month = YearMonth.of(year, m)
-                            MiniMonth(
-                                month, recorded,
-                                selected = YearMonth.from(vm.selectedDate) == month,
-                                modifier = Modifier.weight(1f),
-                            ) { haptics.commitIf(vm.openMonth(month), NavEvent.LEVEL_COMMIT) }
+        itemsIndexed(rows, key = { _, r ->
+            when (r) {
+                is com.tokipin.app.rules.YearRow.Year -> "y${r.year}"
+                is com.tokipin.app.rules.YearRow.Gap -> "gap_${r.from}"
+            }
+        }) { _, r ->
+            when (r) {
+                is com.tokipin.app.rules.YearRow.Gap -> GapRow(
+                    tag = "yearGap_${r.from}",
+                    label = if (r.from == r.to) "${r.from}" else "${r.from} – ${r.to}",
+                    description = if (r.from == r.to) stringResource(R.string.cd_gap_year, r.from) else stringResource(R.string.cd_gap_years, r.from, r.to, r.to - r.from + 1),
+                    expanded = r.expanded,
+                    onToggle = { vm.toggleYearGap(r.from) },
+                )
+                is com.tokipin.app.rules.YearRow.Year -> {
+                    val year = r.year
+                    // The year title scrolls together with its twelve months; a dot says the year has records.
+                    Column(Modifier.padding(top = 12.dp, bottom = 12.dp).testTag("year_$year")) {
+                        val hasRecords = year in recordedYears
+                        val yearDescription = stringResource(R.string.cd_year, year) + if (hasRecords) ", " + stringResource(R.string.cd_has_records) else ""
+                        Row(
+                            Modifier.padding(start = 4.dp, bottom = 8.dp).semantics(mergeDescendants = true) { contentDescription = yearDescription; heading() },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(year.toString(), style = TkType.title.copy(fontSize = 30.sp))
+                            if (hasRecords) SummaryDot(Modifier.align(Alignment.Top).padding(start = 4.dp, top = 8.dp).testTag("yearDot_$year"), size = 6.dp)
+                        }
+                        (1..12).chunked(perRow).forEach { row ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                row.forEach { m ->
+                                    val month = YearMonth.of(year, m)
+                                    MiniMonth(
+                                        month, recorded,
+                                        selected = YearMonth.from(vm.selectedDate) == month,
+                                        enabled = month in range,
+                                        modifier = Modifier.weight(1f),
+                                    ) { haptics.commitIf(vm.openMonth(month), NavEvent.LEVEL_COMMIT) }
+                                }
+                                repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
+                            }
                         }
                     }
                 }
@@ -927,38 +1010,66 @@ private fun YearView(vm: AppViewModel) {
     }
 }
 
+/** A small dot next to a year or month title: it has at least one record. */
 @Composable
-private fun MiniMonth(month: YearMonth, recorded: Set<LocalDate>, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun SummaryDot(modifier: Modifier = Modifier, size: androidx.compose.ui.unit.Dp = 5.dp) {
+    Box(modifier.size(size).clip(CircleShape).background(Tk.Focus))
+}
+
+/**
+ * One month in the year view. Three marks show together and never replace each other: (1) the
+ * selected day's month keeps its slate background and border, (2) each recorded day is bold with a
+ * small dot under its number, (3) the month title gets a summary dot. Months before the range or
+ * after the current month are dimmed and cannot be opened.
+ */
+@Composable
+private fun MiniMonth(month: YearMonth, recorded: Set<LocalDate>, selected: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val lead = CalendarRules.firstDayColumn(month, firstDayOfWeek())
     val count = recorded.count { YearMonth.from(it) == month }
-    val description = "${month.year} " + stringResource(R.string.cd_month, month.monthValue) + if (count > 0) ", $count" else ""
+    val description = if (!enabled) stringResource(R.string.cd_out_of_range, month.monthValue)
+    else stringResource(R.string.cd_year_month, month.year, month.monthValue) +
+        (if (count > 0) ", " + stringResource(R.string.cd_recorded_days, count) else "")
+    val shape = RoundedCornerShape(12.dp)
     Column(
         modifier
-            .pinchTarget(month)
+            .then(if (enabled) Modifier.pinchTarget(month) else Modifier)
             .testTag("mini_$month")
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) Color(0xFF4A5C6B).copy(alpha = 0.8f) else Color.Transparent)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clip(shape)
+            .then(if (selected) Modifier.background(Color(0xFF4A5C6B).copy(alpha = 0.8f)).border(1.dp, Tk.Focus.copy(alpha = 0.55f), shape) else Modifier)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.35f }
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = description; this.selected = selected }
             .padding(6.dp),
     ) {
-        Text(month.monthValue.toString(), style = TkType.label.copy(color = Tk.Primary, fontWeight = FontWeight.Medium))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(month.monthValue.toString(), style = TkType.label.copy(color = Tk.Primary, fontWeight = FontWeight.Medium))
+            if (count > 0) SummaryDot(Modifier.padding(start = 4.dp).testTag("monthDot_$month"), size = 4.dp)
+        }
         Spacer(Modifier.height(4.dp))
         val cells = lead + month.lengthOfMonth()
         repeat((cells + 6) / 7) { week ->
             Row(Modifier.fillMaxWidth()) {
                 repeat(7) { col ->
                     val day = week * 7 + col - lead + 1
-                    Box(Modifier.weight(1f).aspectRatio(1.1f), contentAlignment = Alignment.Center) {
+                    Box(Modifier.weight(1f).aspectRatio(0.9f), contentAlignment = Alignment.Center) {
                         if (day in 1..month.lengthOfMonth()) {
-                            val has = month.atDay(day) in recorded
-                            Text(
-                                day.toString(),
-                                fontSize = 7.sp,
-                                lineHeight = 8.sp,
-                                color = if (has) Tk.Primary else Tk.Muted,
-                                fontWeight = if (has) FontWeight.Bold else FontWeight.Normal,
-                            )
+                            val date = month.atDay(day)
+                            val has = date in recorded
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    day.toString(),
+                                    fontSize = 7.sp,
+                                    lineHeight = 8.sp,
+                                    color = if (has) Tk.Primary else Tk.Muted,
+                                    fontWeight = if (has) FontWeight.Bold else FontWeight.Normal,
+                                )
+                                // The record-day dot: shape, not only colour, marks a recorded day.
+                                Box(
+                                    Modifier.size(2.5.dp).clip(CircleShape)
+                                        .background(if (has) Tk.Focus else Color.Transparent)
+                                        .then(if (has) Modifier.testTag("dayDot_$date") else Modifier),
+                                )
+                            }
                         }
                     }
                 }

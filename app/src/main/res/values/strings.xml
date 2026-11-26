@@ -30,6 +30,7 @@
     <string name="undo">실행 취소</string>
     <string name="time_picker_ok">확인</string>
     <string name="cd_add_time">시간 추가</string>
+    <string name="cd_change_date">날짜 바꾸기</string>
     <string name="time_picker_cancel">취소</string>
 
     <!-- 홈과 탐색 -->
@@ -64,6 +65,17 @@
     <string name="month_number">%1$d</string>
     <string name="cd_month">%1$d월</string>
     <string name="cd_year_month">%1$d년 %2$d월</string>
+    <string name="cd_year">%1$d년</string>
+    <string name="cd_has_records">기록 있음</string>
+    <string name="cd_recorded_days">기록한 날 %1$d일</string>
+    <string name="cd_gap_months">%1$d년 %2$d월부터 %3$d년 %4$d월까지 기록 없는 %5$d개월</string>
+    <string name="cd_gap_years">%1$d년부터 %2$d년까지 기록 없는 %3$d년</string>
+    <string name="cd_gap_year">%1$d년, 기록 없는 해</string>
+    <string name="cd_out_of_range">%1$d월, 범위 밖</string>
+    <string name="cd_collapsed">접힘</string>
+    <string name="cd_expanded">펼침</string>
+    <string name="cd_expand">펼치기</string>
+    <string name="cd_collapse">접기</string>
     <string name="search_results">검색 결과</string>
 
     <!-- 불러오기 -->
@@ -114,6 +126,11 @@
     <!-- 개발용 빌드에서만 보이는 항목 -->
     <string name="debug_section">개발용 테스트 데이터</string>
     <string name="debug_samples">예시 기록 넣기</string>
+    <string name="debug_range_samples">달력 범위 예시 넣기</string>
+    <string name="debug_range_body">2026.11.26 기준의 빈 달과 빈 해를 확인해요. 이 기기의 기존 기록과 초안을 교체해요.</string>
+    <string name="debug_range_replace">교체</string>
+    <string name="debug_range_done">달력 범위 예시를 넣었어요.</string>
+    <string name="debug_range_failed">달력 범위 예시를 불러오지 못했어요.</string>
     <string name="debug_clear">모든 기록 지우기</string>
     <string name="debug_samples_done">예시 기록을 넣었어요.</string>
     <string name="debug_cleared">모든 기록을 지웠어요.</string>

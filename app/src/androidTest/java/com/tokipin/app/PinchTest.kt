@@ -40,6 +40,7 @@ class PinchTest {
     """.trimIndent()
 
     @Before fun seed() {
+        com.tokipin.app.rules.AppClock.override = java.time.LocalDate.of(2027, 3, 15)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(records)
         context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit().putBoolean("launched", true).commit()
@@ -90,7 +91,7 @@ class PinchTest {
         compose.waitUntil(3_000) { level("YEAR").exists() }
 
         // In over September in the year view → the September month calendar.
-        pinchAt(centerOf("9월, 1"), zoomIn = true)
+        pinchAt(centerOf("2026년 9월, 기록한 날"), zoomIn = true)
         compose.waitUntil(3_000) { level("MONTH").exists() }
         compose.onNode(hasContentDescription("2026.09.06", substring = true)).assertIsDisplayed()
 

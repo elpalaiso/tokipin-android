@@ -269,11 +269,83 @@ private fun EditorHeader(vm: AppViewModel, hasItems: Boolean) {
     val draft = vm.draft ?: return
     Box(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 12.dp)) {
         RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor, Modifier.align(Alignment.CenterStart))
-        Text(draft.localDate.fullLabel(), style = TkType.label, modifier = Modifier.align(Alignment.Center))
+        // The date in the middle opens the date picker; choosing applies the date to the draft only.
+        var picking by remember { mutableStateOf(false) }
+        val dateLabel = draft.localDate.fullLabel()
+        val changeDate = stringResource(R.string.cd_change_date)
+        Row(
+            Modifier
+                .align(Alignment.Center)
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClickLabel = changeDate, role = Role.Button) { picking = true }
+                .testTag("editorDate")
+                .semantics(mergeDescendants = true) { contentDescription = dateLabel }
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(dateLabel, style = TkType.label)
+            Spacer(Modifier.width(4.dp))
+            TkIcon(R.drawable.ic_chevron_right, size = 12.dp, tint = Tk.Secondary, modifier = Modifier.graphicsLayer { rotationZ = 90f })
+        }
+        if (picking) {
+            EntryDatePicker(
+                initial = draft.localDate,
+                lastMonth = vm.range.last,
+                onDismiss = { picking = false },
+                onConfirm = { picking = false; vm.changeDraftDate(it) },
+            )
+        }
         Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             if (hasItems) RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_select_items), vm::beginSelection)
             RoundIconButton(R.drawable.ic_check, stringResource(R.string.cd_save_record), vm::saveDraft)
         }
+    }
+}
+
+/**
+ * Native (Material) date picker for the entry date. Past years and months can be chosen directly;
+ * nothing after the current month can be a new record's date. Confirming only moves the draft;
+ * ✓ in the editor saves. Cancel changes nothing.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EntryDatePicker(initial: java.time.LocalDate, lastMonth: java.time.YearMonth, onDismiss: () -> Unit, onConfirm: (java.time.LocalDate) -> Unit) {
+    val utc = java.time.ZoneOffset.UTC
+    val lastDay = lastMonth.atEndOfMonth()
+    val state = androidx.compose.material3.rememberDatePickerState(
+        initialSelectedDateMillis = initial.atStartOfDay(utc).toInstant().toEpochMilli(),
+        yearRange = 1900..lastMonth.year,
+        selectableDates = object : androidx.compose.material3.SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) =
+                !java.time.Instant.ofEpochMilli(utcTimeMillis).atZone(utc).toLocalDate().isAfter(lastDay)
+            override fun isSelectableYear(year: Int) = year <= lastMonth.year
+        },
+    )
+    androidx.compose.material3.DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    state.selectedDateMillis?.let { onConfirm(java.time.Instant.ofEpochMilli(it).atZone(utc).toLocalDate()) } ?: onDismiss()
+                },
+                modifier = Modifier.testTag("datePickerOk"),
+            ) { Text(stringResource(R.string.time_picker_ok), color = Tk.Focus) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.time_picker_cancel), color = Tk.Secondary) } },
+        colors = androidx.compose.material3.DatePickerDefaults.colors(containerColor = Tk.Sheet),
+    ) {
+        androidx.compose.material3.DatePicker(
+            state = state,
+            colors = androidx.compose.material3.DatePickerDefaults.colors(
+                containerColor = Tk.Sheet,
+                selectedDayContainerColor = Tk.Focus,
+                selectedDayContentColor = Tk.OnFocus,
+                todayDateBorderColor = Tk.Secondary,
+                selectedYearContainerColor = Tk.Focus,
+                selectedYearContentColor = Tk.OnFocus,
+            ),
+        )
     }
 }
 

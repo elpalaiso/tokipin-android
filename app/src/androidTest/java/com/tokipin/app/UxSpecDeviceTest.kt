@@ -22,6 +22,8 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performSemanticsAction
@@ -75,7 +77,9 @@ class UxSpecDeviceTest {
         ]}
     """.trimIndent()
 
-    private fun launch(haptics: Boolean = true, data: String = records) {
+    private fun launch(haptics: Boolean = true, data: String = records, today: java.time.LocalDate = java.time.LocalDate.of(2027, 3, 15)) {
+        // Earlier tests use records up to 2027-01, so they run on 2027-03-15; range tests pin 2026-11-26.
+        com.tokipin.app.rules.AppClock.override = today
         File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(data)
         context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit()
             .putBoolean("launched", true).putBoolean("haptics", haptics).commit()
@@ -213,7 +217,7 @@ class UxSpecDeviceTest {
         val before = ticks()
         compose.onNodeWithText("오늘").performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("year_${java.time.LocalDate.now().year}").assertIsDisplayed()
+        compose.onNodeWithTag("year_${com.tokipin.app.rules.AppClock.today().year}").assertIsDisplayed()
         level("YEAR").assertExists()
         assertEquals(before, ticks())
     }
@@ -447,7 +451,7 @@ class UxSpecDeviceTest {
         val before = ticks()
         compose.onNodeWithText("오늘").performClick()
         compose.waitForIdle(); Thread.sleep(400)
-        assertTrue(railSelected(java.time.YearMonth.now().toString()))
+        assertTrue(railSelected(com.tokipin.app.rules.AppClock.thisMonth().toString()))
         assertEquals(before, ticks())
     }
 
@@ -663,6 +667,142 @@ class UxSpecDeviceTest {
         compose.onNodeWithTag("day_2026-12-15").performClick()
         compose.waitUntil(3_000) { exists(level("DAILY")) }
         compose.onNodeWithTag("dayEmpty_2026-12-15").assertExists()
+    }
+
+    // endregion
+
+
+    // region 달력 범위 (Tokipin-Calendar-Range, today = 2026-11-26, shared fixture)
+
+    private val rangeToday = java.time.LocalDate.of(2026, 11, 26)
+    private val fixture: String by lazy { context.assets.open("calendar-range-records.json").reader().readText() }
+
+    private fun launchRange() = launch(data = fixture, today = rangeToday)
+
+    private fun selectDay(date: String) {
+        scenario!!.onActivity { it.vm.openDay(java.time.LocalDate.parse(date)) }
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+    }
+
+    @Test fun yearViewShowsTheSelectedMonthFocusAndTheRecordDayDotsTogether() {
+        launchRange()
+        selectDay("2017-05-14")
+        menu("YEAR")
+        scrollTo("year_2017")
+        assertTrue("① 5월 focus", exists(compose.onNode(hasTestTag("mini_2017-05") and selected)))
+        compose.onNode(hasTestTag("dayDot_2017-05-14"), useUnmergedTree = true).assertExists() // ②
+        compose.onNode(hasTestTag("monthDot_2017-05"), useUnmergedTree = true).assertExists()  // ③
+        compose.onNode(hasTestTag("yearDot_2017"), useUnmergedTree = true).assertExists()
+        compose.onNode(list).performScrollToNode(hasTestTag("yearGap_2018"))
+        compose.onNodeWithTag("yearGap_2018").assertExists()
+        compose.onNodeWithTag("year_2019").assertDoesNotExist()
+        compose.onNode(list).performScrollToNode(hasTestTag("year_2026"))
+        compose.onNodeWithTag("mini_2026-12").assertIsNotEnabled()
+        // Today: November's focus and its 23–26 dots together; 3, 9, 13, 16 have none.
+        compose.onNodeWithText("오늘").performClick()
+        compose.waitForIdle(); Thread.sleep(300)
+        assertTrue(exists(compose.onNode(hasTestTag("mini_2026-11") and selected)))
+        (23..26).forEach { compose.onNode(hasTestTag("dayDot_2026-11-$it"), useUnmergedTree = true).assertExists() }
+        listOf("03", "09", "13", "16").forEach { compose.onNode(hasTestTag("dayDot_2026-11-$it"), useUnmergedTree = true).assertDoesNotExist() }
+    }
+
+    @Test fun yearGapOpensInPlaceAndCloses() {
+        launchRange()
+        menu("YEAR")
+        compose.onNode(list).performScrollToNode(hasTestTag("yearGap_2018"))
+        compose.onNodeWithTag("yearGap_2018").performClick()
+        compose.waitForIdle()
+        compose.onNode(list).performScrollToNode(hasTestTag("year_2020"))
+        compose.onNodeWithTag("year_2020").assertExists()
+        compose.onNode(list).performScrollToNode(hasTestTag("yearGap_2018"))
+        compose.onNodeWithTag("yearGap_2018").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("year_2020").assertDoesNotExist()
+    }
+
+    @Test fun monthViewStartsAtTheOldestMonthAndFoldsLongGaps() {
+        launchRange()
+        selectDay("2017-05-14")
+        menu("MONTH")
+        compose.onNode(list).performScrollToIndex(0)
+        compose.onNodeWithTag("month_2017-05").assertExists()
+        compose.onNode(list).performScrollToNode(hasTestTag("gap_2017-06"))
+        compose.onNodeWithTag("gap_2017-06").assertExists()
+        compose.onNode(list).performScrollToNode(hasTestTag("month_2024-06"))
+        compose.onNodeWithTag("month_2024-06").assertExists() // five empty months stay open
+        compose.onNode(list).performScrollToNode(hasTestTag("gap_2024-08"))
+        compose.onNodeWithTag("month_2024-09").assertDoesNotExist()
+        compose.onNodeWithTag("gap_2024-08").performClick()
+        compose.waitForIdle()
+        compose.onNode(list).performScrollToNode(hasTestTag("month_2025-01"))
+        compose.onNodeWithTag("month_2025-01").assertExists()
+        compose.onNode(list).performScrollToNode(hasTestTag("gap_2024-08"))
+        compose.onNodeWithTag("gap_2024-08").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("month_2024-09").assertDoesNotExist()
+        compose.onNode(list).performScrollToNode(hasTestTag("day_2026-10-15"))
+        compose.onNodeWithTag("day_2026-10-15").assertExists() // empty recent month: every date
+        compose.onNodeWithTag("month_2026-12").assertDoesNotExist()
+    }
+
+    @Test fun recordsRailStopsAtTheCurrentMonth() {
+        launchRange()
+        showRecordedMonth("2026-11")
+        compose.onNodeWithTag("rail_2026-12").assertDoesNotExist()
+        val w = bounds(compose.onNodeWithTag("recordsBody")).width / density
+        val before = ticks()
+        drag("recordsBody", -0.4f * w, 0f, 600, slow = true)
+        assertTrue("no month after the current one", railSelected("2026-11"))
+        assertEquals(before, ticks())
+    }
+
+    @Test fun pickerCancelKeepsTheDraftAndANewFragmentMovesAfterTheTargetsRecords() {
+        launchRange()
+        selectDay("2026-11-26")
+        val savedToday = savedValues("2026-11-26")
+        compose.onNodeWithTag("editDay").performClick()
+        compose.onNodeWithContentDescription("단어").performClick()
+        compose.onNodeWithContentDescription("단어 입력").performTextInput("파도")
+        compose.onNodeWithTag("editorDate").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("취소").performClick() // cancel: nothing changes
+        compose.onNodeWithText("파도").assertExists()
+        scenario!!.onActivity { it.vm.changeDraftDate(java.time.LocalDate.parse("2017-05-14")) }
+        compose.waitForIdle()
+        assertTrue(exists(compose.onNodeWithText("2017.05.14(일)")))
+        compose.onNodeWithContentDescription("기록 저장").performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        assertEquals(listOf("바닷가", "파도"), savedValues("2017-05-14"))
+        assertEquals("the other day is untouched", savedToday, savedValues("2026-11-26"))
+        // Saving again from the same draft path never duplicates.
+        assertEquals(1, savedValues("2017-05-14").count { it == "파도" })
+    }
+
+    @Test fun onlySavingAnEarlierDateExtendsTheCalendar() {
+        launchRange()
+        compose.onNodeWithTag("addRecord").performClick()
+        compose.onNodeWithContentDescription("단어 입력").performTextInput("옛날")
+        scenario!!.onActivity { it.vm.changeDraftDate(java.time.LocalDate.parse("2015-09-06")) }
+        back() // draft kept, nothing saved
+        compose.waitForIdle()
+        scenario!!.onActivity { assertEquals(java.time.YearMonth.of(2017, 5), it.vm.range.first) }
+        scenario!!.onActivity { it.vm.openEditor(java.time.LocalDate.parse("2015-09-06")) }
+        compose.onNodeWithContentDescription("기록 저장").performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        scenario!!.onActivity { assertEquals(java.time.YearMonth.of(2015, 9), it.vm.range.first) }
+        assertEquals(listOf("옛날"), savedValues("2015-09-06"))
+    }
+
+    @Test fun datePickerOffersNothingAfterThisMonth() {
+        launchRange()
+        compose.onNodeWithTag("addRecord").performClick()
+        compose.onNodeWithTag("editorDate").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("datePickerOk").assertExists()
+        scenario!!.onActivity {
+            assertTrue(it.vm.range.canWrite(java.time.LocalDate.of(2026, 11, 30)))
+            assertTrue(!it.vm.range.canWrite(java.time.LocalDate.of(2026, 12, 1)))
+        }
     }
 
     // endregion

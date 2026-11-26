@@ -221,7 +221,7 @@ object SampleData {
     fun start(today: LocalDate): LocalDate = today.minusYears(3).plusDays(1)
 
     /** Every sample day from [start] to [today], as a journal. */
-    fun journal(today: LocalDate = LocalDate.now()): Journal {
+    fun journal(today: LocalDate = com.tokipin.app.rules.AppClock.today()): Journal {
         var journal = Journal()
         var day = start(today)
         while (!day.isAfter(today)) {
