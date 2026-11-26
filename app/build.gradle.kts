@@ -23,6 +23,8 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Each device test runs in its own process with fresh app data (no state carried over).
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
 
     buildTypes {
@@ -37,6 +39,10 @@ android {
         compose = true
     }
 
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -44,16 +50,16 @@ android {
 }
 
 /**
- * Native UX v0.1 shared with iOS: one copy lives in the web repo (../tokipin/native-spec/v0.1), not
+ * Native UX v0.2 shared with iOS: one copy lives in the web repo (../tokipin/native-spec/v0.2), not
  * in this repository. Tests read it from there; the SHA-256 pin makes a changed or missing spec fail
  * the build instead of silently testing against another version.
  */
-val uxSpecDir = rootProject.file("../tokipin/native-spec/v0.1")
-val uxSpecSha256 = "33c5f8d64e76b345fbc49ad7a76fc5ac5cc6556b6f0a7db061bfb2540e37c452"
+val uxSpecDir = rootProject.file("../tokipin/native-spec/v0.2")
+val uxSpecSha256 = "418fbe56ed8127f591a295b6fb924b683a94825e2d322d535a23f2b2c0105ea9"
 
 val verifyUxSpec by tasks.registering {
     group = "verification"
-    val spec = uxSpecDir.resolve("Tokipin-Native-UX-v0.1.json")
+    val spec = uxSpecDir.resolve("Tokipin-Native-UX-v0.2.json")
     inputs.file(spec)
     doLast {
         if (!spec.isFile) throw GradleException("UX spec not found at $spec (clone elpalaiso/tokipin next to this repo)")
@@ -123,4 +129,5 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.core)
+    androidTestUtil(libs.androidx.test.orchestrator)
 }

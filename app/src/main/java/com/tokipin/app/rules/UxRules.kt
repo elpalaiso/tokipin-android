@@ -14,7 +14,7 @@ import kotlin.math.abs
  * vibration) only converts its events into these calls.
  */
 object UxSpec {
-    const val VERSION = "0.1"
+    const val VERSION = "0.2"
 
     // Swipe (W = usable width of the gesture area, in dp)
     const val AXIS_LOCK_RATIO = 1.3f
@@ -121,7 +121,10 @@ enum class NavEvent(val specName: String, val commits: Boolean) {
     CANCEL("cancel", false),
     LEVEL_LIMIT("levelLimit", false),
     RESELECT("reselect", false),
-    TODAY("today", false);
+    TODAY("today", false),
+    RECORDED_MONTH_COMMIT("recordedDaysMonthCommit", true),
+    RECORDED_MONTH_PREVIEW("recordedDaysMonthPreview", false),
+    RECORDED_RAIL_COAST("recordedDaysRailCoast", false);
 
     companion object {
         fun fromSpec(name: String) = entries.first { it.specName == name }
@@ -257,5 +260,94 @@ object EmojiRules {
         val filtered = filter(after.text)
         val cursor = filter(after.text.substring(0, after.selectionEnd.coerceIn(0, after.text.length))).length
         return Edit(filtered, cursor, cursor)
+    }
+}
+
+/**
+ * 기록한 날 v0.2 · one month per page. A pure model of the committed month, the preview month while
+ * the body or the rail is moving, and the selected day, so the shared cases can drive it directly
+ * and the screen has one place where a month is committed (and the one haptic tick is asked for).
+ */
+class RecordedMonths(committed: YearMonth, selectedDay: java.time.LocalDate) {
+    var committed: YearMonth = committed
+        private set
+    /** The month the body or rail is heading to while moving; null when at rest. */
+    var preview: YearMonth? = null
+        private set
+    var selectedDay: java.time.LocalDate = selectedDay
+        private set
+
+    /** Header year and the TalkBack "selected" month follow the committed month only. */
+    val headerYear: Int get() = committed.year
+    val centered: YearMonth get() = committed
+
+    /** Entering the view (pinch, menu, back) or reloading: no navigation event of its own. */
+    fun reset(month: YearMonth, selected: java.time.LocalDate) {
+        committed = month
+        selectedDay = selected
+        preview = null
+    }
+
+    /** Body drag: the neighbour month is a preview; header and committed month stay. */
+    fun dragging(fraction: Float): List<NavEvent> {
+        preview = if (fraction == 0f) null else committed.plusMonths(if (fraction < 0) 1 else -1)
+        return listOf(NavEvent.DRAG_PROGRESS, NavEvent.RECORDED_MONTH_PREVIEW)
+    }
+
+    /** Body release, judged with the same swipe rules as the day view (one month at most). */
+    fun bodyRelease(
+        width: Float, dx: Float, dy: Float, vx: Float,
+        systemEdgeBack: Boolean = false, osCancel: Boolean = false, slopExceeded: Boolean = true,
+    ): List<NavEvent> {
+        preview = null
+        val step = SwipeRules.decide(width, dx, dy, vx, 1, systemEdgeBack, osCancel, slopExceeded)
+        return if (step == 0) listOf(NavEvent.CANCEL) else commit(committed.plusMonths(step.toLong()))
+    }
+
+    /** Rail coasting: the month nearest the centre is only a preview. */
+    fun railCoast(nearest: YearMonth): List<NavEvent> {
+        preview = nearest
+        return listOf(NavEvent.RECORDED_RAIL_COAST)
+    }
+
+    /** Rail at rest [slots] month-widths away from the committed month: snap to the nearest month. */
+    fun railSettle(slots: Float): List<NavEvent> {
+        preview = null
+        return commit(committed.plusMonths(kotlin.math.round(slots).toLong()))
+    }
+
+    fun tap(month: YearMonth): List<NavEvent> { preview = null; return commit(month) }
+
+    fun cancel(): List<NavEvent> { preview = null; return listOf(NavEvent.CANCEL) }
+
+    /** Today: the month of today, today selected, silent even though the month changes. */
+    fun today(today: java.time.LocalDate): List<NavEvent> {
+        preview = null
+        committed = YearMonth.from(today)
+        selectedDay = today
+        return listOf(NavEvent.TODAY)
+    }
+
+    private fun commit(month: YearMonth): List<NavEvent> {
+        if (month == committed) return listOf(NavEvent.RESELECT)
+        committed = month
+        return listOf(NavEvent.RECORDED_MONTH_COMMIT)
+    }
+
+    companion object {
+        /** Months shown either side of the centre for a rail [widthDp] wide at [fontScale]. */
+        fun sideSlots(widthDp: Float, fontScale: Float): Int {
+            val slot = 64f * fontScale.coerceAtLeast(1f)
+            return (((widthDp / slot) - 1) / 2).toInt().coerceIn(1, 5)
+        }
+
+        fun window(center: YearMonth, side: Int): List<YearMonth> = (-side..side).map { center.plusMonths(it.toLong()) }
+
+        /** The supported range; the rail runs across years and stops at the ends without wrapping. */
+        val FIRST: YearMonth = YearMonth.of(1970, 1)
+        val LAST: YearMonth = YearMonth.of(2099, 12)
+        fun index(month: YearMonth): Int = ((month.year - FIRST.year) * 12 + month.monthValue - 1)
+        fun at(index: Int): YearMonth = FIRST.plusMonths(index.toLong())
+        val COUNT: Int = index(LAST) + 1
     }
 }

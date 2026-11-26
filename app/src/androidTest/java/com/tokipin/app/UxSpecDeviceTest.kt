@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipeLeft
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -52,7 +53,7 @@ class UxSpecDeviceTest {
 
     private val spec by lazy {
         Json.parseToJsonElement(
-            InstrumentationRegistry.getInstrumentation().context.assets.open("Tokipin-Native-UX-v0.1.json").reader().readText(),
+            InstrumentationRegistry.getInstrumentation().context.assets.open("Tokipin-Native-UX-v0.2.json").reader().readText(),
         ).jsonObject
     }
     private val swipeSpec get() = spec["swipe"]!!.jsonObject
@@ -71,8 +72,8 @@ class UxSpecDeviceTest {
         ]}
     """.trimIndent()
 
-    private fun launch(haptics: Boolean = true) {
-        File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(records)
+    private fun launch(haptics: Boolean = true, data: String = records) {
+        File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(data)
         context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit()
             .putBoolean("launched", true).putBoolean("haptics", haptics).commit()
         scenario = ActivityScenario.launch(MainActivity::class.java)
@@ -93,21 +94,36 @@ class UxSpecDeviceTest {
         compose.waitUntil(3_000) { exists(level(levelName)) }
     }
 
+    /** The vertical list on screen (not the month rail). */
+    private val list = hasScrollAction() and !hasAnyAncestor(hasTestTag("monthRail"))
+
     private fun scrollTo(tag: String) {
-        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(tag))
+        compose.onNode(list).performScrollToNode(hasTestTag(tag))
         compose.waitForIdle()
         // Bring it clear of the floating 오늘/+ bar so touches land on the calendar.
         val root = bounds(compose.onRoot())
         val y = bounds(compose.onNodeWithTag(tag)).center.y
         if (y > root.height * 0.55f) {
-            compose.onNode(hasScrollAction()).performTouchInput {
+            compose.onNode(list).performTouchInput {
                 swipeUp(startY = centerY, endY = centerY - (y - root.height * 0.45f), durationMillis = 600)
             }
             compose.waitForIdle()
         }
     }
 
+    /** 기록한 날 shows one month per page: go to the card's month on the rail first. */
+    private fun showRecordedMonth(month: String) {
+        if (!exists(compose.onNode(hasTestTag("rail_$month") and selected))) {
+            compose.onNode(hasScrollAction() and hasAnyAncestor(hasTestTag("monthRail"))).performScrollToNode(hasTestTag("rail_$month"))
+            compose.onNodeWithTag("rail_$month").performClick()
+            compose.waitForIdle()
+            Thread.sleep(500)
+            compose.waitForIdle()
+        }
+    }
+
     private fun openDayFromRecords(date: String) {
+        showRecordedMonth(date.substring(0, 7))
         scrollTo("card_$date")
         compose.onNodeWithTag("card_$date").performClick()
         compose.waitUntil(3_000) { exists(level("DAILY")) }
@@ -146,7 +162,7 @@ class UxSpecDeviceTest {
         launch()
         val case = case("calendar.monthOverflow")["expected"]!!.jsonObject
         menu("MONTH")
-        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag("monthLabel_2026-10"))
+        compose.onNode(list).performScrollToNode(hasTestTag("monthLabel_2026-10"))
         compose.waitForIdle()
         val label = bounds(compose.onNodeWithTag("monthLabel_2026-10"))
         val first = bounds(compose.onNodeWithTag("day_2026-10-01"))
@@ -314,6 +330,150 @@ class UxSpecDeviceTest {
         pinch(c, ramp(1f, 1.02f, 3), liftOneFirst = true)
         level("MONTH").assertExists()
         assertEquals(before, ticks())
+    }
+
+    // endregion
+
+
+    // region 기록한 날 v0.2
+
+    /** Nov 2026 with cards, an empty December, January 2027, and a long October for reading. */
+    private val monthsData: String by lazy {
+        val days = mutableListOf<String>()
+        days += """{"date":"2026-11-25","updatedAt":"2026-11-25T10:00:00Z","items":[${item("word", "살구잼", "n1")}]}"""
+        days += """{"date":"2026-11-26","updatedAt":"2026-11-26T10:00:00Z","items":[${item("word", "귤", "n2")}]}"""
+        days += """{"date":"2027-01-03","updatedAt":"2027-01-03T10:00:00Z","items":[${item("word", "새해", "j1")}]}"""
+        for (d in 1..28) {
+            val date = "2026-10-%02d".format(d)
+            days += """{"date":"$date","updatedAt":"${date}T10:00:00Z","items":[${item("word", "시월 $d", "o$d")},${item("place", "공원", "op$d")}]}"""
+        }
+        """{"version":1,"days":[${days.joinToString(",")}]}"""
+    }
+
+    private fun header(year: Int) = exists(compose.onNode(hasText(year.toString()) and !hasAnyAncestor(hasTestTag("monthRail"))))
+    private fun railSelected(month: String) = exists(compose.onNode(hasTestTag("rail_$month") and selected))
+
+    @Test fun bodySwipesOneMonthThroughAnEmptyDecemberIntoTheNextYear() {
+        launch(data = monthsData)
+        showRecordedMonth("2026-11")
+        val w = bounds(compose.onNodeWithTag("recordsBody")).width / density
+        var before = ticks()
+        drag("recordsBody", -0.23f * w, 0f, 900, slow = true)
+        assertTrue("December", railSelected("2026-12"))
+        compose.onNodeWithTag("monthEmpty").assertExists()
+        assertTrue(header(2026))
+        assertEquals(before + 1, ticks())
+        // Half way to January and back: cancelled, still 2026, no tick.
+        before = ticks()
+        compose.onNodeWithTag("recordsBody").performTouchInput {
+            val start = Offset(width * 0.7f, height * 0.3f)
+            down(start)
+            repeat(10) { i -> moveTo(start + Offset(-0.5f * width * (i + 1) / 10, 0f), 40) }
+            repeat(10) { i -> moveTo(start + Offset(-0.5f * width + 0.48f * width * (i + 1) / 10, 0f), 40) }
+            repeat(6) { moveBy(Offset.Zero, 60) }
+            up()
+        }
+        compose.waitForIdle(); Thread.sleep(400); compose.waitForIdle()
+        assertTrue(railSelected("2026-12"))
+        assertTrue(header(2026))
+        assertEquals(before, ticks())
+        // All the way: January 2027, header 2027, one tick.
+        drag("recordsBody", -0.4f * w, 0f, 900, slow = true)
+        assertTrue(railSelected("2027-01"))
+        assertTrue(header(2027))
+        assertEquals(before + 1, ticks())
+        // A long fling still moves one month only.
+        drag("recordsBody", 0.9f * w, 0f, 120, slow = false)
+        assertTrue("one page even for a long fling", railSelected("2026-12"))
+        assertEquals(before + 2, ticks())
+        assertEquals("selected day untouched", true, exists(compose.onNode(hasTestTag("rail_2026-12"))))
+    }
+
+    @Test fun railTapAndFlingCommitOnceEach() {
+        launch(data = monthsData)
+        showRecordedMonth("2026-11")
+        var before = ticks()
+        compose.onNodeWithTag("rail_2027-01").performClick()
+        compose.waitForIdle(); Thread.sleep(500)
+        assertTrue(railSelected("2027-01"))
+        assertEquals(before + 1, ticks())
+        // Re-selecting the centre month is silent.
+        compose.onNodeWithTag("rail_2027-01").performClick()
+        compose.waitForIdle()
+        assertEquals(before + 1, ticks())
+        // A fast fling to the left passes several months and lands on one: one tick in total.
+        before = ticks()
+        compose.onNodeWithTag("monthRail").performTouchInput { swipeLeft(startX = width * 0.8f, endX = width * 0.2f, durationMillis = 80) }
+        compose.waitForIdle(); Thread.sleep(1200); compose.waitForIdle()
+        assertEquals(before + 1, ticks())
+        assertTrue("moved forward", !railSelected("2027-01"))
+    }
+
+    @Test fun closingADayReturnsToTheSameMonthCardAndOffset() {
+        launch(data = monthsData)
+        showRecordedMonth("2026-10")
+        compose.onNodeWithTag("monthPage_2026-10").performTouchInput { swipeUp(startY = height * 0.8f, endY = height * 0.3f, durationMillis = 700) }
+        compose.waitForIdle(); Thread.sleep(300)
+        val card = "card_2026-10-12"
+        scrollTo(card)
+        val top = bounds(compose.onNodeWithTag(card)).top
+        compose.onNodeWithTag(card).performClick()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        back()
+        compose.waitUntil(3_000) { exists(level("RECORDS")) }
+        compose.waitForIdle(); Thread.sleep(300)
+        assertTrue(railSelected("2026-10"))
+        assertEquals(top, bounds(compose.onNodeWithTag(card)).top, 3f)
+    }
+
+    @Test fun verticalReadingToTheEndKeepsTheMonth() {
+        launch(data = monthsData)
+        showRecordedMonth("2026-10")
+        val before = ticks()
+        repeat(4) {
+            compose.onNodeWithTag("monthPage_2026-10").performTouchInput { swipeUp(startY = height * 0.85f, endY = height * 0.15f, durationMillis = 250) }
+        }
+        compose.waitForIdle(); Thread.sleep(500)
+        assertTrue(railSelected("2026-10"))
+        assertEquals(before, ticks())
+    }
+
+    @Test fun todayGoesToTodaysMonthSilently() {
+        launch(data = monthsData)
+        showRecordedMonth("2026-10")
+        val before = ticks()
+        compose.onNodeWithText("오늘").performClick()
+        compose.waitForIdle(); Thread.sleep(400)
+        assertTrue(railSelected(java.time.YearMonth.now().toString()))
+        assertEquals(before, ticks())
+    }
+
+    @Test fun aSecondFingerTurnsAMonthDragIntoAPinch() {
+        launch(data = monthsData)
+        showRecordedMonth("2026-11")
+        val card = bounds(compose.onNodeWithTag("card_2026-11-25")).center
+        val before = ticks()
+        val half = 70f * density
+        compose.onRoot().performTouchInput {
+            down(0, card)
+            repeat(4) { updatePointerTo(0, card + Offset(-12f * density * (it + 1), 0f)); move(30) } // body drag starts
+            down(1, card + Offset(half, 0f))
+            ramp(1f, 1.3f).forEach { sc ->
+                updatePointerTo(0, card - Offset(half * sc, 0f)); updatePointerTo(1, card + Offset(half * sc, 0f)); move(30)
+            }
+            up(1); move(60); up(0)
+        }
+        compose.waitForIdle(); Thread.sleep(500); compose.waitForIdle()
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        assertEquals("one tick for the level, none for a month", before + 1, ticks())
+        assertTrue(railDaySelected("2026.11.25(수)"))
+    }
+
+    @Test fun railMonthsReadTheirYearForTalkBack() {
+        launch(data = monthsData)
+        showRecordedMonth("2026-12")
+        compose.onNode(hasContentDescription("2027년 1월") and hasTestTag("rail_2027-01")).assertExists()
+        assertTrue(exists(compose.onNode(hasContentDescription("2026년 12월") and selected)))
     }
 
     // endregion

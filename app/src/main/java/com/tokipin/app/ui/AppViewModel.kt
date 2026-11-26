@@ -80,6 +80,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val firstLaunch = !store.hasLaunchedBefore
             store.hasLaunchedBefore = true
             selectedDate = journal.recordedDates().firstOrNull() ?: LocalDate.now()
+            recordedMonth = YearMonth.from(selectedDate)
             when {
                 draft?.hasContent == true -> screen = Screen.Editor
                 firstLaunch && journal.isEmpty -> {
@@ -247,6 +248,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         selection = null
         clearUndo()
         if (journal.itemsOn(date).isNotEmpty()) selectedDate = date
+        recordedMonth = YearMonth.from(selectedDate)
         screen = Screen.Browse
         focusRequest++
     }
@@ -280,6 +282,40 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun rememberScroll(level: Level, pos: ScrollPos) { scrollMemory[level] = pos }
     fun savedScroll(level: Level): ScrollPos? = scrollMemory[level]
 
+    // region 기록한 날 (v0.2): one committed month per page, separate from the selected day.
+
+    private val months = com.tokipin.app.rules.RecordedMonths(YearMonth.now(), LocalDate.now())
+    var recordedMonth by mutableStateOf(YearMonth.now()); private set
+    var recordedPreview by mutableStateOf<YearMonth?>(null); private set
+
+    /** Where the person was reading when they opened a day from a card (month, top card, offset). */
+    data class RecordedRestore(val month: YearMonth, val topCard: LocalDate?, val offset: Int)
+    var recordedRestore: RecordedRestore? = null
+        private set
+
+    /** Runs one recorded-days action and returns its events for the single haptic decision. */
+    fun recorded(action: com.tokipin.app.rules.RecordedMonths.() -> List<com.tokipin.app.rules.NavEvent>): List<com.tokipin.app.rules.NavEvent> {
+        months.reset(recordedMonth, selectedDate)
+        val events = months.action()
+        recordedMonth = months.committed
+        recordedPreview = months.preview
+        if (months.selectedDay != selectedDate) selectedDate = months.selectedDay
+        if (com.tokipin.app.rules.NavEvent.RECORDED_MONTH_COMMIT in events || com.tokipin.app.rules.NavEvent.TODAY in events) {
+            visibleMonth = recordedMonth
+            entry = ListEntry.Anchor(null)
+            focusRequest++
+        }
+        return events
+    }
+
+    /** Opening a day from a recorded-days card remembers the reading position first. */
+    fun openDayFromRecords(date: LocalDate, topCard: LocalDate?, offset: Int): Boolean {
+        recordedRestore = RecordedRestore(recordedMonth, topCard, offset)
+        return openDay(date)
+    }
+
+    // endregion
+
     /** Scrolling only changes what is visible; the selected day stays (12월 → 1월 included). */
     fun scrolledTo(month: YearMonth) { visibleMonth = month }
 
@@ -287,6 +323,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun changeLevel(next: Level, entryMode: ListEntry = ListEntry.Anchor(null)): Boolean {
         if (next == level) return false
         if (next == Level.DAILY) dailyReturnLevel = level
+        if (next == Level.RECORDS) {
+            val restore = recordedRestore
+            recordedMonth = if (entryMode is ListEntry.Restore && restore != null) restore.month else YearMonth.from(selectedDate)
+            recordedPreview = null
+        }
         level = next
         entry = entryMode
         visibleMonth = YearMonth.from(selectedDate)
@@ -340,6 +381,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Today keeps the current view and brings today back on screen, even if it is already selected. Silent. */
     fun goToday() {
+        if (level == Level.RECORDS) { recorded { today(LocalDate.now()) }; return }
         selectedDate = LocalDate.now()
         visibleMonth = YearMonth.now()
         highlightId = null
@@ -401,6 +443,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openSearchResult(date: LocalDate, entry: Entry) {
         selectedDate = date
+        recordedMonth = YearMonth.from(date)
         if (level != Level.DAILY) dailyReturnLevel = level
         level = Level.DAILY
         this.entry = ListEntry.Anchor(null)
@@ -437,6 +480,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             transientMessage = res.getString(message)
             selectedDate = next.recordedDates().firstOrNull() ?: LocalDate.now()
             visibleMonth = YearMonth.from(selectedDate)
+            recordedMonth = visibleMonth
             entry = ListEntry.Anchor(null)
             focusRequest++
         }

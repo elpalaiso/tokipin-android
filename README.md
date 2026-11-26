@@ -27,15 +27,16 @@ With an emulator or device connected, `./gradlew :app:connectedDebugAndroidTest`
 - **Haptics**: one `SEGMENT_TICK` (API 34+, `CLOCK_TICK` before) when the day or level settles; off when the setting is off.
 - **Language**: Korean only for now. Every string is in `res/values/strings.xml` and dates use `YYYY.MM.DD(요일)` / cards `DD / 요일` from the app locale, so devices in other languages still get a fully Korean app. To add a language: translate `strings.xml` into `values-<lang>/`, add the code to `AppLocale.supported` and `res/xml/locales_config.xml`.
 
-## Native UX v0.1 (shared with iOS)
+## Native UX v0.2 (shared with iOS)
 
-The interaction rules come from `Tokipin-Native-UX-v0.1` (md + json with 59 cases), kept once in the web repo at `../tokipin/native-spec/v0.1/`, not copied here. The build pins its SHA-256 (`verifyUxSpec`), unit tests run every case against `rules/UxRules.kt`, and `UxSpecDeviceTest` drives the cases that need a screen with real touches.
+The interaction rules come from `Tokipin-Native-UX-v0.2` (md + json with 82 cases: the 59 of v0.1 plus 23 for recorded days), kept once in the web repo at `../tokipin/native-spec/v0.2/`, not copied here. The build pins its SHA-256 (`verifyUxSpec`), unit tests run every case against `rules/UxRules.kt`, and `UxSpecDeviceTest` drives the cases that need a screen with real touches.
 
+- 기록한 날 (v0.2): a fixed year header and a centred month rail over one page per month. The body pages ±1 month with the day view's swipe rules, the rail follows the drag, can be tapped or flung across years and snaps to the nearest month; empty months are included. `RecordedMonths` in `UxRules.kt` is the single place a month is committed (one haptic tick). Device tests run in separate processes through the AndroidX Test Orchestrator.
 - All tuning values and product rules are in `rules/UxRules.kt` (`UxSpec`, `SwipeRules`, `PinchRules`, `HapticRules`, `CalendarRules`, `TimeRules`, `EmojiRules`). Platform code (`SwipePager`, `Gestures`, `Haptics`, `TimeDisplay`) only converts Android events.
 - Emoji data: `rules/EmojiData.kt` holds Unicode 15.0 Extended_Pictographic / Emoji_Presentation / Emoji_Modifier ranges, generated from the JDK 21 `Character` API so every Android version uses the same table.
 
 ```sh
-./gradlew :app:testDebugUnitTest                 # 55 JSON cases + rules tests (JVM)
+./gradlew :app:testDebugUnitTest                 # 77 JSON cases + rules + sample data (JVM)
 ANDROID_SERIAL=<device> ./gradlew :app:connectedDebugAndroidTest   # gestures, calendar state, haptic counts
 ```
 

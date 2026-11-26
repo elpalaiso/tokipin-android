@@ -33,6 +33,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -234,7 +237,10 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
     val parent = when (vm.level) {
         Level.DAILY -> if (vm.openedFromSearch) null else vm.selectedDate.monthValue.toString()
         // The top bar names the year in view; scrolling never changes the selected day.
-        Level.RECORDS, Level.MONTH -> vm.visibleMonth.year.toString()
+        // 기록한 날 shows the committed month's year (it changes only when a month settles);
+        // the month calendar shows the year in view.
+        Level.RECORDS -> vm.recordedMonth.year.toString()
+        Level.MONTH -> vm.visibleMonth.year.toString()
         Level.YEAR -> null
     }
     Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -528,66 +534,185 @@ private sealed interface RecordRow {
     data class Cards(val dates: List<LocalDate>) : RecordRow
 }
 
-/** Months newest first; inside a month the cards alternate one wide, then two side by side. */
-private fun recordRows(dates: List<LocalDate>): List<RecordRow> {
-    val rows = mutableListOf<RecordRow>()
-    dates.groupBy { YearMonth.from(it) }.forEach { (month, days) ->
-        rows += RecordRow.Header(month)
-        var i = 0
-        var wide = true
-        while (i < days.size) {
-            val take = if (wide) 1 else 2
-            rows += RecordRow.Cards(days.subList(i, minOf(i + take, days.size)))
-            i += take
-            wide = !wide
-        }
+/** One month's cards, newest first, alternating one wide card and two side by side. */
+private fun monthRows(dates: List<LocalDate>): List<RecordRow.Cards> {
+    val rows = mutableListOf<RecordRow.Cards>()
+    var i = 0
+    var wide = true
+    while (i < dates.size) {
+        val take = if (wide) 1 else 2
+        rows += RecordRow.Cards(dates.subList(i, minOf(i + take, dates.size)))
+        i += take
+        wide = !wide
     }
     return rows
 }
 
-private fun RecordRow.month(): YearMonth = when (this) {
-    is RecordRow.Header -> month
-    is RecordRow.Cards -> YearMonth.from(dates.first())
+/**
+ * 기록한 날 v0.2: a fixed year header and month rail above one page per month. The body pages
+ * ±1 month with the day view's swipe rules; the rail follows the body's drag progress, can be
+ * tapped or flung across months and years, and snaps to the nearest month. Every month commit goes
+ * through vm.recorded { … }, the single place that changes the month and decides the one tick.
+ */
+@Composable
+private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
+    val reduceMotion = LocalReduceMotion.current
+    val haptics = LocalHaptics.current
+    var dragFraction by remember { mutableStateOf(0f) }
+    Column(Modifier.fillMaxSize()) {
+        MonthRail(vm, dragFraction)
+        SwipePager(
+            page = vm.recordedMonth,
+            neighbor = { m, d -> m.plusMonths(d.toLong()) },
+            onCommit = { dir -> haptics.report(*vm.recorded { tap(committed.plusMonths(dir.toLong())) }.toTypedArray()) },
+            reduceMotion = reduceMotion,
+            onProgress = { dragFraction = it },
+            modifier = Modifier.fillMaxSize().testTag("recordsBody"),
+        ) { month -> MonthPage(vm, month, onLongPress) }
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun MonthRail(vm: AppViewModel, dragFraction: Float) {
+    val haptics = LocalHaptics.current
+    val reduceMotion = LocalReduceMotion.current
+    val density = LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxWidth().height(52.dp).testTag("monthRail")) {
+        // Neighbours on each side adapt to the width and the text size (2 on phones by default).
+        val side = com.tokipin.app.rules.RecordedMonths.sideSlots(maxWidth.value, density.fontScale)
+        val slot = maxWidth / (2 * side + 1)
+        val state = rememberLazyListState(initialFirstVisibleItemIndex = com.tokipin.app.rules.RecordedMonths.index(vm.recordedMonth))
+        val snap = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(
+            state, androidx.compose.foundation.gestures.snapping.SnapPosition.Center,
+        )
+        val dragged by state.interactionSource.collectIsDraggedAsState()
+        var touched by remember { mutableStateOf(false) }
+        LaunchedEffect(dragged) { if (dragged) touched = true }
+
+        fun centeredIndex(): Int {
+            val info = state.layoutInfo
+            val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+            return info.visibleItemsInfo.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }?.index
+                ?: state.firstVisibleItemIndex
+        }
+
+        // The person flung or dragged the rail: preview while coasting, commit once at rest.
+        LaunchedEffect(state) {
+            snapshotFlow { state.isScrollInProgress }.collect { moving ->
+                if (!moving && touched) {
+                    touched = false
+                    val month = com.tokipin.app.rules.RecordedMonths.at(centeredIndex())
+                    haptics.report(*vm.recorded { tap(month) }.toTypedArray())
+                }
+            }
+        }
+        LaunchedEffect(state) {
+            snapshotFlow { if (touched) centeredIndex() else -1 }.distinctUntilChanged().collect { i ->
+                if (i >= 0) vm.recorded { railCoast(com.tokipin.app.rules.RecordedMonths.at(i)) }
+            }
+        }
+        // Follow the committed month and the body's drag progress (same fraction, same direction).
+        LaunchedEffect(vm.recordedMonth, dragFraction) {
+            if (touched) return@LaunchedEffect
+            val target = com.tokipin.app.rules.RecordedMonths.index(vm.recordedMonth)
+            val slotPx = with(density) { slot.toPx() }
+            if (dragFraction != 0f) {
+                val pos = target - dragFraction
+                val whole = kotlin.math.floor(pos).toInt()
+                state.scrollToItem(whole, ((pos - whole) * slotPx).toInt())
+            } else if (state.firstVisibleItemIndex != target || state.firstVisibleItemScrollOffset != 0) {
+                if (reduceMotion || kotlin.math.abs(state.firstVisibleItemIndex - target) > side * 3) state.scrollToItem(target)
+                else state.animateScrollToItem(target)
+            }
+        }
+
+        LazyRow(
+            state = state,
+            flingBehavior = snap,
+            contentPadding = PaddingValues(horizontal = slot * side),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(com.tokipin.app.rules.RecordedMonths.COUNT) { i ->
+                val month = com.tokipin.app.rules.RecordedMonths.at(i)
+                val current = month == vm.recordedMonth
+                val name = stringResource(R.string.cd_year_month, month.year, month.monthValue)
+                Box(
+                    Modifier
+                        .width(slot)
+                        .fillMaxSize()
+                        .testTag("rail_$month")
+                        .clickable(role = Role.Tab) { haptics.report(*vm.recorded { tap(month) }.toTypedArray()) }
+                        .semantics { contentDescription = name; selected = current },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (current) Box(Modifier.size(40.dp).clip(CircleShape).background(Tk.Focus.copy(alpha = 0.18f)))
+                    Text(
+                        month.monthValue.toString(),
+                        style = TkType.title.copy(
+                            fontSize = if (current) 20.sp else 16.sp,
+                            color = if (current) Tk.Primary else Tk.Muted,
+                        ),
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
-private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
+private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDate) -> Unit) {
     val haptics = LocalHaptics.current
-    val rows = remember(vm.journal) { recordRows(vm.journal.recordedDates()) }
+    val dates = remember(vm.journal, month) { vm.journal.recordedDates().filter { YearMonth.from(it) == month } }
+    val rows = remember(dates) { monthRows(dates) }
     val state = rememberLazyListState()
-    TrackScroll(vm, Level.RECORDS, state) { y ->
-        // The selected day's card; an empty day shows the nearest real record of its month, and the
-        // selected day itself stays as it is.
-        val idx = rows.indexOfFirst { it is RecordRow.Cards && vm.selectedDate in it.dates }
-            .takeIf { it >= 0 }
-            ?: rows.indexOfFirst { it.month() <= YearMonth.from(vm.selectedDate) }.takeIf { it >= 0 }
-            ?: return@TrackScroll
-        state.placeAt(idx, y)
+    LaunchedEffect(vm.focusRequest, month) {
+        if (month != vm.recordedMonth) return@LaunchedEffect
+        val restore = vm.recordedRestore
+        val entry = vm.entry
+        if (entry is AppViewModel.ListEntry.Restore && restore != null && restore.month == month) {
+            // Back from a day: same top card and offset; if that card is gone, the nearest one.
+            val idx = rows.indexOfFirst { restore.topCard in it.dates }.takeIf { it >= 0 }
+                ?: rows.indexOfFirst { r -> r.dates.any { restore.topCard == null || it <= restore.topCard } }.coerceAtLeast(0)
+            if (rows.isNotEmpty()) state.scrollToItem(idx + 1, if (restore.topCard in rows[idx].dates) restore.offset else 0) // +1: title
+        } else {
+            val idx = rows.indexOfFirst { vm.selectedDate in it.dates }
+            if (idx > 0) state.placeAt(idx + 1, (entry as? AppViewModel.ListEntry.Anchor)?.y) else state.scrollToItem(0)
+        }
     }
-    LaunchedEffect(state, rows) {
-        snapshotFlow { rows.getOrNull(state.firstVisibleItemIndex)?.month() }
-            .distinctUntilChanged()
-            .collect { m -> if (m != null && state.isScrollInProgress) vm.scrolledTo(m) }
+    if (rows.isEmpty()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(month.label(), style = TkType.body.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium))
+            Text(stringResource(R.string.month_empty), style = TkType.body.copy(color = Tk.Secondary), modifier = Modifier.testTag("monthEmpty"))
+            GlassPill(stringResource(R.string.show_calendar), onClick = { haptics.commitIf(vm.openMonth(month), NavEvent.LEVEL_COMMIT) })
+        }
+        return
     }
-    LazyColumn(state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 110.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        itemsIndexed(rows, key = { _, row -> if (row is RecordRow.Header) "h${row.month}" else "c${(row as RecordRow.Cards).dates.first()}" }) { _, row ->
-            when (row) {
-                is RecordRow.Header -> Text(
-                    row.month.label(), style = TkType.body.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium),
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp).semantics { heading() },
-                )
-                is RecordRow.Cards -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    row.dates.forEach { date ->
-                        DayCard(
-                            date = date,
-                            items = vm.journal.itemsOn(date),
-                            wide = row.dates.size == 1,
-                            selected = date == vm.selectedDate,
-                            onClick = { haptics.commitIf(vm.openDay(date), NavEvent.TAP_DATE) },
-                            onLongClick = { onLongPress(date) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+    LazyColumn(
+        state = state,
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 110.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxSize().testTag("monthPage_$month"),
+    ) {
+        item(key = "title") {
+            Text(month.label(), style = TkType.body.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium), modifier = Modifier.padding(start = 4.dp).semantics { heading() })
+        }
+        itemsIndexed(rows, key = { _, row -> "c${row.dates.first()}" }) { _, row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.dates.forEach { date ->
+                    DayCard(
+                        date = date,
+                        items = vm.journal.itemsOn(date),
+                        wide = row.dates.size == 1,
+                        selected = date == vm.selectedDate,
+                        onClick = {
+                            val top = rows.getOrNull(state.firstVisibleItemIndex - 1)?.dates?.first()
+                            val offset = if (top != null) state.firstVisibleItemScrollOffset else 0
+                            haptics.commitIf(vm.openDayFromRecords(date, top, offset), NavEvent.TAP_DATE)
+                        },
+                        onLongClick = { onLongPress(date) },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }

@@ -59,6 +59,7 @@
     <string name="more_count">+%1$d</string>
     <string name="month_number">%1$d</string>
     <string name="cd_month">%1$d월</string>
+    <string name="cd_year_month">%1$d년 %2$d월</string>
     <string name="search_results">검색 결과</string>
 
     <!-- 불러오기 -->

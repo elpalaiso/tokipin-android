@@ -40,13 +40,13 @@ import java.time.YearMonth
 import java.util.Locale
 
 /**
- * Runs every case of the shared Tokipin-Native-UX-v0.1.json (the same file the iOS tests read)
+ * Runs every case of the shared Tokipin-Native-UX-v0.2.json (the same file the iOS tests read)
  * against the Android rules. Cases that need a running UI are listed in [ON_DEVICE] and run in
  * androidTest (UxSpecDeviceTest); a case missing from both fails this test.
  */
 class UxSpecCasesTest {
     private val spec: JsonObject = Json.parseToJsonElement(
-        javaClass.classLoader!!.getResource("Tokipin-Native-UX-v0.1.json")!!.readText(),
+        javaClass.classLoader!!.getResource("Tokipin-Native-UX-v0.2.json")!!.readText(),
     ).jsonObject
 
     private val cases: List<JsonObject> = spec["tests"]!!.jsonArray.map { it.jsonObject }
@@ -89,7 +89,7 @@ class UxSpecCasesTest {
         assertTrue("failed cases:\n" + failures.joinToString("\n"), failures.isEmpty())
         val unknown = (ON_DEVICE + OTHER_PLATFORM) - cases.map { it.s("id") }.toSet()
         assertTrue("stale case ids: $unknown", unknown.isEmpty())
-        println("UX v0.1: $ran cases on JVM, ${ON_DEVICE.size} on device, ${OTHER_PLATFORM.size} iOS-only, ${cases.size} total")
+        println("UX v${UxSpec.VERSION}: $ran cases on JVM, ${ON_DEVICE.size} on device, ${OTHER_PLATFORM.size} iOS-only, ${cases.size} total")
     }
 
     private fun run(case: JsonObject) {
@@ -108,6 +108,7 @@ class UxSpecCasesTest {
             "emojiSelection" -> emojiSelection(given, expected)
             "emojiEdit" -> emojiEdit(given, expected)
             "capability" -> capability(given, expected)
+            "recordedMonths" -> recordedMonths(case.s("id"), given, expected)
             else -> error("unknown group")
         }
     }
@@ -251,6 +252,69 @@ class UxSpecCasesTest {
         assertEquals(e["fragmentValues"]!!.strings(), d.items.map { it.value })
     }
 
+    /** 기록한 날 v0.2 cases, driven through the same RecordedMonths model the screen uses. */
+    private fun recordedMonths(id: String, g: JsonObject, e: JsonObject) {
+        val committed = YearMonth.parse(g.s("committedMonth"))
+        val selected = g["selectedDay"]?.let { LocalDate.parse(it.jsonPrimitive.content) } ?: committed.atDay(1)
+        val model = com.tokipin.app.rules.RecordedMonths(committed, selected)
+        val available = g["availableRecordDates"]?.strings()?.map(LocalDate::parse).orEmpty()
+        val enabled = g.b("appHapticsEnabled", true)
+        val events: List<NavEvent> = when (g["action"]?.jsonPrimitive?.content ?: "pinch") {
+            "bodySwipeRelease" -> model.bodyRelease(
+                g.f("W"), g.f("dx"), g.f("dy"), g.f("vx"),
+                systemEdgeBack = g.b("systemEdgeBack"), osCancel = g.b("osCancel"), slopExceeded = g.b("platformSlopExceeded", true),
+            )
+            "bodyDrag" -> {
+                val neighbor = YearMonth.parse(g.s("neighborMonth"))
+                val fraction = g.f("dragFraction") * (if (neighbor > committed) -1 else 1)
+                val ev = model.dragging(fraction)
+                assertEquals(YearMonth.parse(e.s("previewMonth")), model.preview)
+                // The rail is driven by the body's own drag fraction, so both progress values are equal.
+                assertEquals(e.f("bodyProgress"), kotlin.math.abs(fraction))
+                assertEquals(e.f("railProgress"), kotlin.math.abs(fraction))
+                ev
+            }
+            "verticalDragAtBottom" -> listOf(NavEvent.SCROLL)
+            "renderRail" -> {
+                val window = com.tokipin.app.rules.RecordedMonths.window(committed, g["sideSlotsInThisFixture"]!!.jsonPrimitive.int)
+                assertEquals(e["visibleMonthKeys"]!!.strings(), window.map { it.toString() })
+                assertEquals(e["visibleMonthNumbers"]!!.jsonArray.map { it.jsonPrimitive.int }, window.map { it.monthValue })
+                emptyList()
+            }
+            "tapRailMonth" -> model.tap(YearMonth.parse(g.s("tappedMonth")))
+            "railCoast" -> {
+                val ev = model.railCoast(YearMonth.parse(g.s("nearestCandidate")))
+                assertEquals(YearMonth.parse(e.s("previewMonth")), model.preview)
+                ev
+            }
+            "railSettle" -> model.railSettle(g.f("projectedSlotOffsetAtRest"))
+            "cancelRail" -> { model.railCoast(YearMonth.parse(g.s("nearestCandidate"))); model.cancel() }
+            "today" -> model.today(LocalDate.parse(g.s("deviceToday")))
+            "pinch" -> {
+                // Body drag begins, a second finger turns it into a pinch: the pending month move is
+                // cancelled (SwipePager gives up on two pointers) and the pinch decides the level.
+                val anchor = PinchAnchor()
+                anchor.hit(LocalDate.parse(g.s("firstHit"))); anchor.hit(LocalDate.parse(g.s("lastHit")))
+                assertEquals(LocalDate.parse(e.s("anchor")), anchor.target)
+                val to = PinchRules.decide(Level.fromSpec(g.s("level")), g.f("scaleAtRelease"))
+                assertEquals(Level.fromSpec(e.s("level")), to)
+                assertEquals(e["monthCommitCount"]!!.jsonPrimitive.int, 0)
+                assertEquals(committed, model.committed)
+                model.cancel() + NavEvent.LEVEL_COMMIT
+            }
+            else -> error("action")
+        }
+        e["committedMonth"]?.let { assertEquals(YearMonth.parse(it.jsonPrimitive.content), model.committed) }
+        e["centeredMonth"]?.let { assertEquals(YearMonth.parse(it.jsonPrimitive.content), model.centered) }
+        e["headerYear"]?.let { assertEquals(it.jsonPrimitive.int, model.headerYear) }
+        e["selectedDay"]?.let { assertEquals(LocalDate.parse(it.jsonPrimitive.content), model.selectedDay) }
+        e["visibleCardDates"]?.let { exp -> assertEquals(exp.strings(), available.filter { YearMonth.from(it) == model.committed }.map { it.toString() }) }
+        e["showMonthEmptyState"]?.let { assertEquals(it.jsonPrimitive.boolean, available.none { YearMonth.from(it) == model.committed }) }
+        e["spatialTransition"]?.let { assertEquals(it.jsonPrimitive.boolean, !g.b("reduceMotion")) }
+        e["level"]?.let { if (it.jsonPrimitive.content == "recordedDays") assertEquals("today", g.s("action")) }
+        assertEquals(id, e["appTicks"]!!.jsonPrimitive.int, HapticRules.ticks(events, enabled))
+    }
+
     private fun capability(g: JsonObject, e: JsonObject) {
         assertEquals("Android", g.s("platform"))
         assertEquals(e.b("requestAvailableSystemKeyboard"), UxSpec.EMOJI_REQUESTS_SYSTEM_KEYBOARD)
@@ -261,7 +325,10 @@ class UxSpecCasesTest {
 
     companion object {
         /** Navigation-state cases that need the real screen; see androidTest/UxSpecDeviceTest. */
-        val ON_DEVICE = setOf("calendar.scrollYearBoundary", "calendar.backPosition", "calendar.todayWhenSelectedElsewhere")
+        val ON_DEVICE = setOf(
+            "calendar.scrollYearBoundary", "calendar.backPosition", "calendar.todayWhenSelectedElsewhere",
+            "recordedMonths.detail.restore",
+        )
         val OTHER_PLATFORM = setOf("emoji.keyboardUnavailable")
     }
 }

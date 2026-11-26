@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.systemGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -49,6 +51,8 @@ fun <T> SwipePager(
     onCommit: (Int) -> Unit,
     reduceMotion: Boolean,
     modifier: Modifier = Modifier,
+    /** Drag progress as a fraction of the width (negative = towards the next page), 0 at rest. */
+    onProgress: (Float) -> Unit = {},
     content: @Composable (T) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -61,6 +65,9 @@ fun <T> SwipePager(
     BoxWithConstraints(modifier.clipToBounds().onGloballyPositioned { holder[0] = it }) {
         val widthPx = constraints.maxWidth.toFloat()
         val widthDp = widthPx / density.density
+        LaunchedEffect(offset, widthPx) {
+            snapshotFlow { offset.value }.collect { if (widthPx > 0) onProgress(it / widthPx) }
+        }
 
         Box(
             Modifier.fillMaxWidth().pointerInput(page, widthPx) {
