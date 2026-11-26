@@ -8,6 +8,8 @@ import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 
 /** The 17 app languages: locale matching like the web, and complete, well-formed resources. */
+private fun fullLabelOf(d: java.time.LocalDate, l: Locale): String = with(d) { com.tokipin.app.ui.fullLabelFor(this, l) }
+
 class LocalizationTest {
     private fun m(tag: String) = AppLocale.match(Locale.forLanguageTag(tag))
 
@@ -64,6 +66,30 @@ class LocalizationTest {
         assertEquals(2, com.tokipin.app.ui.search(journal, "2026.11.25", german).size)
         val weekday = day.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, AppLocale.format)
         assertEquals(2, com.tokipin.app.ui.search(journal, "($weekday)", german).size)
+    }
+
+    @Test fun turkishCaseAndShownTimesAreSearchable() {
+        val tr = Locale.forLanguageTag("tr")
+        val day = java.time.LocalDate.of(2026, 11, 26)
+        val journal = com.tokipin.app.data.Journal().withDay(day, listOf(
+            com.tokipin.app.data.Entry(kind = com.tokipin.app.data.EntryKind.PLACE, value = "İstanbul"),
+            com.tokipin.app.data.Entry(kind = com.tokipin.app.data.EntryKind.TIME, value = "18:45"),
+        ))
+        val names = mapOf(
+            com.tokipin.app.data.EntryKind.WORD to "Kelime", com.tokipin.app.data.EntryKind.EMOJI to "Emoji",
+            com.tokipin.app.data.EntryKind.PLACE to "Yer", com.tokipin.app.data.EntryKind.TIME to "Saat",
+        )
+        val shown = { e: com.tokipin.app.data.Entry -> if (e.value == "18:45") "6:45 PM" else e.value }
+        listOf("İstanbul", "istanbul", "ISTANBUL", "İSTANBUL").forEach { q ->
+            assertEquals(q, listOf("İstanbul"), com.tokipin.app.ui.search(journal, q, names, tr, shown).map { it.entry.value })
+        }
+        assertEquals(listOf("İstanbul"), com.tokipin.app.ui.search(journal, "YER", names, tr, shown).map { it.entry.value })
+        // The time as stored and as shown.
+        assertEquals(listOf("18:45"), com.tokipin.app.ui.search(journal, "18:45", names, tr, shown).map { it.entry.value })
+        assertEquals(listOf("18:45"), com.tokipin.app.ui.search(journal, "6:45 pm", names, tr, shown).map { it.entry.value })
+        // The date as stored and as written in the app.
+        assertEquals(2, com.tokipin.app.ui.search(journal, "2026-11-26", names, tr, shown).size)
+        assertEquals(2, com.tokipin.app.ui.search(journal, fullLabelOf(day, tr), names, tr, shown).size)
     }
 
     private val res = File("src/main/res")

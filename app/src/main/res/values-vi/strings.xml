@@ -97,10 +97,10 @@
     <string name="cd_change_date">Đổi ngày ghi chú</string>
     <string name="home_empty">Chưa có ghi chú nào.</string>
     <plurals name="delete_day">
-        <item quantity="other">Xóa %1$d ghi chú của ngày này</item>
+        <item quantity="other">Xóa %1$d mục của ngày này</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="other">Đã xóa %1$d ghi chú của ngày này.</item>
+        <item quantity="other">Đã xóa %1$d mục của ngày này.</item>
     </plurals>
     <string name="home_first_record">Viết ghi chú đầu tiên</string>
     <string name="cd_edit_day">Sửa ghi chú của ngày này</string>

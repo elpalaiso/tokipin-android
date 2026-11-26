@@ -99,12 +99,12 @@
     <string name="cd_change_date">Datum der Notiz ändern</string>
     <string name="home_empty">Noch keine Notizen.</string>
     <plurals name="delete_day">
-        <item quantity="one">%1$d Notiz dieses Tages löschen</item>
-        <item quantity="other">Alle %1$d Notizen dieses Tages löschen</item>
+        <item quantity="one">%1$d Element dieses Tages löschen</item>
+        <item quantity="other">Alle %1$d Elemente dieses Tages löschen</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="one">%1$d Notiz dieses Tages gelöscht.</item>
-        <item quantity="other">%1$d Notizen dieses Tages gelöscht.</item>
+        <item quantity="one">%1$d Element dieses Tages gelöscht.</item>
+        <item quantity="other">%1$d Elemente dieses Tages gelöscht.</item>
     </plurals>
     <string name="home_first_record">Erste Notiz schreiben</string>
     <string name="cd_edit_day">Notizen dieses Tages bearbeiten</string>

@@ -74,8 +74,11 @@ object AppLocale {
             return java.time.DayOfWeek.SUNDAY.plus((icu - 1).toLong())
         }
 
+    /** Tests only (like AppClock.override): a language list used instead of the device's. */
+    @Volatile var override: LocaleList? = null
+
     fun wrap(base: Context): Context {
-        val locales = base.resources.configuration.locales
+        val locales = override ?: base.resources.configuration.locales
         // The system locale, not the per-app language: the week start and region come from the device.
         device = Resources.getSystem().configuration.locales[0]
         current = Locale.forLanguageTag(resolve(locales))

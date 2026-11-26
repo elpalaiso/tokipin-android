@@ -221,7 +221,7 @@ fun BrowseScreen(vm: AppViewModel) {
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(14.dp)).background(Tk.DangerSoft)
                         .clickable(role = Role.Button) { vm.deleteDay(date); dayMenuFor = null }
-                        .semantics(mergeDescendants = true) { contentDescription = date.fullLabel() + ", " + deleteText }
+                        .semantics(mergeDescendants = true) { contentDescription = DateWords.spoken(date) + ", " + deleteText }
                         .testTag("deleteDay")
                         .padding(horizontal = 18.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -481,7 +481,7 @@ private fun WeekRow(start: LocalDate, date: LocalDate, onSelect: (LocalDate) -> 
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         (0L until 7L).map { start.plusDays(it) }.forEach { day ->
             val active = day == date
-            val label = day.fullLabel()
+            val label = DateWords.spoken(day)
             Column(
                 Modifier
                     .weight(1f)
@@ -884,7 +884,7 @@ private fun DayCard(
             .border(if (selected) 1.dp else 0.8.dp, if (selected) Tk.Secondary.copy(alpha = 0.7f) else Tk.CardBorder, BENTO_SHAPE)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics(mergeDescendants = true) {
-                contentDescription = date.fullLabel() + ", " + layout.lines.flatten().mapNotNull { it.entry }.joinToString(", ") { time.text(it) }
+                contentDescription = DateWords.spoken(date) + ", " + layout.lines.flatten().mapNotNull { it.entry }.joinToString(", ") { time.text(it) }
             }
             .padding(
                 start = (com.tokipin.app.rules.Bento.PAD_LEADING + extra).dp,
@@ -1066,7 +1066,7 @@ private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, to
             .clickable(role = Role.Button, onClick = onClick)
             // Built only when semantics are read (TalkBack, tests), not for every cell on every scroll.
             .semantics(mergeDescendants = true) {
-                contentDescription = date.fullLabel() + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { time.text(it) }
+                contentDescription = DateWords.spoken(date) + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { time.text(it) }
                 this.selected = selected
             }
             .padding(vertical = 6.dp, horizontal = 2.dp),

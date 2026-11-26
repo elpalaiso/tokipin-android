@@ -99,12 +99,12 @@
     <string name="cd_change_date">Change note date</string>
     <string name="home_empty">No notes yet.</string>
     <plurals name="delete_day">
-        <item quantity="one">Delete %1$d note from this day</item>
-        <item quantity="other">Delete all %1$d notes from this day</item>
+        <item quantity="one">Delete %1$d item from this day</item>
+        <item quantity="other">Delete all %1$d items from this day</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="one">Deleted %1$d note from this day.</item>
-        <item quantity="other">Deleted %1$d notes from this day.</item>
+        <item quantity="one">Deleted %1$d item from this day.</item>
+        <item quantity="other">Deleted %1$d items from this day.</item>
     </plurals>
     <string name="home_first_record">Write your first note</string>
     <string name="cd_edit_day">Edit this day’s notes</string>

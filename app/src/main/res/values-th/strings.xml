@@ -97,10 +97,10 @@
     <string name="cd_change_date">เปลี่ยนวันที่บันทึก</string>
     <string name="home_empty">ยังไม่มีบันทึก</string>
     <plurals name="delete_day">
-        <item quantity="other">ลบบันทึก %1$d รายการของวันที่เลือก</item>
+        <item quantity="other">ลบ %1$d รายการของวันที่เลือก</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="other">ลบบันทึก %1$d รายการของวันที่เลือกแล้ว</item>
+        <item quantity="other">ลบ %1$d รายการของวันที่เลือกแล้ว</item>
     </plurals>
     <string name="home_first_record">เขียนบันทึกแรก</string>
     <string name="cd_edit_day">แก้ไขบันทึกของวันที่เลือก</string>

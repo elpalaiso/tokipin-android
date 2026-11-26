@@ -97,10 +97,10 @@
     <string name="cd_change_date">更改記錄日期</string>
     <string name="home_empty">未有記錄。</string>
     <plurals name="delete_day">
-        <item quantity="other">刪除當天的 %1$d 項記錄</item>
+        <item quantity="other">刪除當天的 %1$d 個項目</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="other">已刪除當天的 %1$d 項記錄。</item>
+        <item quantity="other">已刪除當天的 %1$d 個項目。</item>
     </plurals>
     <string name="home_first_record">寫下第一項記錄</string>
     <string name="cd_edit_day">編輯當天記錄</string>

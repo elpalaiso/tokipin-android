@@ -99,12 +99,12 @@
     <string name="cd_change_date">नोट की तारीख बदलें</string>
     <string name="home_empty">अभी तक कोई नोट नहीं है।</string>
     <plurals name="delete_day">
-        <item quantity="one">इस दिन का %1$d नोट मिटाएँ</item>
-        <item quantity="other">इस दिन के %1$d नोट मिटाएँ</item>
+        <item quantity="one">इस दिन का %1$d आइटम मिटाएँ</item>
+        <item quantity="other">इस दिन के %1$d आइटम मिटाएँ</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="one">इस दिन का %1$d नोट मिटा दिया गया।</item>
-        <item quantity="other">इस दिन के %1$d नोट मिटा दिए गए।</item>
+        <item quantity="one">इस दिन का %1$d आइटम मिटा दिया गया।</item>
+        <item quantity="other">इस दिन के %1$d आइटम मिटा दिए गए।</item>
     </plurals>
     <string name="home_first_record">पहला नोट लिखें</string>
     <string name="cd_edit_day">इस दिन के नोट में बदलाव करें</string>

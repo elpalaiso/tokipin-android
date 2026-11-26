@@ -131,8 +131,16 @@ fun Modifier.glass(shape: Shape = CircleShape): Modifier = this
 fun LocalDate.fullLabel(locale: Locale = AppLocale.format): String =
     "%04d.%02d.%02d(%s)".format(year, monthValue, dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
 
+/**
+ * 기록한 날 card date (TP-0254, Figma 289-16838): "26 / 목", "10 / 火" in Korean, Japanese and
+ * Chinese; elsewhere the language's own short form ("Thu 26", "jeu. 26", "Do., 26.").
+ */
+/** [fullLabel] for callers outside this package (tests). */
+fun fullLabelFor(date: LocalDate, locale: Locale): String = date.fullLabel(locale)
+
 fun LocalDate.cardLabel(locale: Locale = AppLocale.format): String =
-    "%d / %s".format(dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
+    if (locale.language in setOf("ko", "ja", "zh")) "%d / %s".format(dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
+    else java.time.format.DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEd"), locale).format(this)
 
 fun YearMonth.label(): String = "%04d.%02d".format(year, monthValue)
 
@@ -150,6 +158,13 @@ object DateWords {
     }
 
     fun yearMonth(month: YearMonth): String = pattern("yMMMM").format(month)
+
+    /**
+     * A whole date as TalkBack reads it (TP-0330, 0339, 0340): "2026년 11월 25일 수요일",
+     * "Wednesday 25 November 2026" (en-GB), "Wednesday, November 25, 2026" (en-US)…
+     */
+    fun spoken(date: LocalDate): String =
+        java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL).withLocale(AppLocale.format).format(date)
     fun year(year: Int): String = pattern("y").format(java.time.Year.of(year))
     /** The month on its own, in the nominative/stand-alone form ("11월", "November", "ноябрь"). */
     fun month(month: YearMonth): String = pattern("LLLL").format(month)

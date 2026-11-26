@@ -103,16 +103,16 @@
     <string name="cd_change_date">Изменить дату записи</string>
     <string name="home_empty">Записей пока нет.</string>
     <plurals name="delete_day">
-        <item quantity="one">Удалить %1$d запись за этот день</item>
-        <item quantity="few">Удалить %1$d записи за этот день</item>
-        <item quantity="many">Удалить %1$d записей за этот день</item>
-        <item quantity="other">Удалить %1$d записи за этот день</item>
+        <item quantity="one">Удалить %1$d элемент за этот день</item>
+        <item quantity="few">Удалить %1$d элемента за этот день</item>
+        <item quantity="many">Удалить %1$d элементов за этот день</item>
+        <item quantity="other">Удалить %1$d элемента за этот день</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="one">Удалена %1$d запись за этот день.</item>
-        <item quantity="few">Удалено %1$d записи за этот день.</item>
-        <item quantity="many">Удалено %1$d записей за этот день.</item>
-        <item quantity="other">Удалено %1$d записи за этот день.</item>
+        <item quantity="one">Удалён %1$d элемент за этот день.</item>
+        <item quantity="few">Удалено %1$d элемента за этот день.</item>
+        <item quantity="many">Удалено %1$d элементов за этот день.</item>
+        <item quantity="other">Удалено %1$d элемента за этот день.</item>
     </plurals>
     <string name="home_first_record">Сделать первую запись</string>
     <string name="cd_edit_day">Изменить записи за день</string>

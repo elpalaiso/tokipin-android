@@ -101,14 +101,14 @@
     <string name="cd_change_date">Mudar a data da anotação</string>
     <string name="home_empty">Ainda não há anotações.</string>
     <plurals name="delete_day">
-        <item quantity="one">Excluir %1$d anotação deste dia</item>
-        <item quantity="many">Excluir as %1$d anotações deste dia</item>
-        <item quantity="other">Excluir as %1$d anotações deste dia</item>
+        <item quantity="one">Excluir %1$d item deste dia</item>
+        <item quantity="many">Excluir os %1$d itens deste dia</item>
+        <item quantity="other">Excluir os %1$d itens deste dia</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="one">%1$d anotação deste dia foi excluída.</item>
-        <item quantity="many">%1$d anotações deste dia foram excluídas.</item>
-        <item quantity="other">%1$d anotações deste dia foram excluídas.</item>
+        <item quantity="one">%1$d item deste dia foi excluído.</item>
+        <item quantity="many">%1$d itens deste dia foram excluídos.</item>
+        <item quantity="other">%1$d itens deste dia foram excluídos.</item>
     </plurals>
     <string name="home_first_record">Escrever a primeira anotação</string>
     <string name="cd_edit_day">Editar as anotações deste dia</string>

@@ -31,6 +31,7 @@ class LocalizationDeviceTest {
 
     /** Resources the app would use for a device whose language list is [tags]. */
     private fun resFor(tags: String): android.content.res.Resources {
+        AppLocale.override = null
         val config = Configuration(context.resources.configuration).apply { setLocales(LocaleList.forLanguageTags(tags)) }
         return AppLocale.wrap(context.createConfigurationContext(config)).resources
     }
@@ -57,20 +58,45 @@ class LocalizationDeviceTest {
 
     @Test fun pluralsFollowEachLanguage() {
         val en = resFor("en")
-        assertEquals("Delete 1 note from this day", en.getQuantityString(R.plurals.delete_day, 1, 1))
-        assertEquals("Delete all 5 notes from this day", en.getQuantityString(R.plurals.delete_day, 5, 5))
+        assertEquals("Delete 1 item from this day", en.getQuantityString(R.plurals.delete_day, 1, 1))
+        assertEquals("Delete all 5 items from this day", en.getQuantityString(R.plurals.delete_day, 5, 5))
         val ru = resFor("ru")
-        assertEquals("Удалить 1 запись за этот день", ru.getQuantityString(R.plurals.delete_day, 1, 1))
-        assertEquals("Удалить 2 записи за этот день", ru.getQuantityString(R.plurals.delete_day, 2, 2))
-        assertEquals("Удалить 5 записей за этот день", ru.getQuantityString(R.plurals.delete_day, 5, 5))
-        assertEquals("Удалить 21 запись за этот день", ru.getQuantityString(R.plurals.delete_day, 21, 21))
-        assertEquals("この日の記録2件を削除", resFor("ja").getQuantityString(R.plurals.delete_day, 2, 2))
+        assertEquals("Удалить 1 элемент за этот день", ru.getQuantityString(R.plurals.delete_day, 1, 1))
+        assertEquals("Удалить 2 элемента за этот день", ru.getQuantityString(R.plurals.delete_day, 2, 2))
+        assertEquals("Удалить 5 элементов за этот день", ru.getQuantityString(R.plurals.delete_day, 5, 5))
+        assertEquals("Удалить 21 элемент за этот день", ru.getQuantityString(R.plurals.delete_day, 21, 21))
+        assertEquals("この日の項目2件を削除", resFor("ja").getQuantityString(R.plurals.delete_day, 2, 2))
         assertEquals("이날 기록 0개 삭제", resFor("ko").getQuantityString(R.plurals.delete_day, 0, 0))
+    }
+
+    /** TP-0231/0232: the count on the day-delete button is items (fragments), not notes. */
+    @Test fun deleteDayCountsItemsInEnglish() {
+        val en = resFor("en-US")
+        assertEquals("Delete all 3 items from this day", en.getQuantityString(R.plurals.delete_day, 3, 3))
+        assertEquals("Deleted 3 items from this day.", en.getQuantityString(R.plurals.day_deleted, 3, 3))
+        assertEquals("Delete 1 item from this day", en.getQuantityString(R.plurals.delete_day, 1, 1))
+        assertEquals("ลบ 3 รายการของวันที่เลือก", resFor("th").getQuantityString(R.plurals.delete_day, 3, 3))
+    }
+
+    @Test fun britishEnglishKeepsItsOwnHourCycleAndDates() {
+        val gb = AppLocale.formatFor(java.util.Locale.forLanguageTag("en"), java.util.Locale.forLanguageTag("en-GB"))
+        val ctx = context.createConfigurationContext(Configuration(context.resources.configuration).apply { setLocale(java.util.Locale.forLanguageTag("en-GB")) })
+        val us = context.createConfigurationContext(Configuration(context.resources.configuration).apply { setLocale(java.util.Locale.forLanguageTag("en-US")) })
+        val auto = android.provider.Settings.System.getString(context.contentResolver, android.provider.Settings.System.TIME_12_24) == null
+        if (auto) {
+            assertEquals(true, android.text.format.DateFormat.is24HourFormat(ctx))
+            assertEquals(false, android.text.format.DateFormat.is24HourFormat(us))
+        }
+        // Day before month (older CLDR on API 28 adds a comma after the weekday).
+        val text = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL).withLocale(gb).format(java.time.LocalDate.of(2026, 11, 25))
+        assertTrue(text, Regex("^Wednesday,? 25 November 2026$").matches(text))
     }
 
     private fun item(kind: String, value: String, id: String) = """{"id":"$id","kind":"$kind","value":"$value"}"""
 
     @Test fun switchingTheLanguageKeepsRecordsAndTheDraftAsWritten() {
+        // Switching the per-app language while the app runs exists from Android 13.
+        org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 33)
         com.tokipin.app.rules.AppClock.override = java.time.LocalDate.of(2026, 11, 26)
         File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(
             """{"version":1,"days":[{"date":"2026-11-25","updatedAt":"2026-11-25T10:00:00Z","items":[${item("word", "바닷가", "s1")},${item("place", "연남동", "s2")}]}]}""",

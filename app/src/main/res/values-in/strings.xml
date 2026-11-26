@@ -97,10 +97,10 @@
     <string name="cd_change_date">Ubah tanggal catatan</string>
     <string name="home_empty">Belum ada catatan.</string>
     <plurals name="delete_day">
-        <item quantity="other">Hapus %1$d catatan untuk tanggal ini</item>
+        <item quantity="other">Hapus %1$d item dari tanggal ini</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="other">%1$d catatan untuk tanggal ini sudah dihapus.</item>
+        <item quantity="other">%1$d item dari tanggal ini sudah dihapus.</item>
     </plurals>
     <string name="home_first_record">Tulis catatan pertama</string>
     <string name="cd_edit_day">Edit catatan untuk tanggal ini</string>

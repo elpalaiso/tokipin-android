@@ -284,7 +284,7 @@ private fun EditorHeader(vm: AppViewModel, hasItems: Boolean) {
     // its chevron; choosing a date in the picker moves the draft only, ✓ saves.
     var picking by remember { mutableStateOf(false) }
     val dateLabel = com.tokipin.app.rules.DateHeaders.editor(draft.localDate)
-    val spoken = draft.localDate.fullLabel()
+    val spoken = DateWords.spoken(draft.localDate)
     val changeDate = stringResource(R.string.cd_change_date)
     CenteredTitleBar(
         modifier = Modifier.testTag("editorTopBar"),

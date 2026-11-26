@@ -97,10 +97,10 @@
     <string name="cd_change_date">記録の日付を変更</string>
     <string name="home_empty">まだ記録がありません。</string>
     <plurals name="delete_day">
-        <item quantity="other">この日の記録%1$d件を削除</item>
+        <item quantity="other">この日の項目%1$d件を削除</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="other">この日の記録%1$d件を削除しました。</item>
+        <item quantity="other">この日の項目%1$d件を削除しました。</item>
     </plurals>
     <string name="home_first_record">最初の記録を残す</string>
     <string name="cd_edit_day">この日の記録を編集</string>

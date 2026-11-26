@@ -101,14 +101,14 @@
     <string name="cd_change_date">Cambiar la fecha de la nota</string>
     <string name="home_empty">Aún no hay notas.</string>
     <plurals name="delete_day">
-        <item quantity="one">Eliminar %1$d nota de este día</item>
-        <item quantity="many">Eliminar las %1$d notas de este día</item>
-        <item quantity="other">Eliminar las %1$d notas de este día</item>
+        <item quantity="one">Eliminar %1$d elemento de este día</item>
+        <item quantity="many">Eliminar los %1$d elementos de este día</item>
+        <item quantity="other">Eliminar los %1$d elementos de este día</item>
     </plurals>
     <plurals name="day_deleted">
-        <item quantity="one">Se eliminó %1$d nota de este día.</item>
-        <item quantity="many">Se eliminaron %1$d notas de este día.</item>
-        <item quantity="other">Se eliminaron %1$d notas de este día.</item>
+        <item quantity="one">Se eliminó %1$d elemento de este día.</item>
+        <item quantity="many">Se eliminaron %1$d elementos de este día.</item>
+        <item quantity="other">Se eliminaron %1$d elementos de este día.</item>
     </plurals>
     <string name="home_first_record">Escribir tu primera nota</string>
     <string name="cd_edit_day">Editar las notas del día</string>
