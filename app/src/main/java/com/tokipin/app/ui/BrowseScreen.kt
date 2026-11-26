@@ -78,6 +78,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
@@ -231,44 +232,59 @@ fun BrowseScreen(vm: AppViewModel) {
     }
 }
 
+private fun Level.viewName(): Int = when (this) {
+    Level.DAILY -> R.string.view_daily
+    Level.RECORDS -> R.string.view_records
+    Level.MONTH -> R.string.view_month
+    Level.YEAR -> R.string.view_year
+}
+
 @Composable
 private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
     val haptics = LocalHaptics.current
     var menuOpen by remember { mutableStateOf(false) }
-    val parent = when (vm.level) {
-        Level.DAILY -> if (vm.openedFromSearch) null else vm.selectedDate.monthValue.toString()
-        // The top bar names the year in view; scrolling never changes the selected day.
-        // 기록한 날 shows the committed month's year (it changes only when a month settles);
-        // the month calendar shows the year in view.
-        Level.RECORDS -> vm.recordedMonth.year.toString()
-        Level.MONTH -> vm.visibleMonth.year.toString()
-        Level.YEAR -> null
+    // v0.3: one date on the screen's centre line. Day: the selected date's year.month; 기록한 날:
+    // the committed month's year (it changes only when a month settles); month calendar: the year
+    // in view; year calendar: none (each block carries its own year).
+    val title: String? = when (vm.level) {
+        Level.DAILY -> com.tokipin.app.rules.DateHeaders.day(vm.selectedDate)
+        Level.RECORDS -> com.tokipin.app.rules.DateHeaders.recordedDays(vm.recordedMonth)
+        Level.MONTH -> com.tokipin.app.rules.DateHeaders.month(vm.visibleMonth)
+        Level.YEAR -> com.tokipin.app.rules.DateHeaders.year(vm.visibleMonth.year)
     }
-    Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (parent != null && !(vm.journal.isEmpty && vm.level != Level.DAILY && vm.level != Level.MONTH)) {
-            val backLabel = stringResource(R.string.cd_back_to, parent)
-            Row(
-                Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
-                    .clickable(role = Role.Button) { haptics.commitIf(vm.goUp(), NavEvent.LEVEL_COMMIT) }
-                    .semantics(mergeDescendants = true) { contentDescription = backLabel }
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TkIcon(R.drawable.ic_back, size = 18.dp)
-                Spacer(Modifier.width(6.dp))
-                Text(parent, style = TkType.title)
+    val spoken = when (vm.level) {
+        Level.DAILY -> stringResource(R.string.cd_year_month, vm.selectedDate.year, vm.selectedDate.monthValue)
+        Level.RECORDS -> stringResource(R.string.cd_year, vm.recordedMonth.year)
+        Level.MONTH -> stringResource(R.string.cd_year, vm.visibleMonth.year)
+        Level.YEAR -> ""
+    }
+    val upName = vm.upTarget?.let { stringResource(it.viewName()) }
+    CenteredTitleBar(
+        modifier = Modifier.testTag("topBar"),
+        leading = { compact ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (upName != null) {
+                    RoundIconButton(
+                        R.drawable.ic_back, stringResource(R.string.cd_back_to, upName),
+                        { haptics.commitIf(vm.goUp(), NavEvent.LEVEL_COMMIT) },
+                        glass = false, modifier = Modifier.testTag("backButton"),
+                    )
+                }
+                if (vm.openedFromSearch && vm.level == Level.DAILY) {
+                    if (compact) RoundIconButton(R.drawable.ic_search, stringResource(R.string.search_results), { vm.goUp() }, glass = false, modifier = Modifier.testTag("searchReturn"))
+                    else GlassPill(stringResource(R.string.search_results), onClick = { vm.goUp() }, leading = R.drawable.ic_search, modifier = Modifier.testTag("searchReturn"))
+                }
             }
-        } else if (vm.journal.isEmpty) {
-            Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TkIcon(R.drawable.ic_back, size = 18.dp, tint = Tk.Primary.copy(alpha = 0.5f))
-                Spacer(Modifier.width(6.dp))
-                Text(com.tokipin.app.rules.AppClock.today().year.toString(), style = TkType.title)
+        },
+        title = {
+            if (title != null) {
+                Text(
+                    title, style = TkType.title, maxLines = 1,
+                    modifier = Modifier.testTag("headerTitle").semantics { heading(); contentDescription = spoken },
+                )
             }
-        }
-        if (vm.openedFromSearch && vm.level == Level.DAILY) {
-            GlassPill(stringResource(R.string.search_results), onClick = { vm.goUp() }, leading = R.drawable.ic_search)
-        }
-        Spacer(Modifier.weight(1f))
+        },
+        trailing = { Row(verticalAlignment = Alignment.CenterVertically) {
         if (vm.level == Level.DAILY && vm.journal.itemsOn(vm.selectedDate).isNotEmpty()) {
             RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_day_menu), onDayMenu, glass = false)
         }
@@ -307,7 +323,8 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
                 )
             }
         }
-    }
+    } },
+    )
 }
 
 @Composable
@@ -557,15 +574,18 @@ private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
         val empty = vm.journal.recordedDates().none { YearMonth.from(it) == vm.recordedMonth }
         if (empty) view.announceForAccessibility(emptyText)
     }
+    // v0.3: pages are the visible-month list (months with records + this month), one slot per swipe.
+    val list = remember(vm.journal, vm.today) { vm.visibleRecordMonths }
+    fun slot(m: YearMonth, d: Int) = list.getOrNull(list.indexOf(m) + d)
     Column(Modifier.fillMaxSize()) {
-        MonthRail(vm, dragFraction)
+        MonthRail(vm, list, dragFraction)
         SwipePager(
             page = vm.recordedMonth,
-            neighbor = { m, d -> m.plusMonths(d.toLong()) },
-            onCommit = { dir -> haptics.report(*vm.recorded { tap(committed.plusMonths(dir.toLong())) }.toTypedArray()) },
+            neighbor = { m, d -> slot(m, d) ?: m },
+            onCommit = { dir -> haptics.report(*vm.recorded { step(dir) }.toTypedArray()) },
             reduceMotion = reduceMotion,
             onProgress = { dragFraction = it },
-            canMove = { m, d -> m.plusMonths(d.toLong()) in vm.range },
+            canMove = { m, d -> slot(m, d) != null },
             modifier = Modifier.fillMaxSize().testTag("recordsBody"),
         ) { month -> MonthPage(vm, month, onLongPress) }
     }
@@ -573,16 +593,17 @@ private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun MonthRail(vm: AppViewModel, dragFraction: Float) {
+private fun MonthRail(vm: AppViewModel, list: List<YearMonth>, dragFraction: Float) {
     val haptics = LocalHaptics.current
     val reduceMotion = LocalReduceMotion.current
     val density = LocalDensity.current
-    // The rail runs over the calendar range only: from its first month to the current month.
-    val range = vm.range
-    val count = (range.last.year - range.first.year) * 12 + range.last.monthValue - range.first.monthValue + 1
-    fun indexOf(m: YearMonth) = ((m.year - range.first.year) * 12 + m.monthValue - range.first.monthValue).coerceIn(0, count - 1)
-    fun monthAt(i: Int): YearMonth = range.first.plusMonths(i.coerceIn(0, count - 1).toLong())
-    BoxWithConstraints(Modifier.fillMaxWidth().height(52.dp).testTag("monthRail")) {
+    // v0.3: the rail lists only the visible months; the padding past either end is empty space
+    // (no focus, tap or tick). Small years over the numbers are keyed to the committed month.
+    val count = list.size
+    fun indexOf(m: YearMonth) = list.indexOf(m).coerceAtLeast(0)
+    fun monthAt(i: Int): YearMonth = list[i.coerceIn(0, count - 1)]
+    val hints = remember(list, vm.recordedMonth) { com.tokipin.app.rules.RecordedMonths.listHints(list, vm.recordedMonth) }
+    BoxWithConstraints(Modifier.fillMaxWidth().height(66.dp).testTag("monthRail")) {
         // Neighbours on each side adapt to the width and the text size (2 on phones by default).
         val side = com.tokipin.app.rules.RecordedMonths.sideSlots(maxWidth.value, density.fontScale)
         val slot = maxWidth / (2 * side + 1)
@@ -617,7 +638,7 @@ private fun MonthRail(vm: AppViewModel, dragFraction: Float) {
             }
         }
         // Follow the committed month and the body's drag progress (same fraction, same direction).
-        LaunchedEffect(vm.recordedMonth, dragFraction) {
+        LaunchedEffect(vm.recordedMonth, dragFraction, list) {
             if (touched) return@LaunchedEffect
             val target = indexOf(vm.recordedMonth)
             val slotPx = with(density) { slot.toPx() }
@@ -647,22 +668,46 @@ private fun MonthRail(vm: AppViewModel, dragFraction: Float) {
                         .fillMaxSize()
                         .testTag("rail_$month")
                         .clickable(role = Role.Tab) { haptics.report(*vm.recorded { tap(month) }.toTypedArray()) }
-                        .semantics { contentDescription = name; selected = current },
-                    contentAlignment = Alignment.Center,
+                        // One TalkBack stop per slot: the full year and month and whether it is selected;
+                        // the small year is part of it, never its own element.
+                        .semantics(mergeDescendants = true) { contentDescription = name; selected = current },
                 ) {
-                    if (current) Box(Modifier.size(40.dp).clip(CircleShape).background(Tk.Focus.copy(alpha = 0.18f)))
-                    Text(
-                        month.monthValue.toString(),
-                        style = TkType.title.copy(
-                            fontSize = if (current) 20.sp else 16.sp,
-                            color = if (current) Tk.Primary else Tk.Muted,
-                        ),
-                    )
+                    // Fixed bands: the hint line on top, the month number and capsule below. A hint
+                    // appearing never moves the number's baseline or the capsule.
+                    Box(Modifier.fillMaxWidth().height(RAIL_HINT_BAND).align(Alignment.TopCenter), contentAlignment = Alignment.BottomCenter) {
+                        androidx.compose.animation.Crossfade(
+                            targetState = hints.getOrNull(i),
+                            animationSpec = tween(if (reduceMotion) UxSpec.REDUCED_MOTION_FADE_MS else UxSpec.COMMIT_MS),
+                            label = "railHint",
+                        ) { hint ->
+                            if (hint != null) Text(
+                                hint, maxLines = 1,
+                                style = TkType.small.copy(fontSize = 10.sp, color = Tk.Muted),
+                                modifier = Modifier.testTag("railHint_$month").clearAndSetSemantics { },
+                            )
+                        }
+                    }
+                    Box(
+                        Modifier.fillMaxWidth().padding(top = RAIL_HINT_BAND).fillMaxSize().testTag("railNumber_$month"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (current) Box(Modifier.size(40.dp).clip(CircleShape).background(Tk.Focus.copy(alpha = 0.18f)).testTag("railCapsule"))
+                        Text(
+                            month.monthValue.toString(),
+                            style = TkType.title.copy(
+                                fontSize = if (current) 20.sp else 16.sp,
+                                color = if (current) Tk.Primary else Tk.Muted,
+                            ),
+                            modifier = Modifier.clearAndSetSemantics { },
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+private val RAIL_HINT_BAND = 14.dp
 
 @Composable
 private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDate) -> Unit) {
@@ -678,10 +723,10 @@ private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDat
             // Back from a day: same top card and offset; if that card is gone, the nearest one.
             val idx = rows.indexOfFirst { restore.topCard in it.dates }.takeIf { it >= 0 }
                 ?: rows.indexOfFirst { r -> r.dates.any { restore.topCard == null || it <= restore.topCard } }.coerceAtLeast(0)
-            if (rows.isNotEmpty()) state.scrollToItem(idx + 1, if (restore.topCard in rows[idx].dates) restore.offset else 0) // +1: title
+            if (rows.isNotEmpty()) state.scrollToItem(idx, if (restore.topCard in rows[idx].dates) restore.offset else 0)
         } else {
             val idx = rows.indexOfFirst { vm.selectedDate in it.dates }
-            if (idx > 0) state.placeAt(idx + 1, (entry as? AppViewModel.ListEntry.Anchor)?.y) else state.scrollToItem(0)
+            if (idx > 0) state.placeAt(idx, (entry as? AppViewModel.ListEntry.Anchor)?.y) else state.scrollToItem(0)
         }
     }
     if (rows.isEmpty()) {
@@ -696,9 +741,6 @@ private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDat
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxSize().testTag("monthPage_$month"),
     ) {
-        item(key = "title") {
-            Text(month.label(), style = TkType.body.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium), modifier = Modifier.padding(start = 4.dp).semantics { heading() })
-        }
         itemsIndexed(rows, key = { _, row -> "c${row.dates.first()}" }) { _, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.dates.forEach { date ->
@@ -708,7 +750,8 @@ private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDat
                         wide = row.dates.size == 1,
                         selected = date == vm.selectedDate,
                         onClick = {
-                            val top = rows.getOrNull(state.firstVisibleItemIndex - 1)?.dates?.first()
+                            // The list holds only card rows (the month is named by the rail and header).
+                            val top = rows.getOrNull(state.firstVisibleItemIndex)?.dates?.first()
                             val offset = if (top != null) state.firstVisibleItemScrollOffset else 0
                             haptics.commitIf(vm.openDayFromRecords(date, top, offset), NavEvent.TAP_DATE)
                         },

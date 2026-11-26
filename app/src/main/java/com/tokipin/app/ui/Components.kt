@@ -138,3 +138,51 @@ fun MoreButton(description: String, onClick: () -> Unit, modifier: Modifier = Mo
         contentAlignment = Alignment.Center,
     ) { TkIcon(R.drawable.ic_more, tint = Tk.Secondary, size = 20.dp) }
 }
+
+/**
+ * v0.3 header: [title] sits on the screen's centre line (the content column is centred, so its
+ * centre is the screen's), not in the room left between the buttons. [leading] and [trailing]
+ * keep their own touch targets. When the title would touch a button (large text, narrow screen)
+ * it moves to its own line under the buttons instead of overlapping; when even the buttons do
+ * not fit on one line, [leading] is asked for its compact form.
+ */
+@Composable
+fun CenteredTitleBar(
+    leading: @Composable (compact: Boolean) -> Unit,
+    title: @Composable () -> Unit,
+    trailing: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    rowHeight: Dp = 62.dp,
+    edge: Dp = 8.dp,
+    gap: Dp = 8.dp,
+) {
+    androidx.compose.ui.layout.SubcomposeLayout(modifier.fillMaxWidth()) { c ->
+        val w = c.maxWidth
+        val edgePx = edge.roundToPx()
+        val gapPx = gap.roundToPx()
+        val inner = (w - 2 * edgePx).coerceAtLeast(0)
+        val loose = androidx.compose.ui.unit.Constraints(maxWidth = inner)
+        val tr = subcompose("trailing", trailing).map { it.measure(loose) }
+        val trW = tr.maxOfOrNull { it.width } ?: 0
+        var ld = subcompose("leading") { leading(false) }.map { it.measure(loose) }
+        if ((ld.maxOfOrNull { it.width } ?: 0) + trW + gapPx > inner) {
+            ld = subcompose("leadingCompact") { leading(true) }.map { it.measure(loose) }
+        }
+        val ldW = ld.maxOfOrNull { it.width } ?: 0
+        val ti = subcompose("title", title).map { it.measure(loose) }
+        val tiW = ti.maxOfOrNull { it.width } ?: 0
+        val tiH = ti.maxOfOrNull { it.height } ?: 0
+        val side = maxOf(ldW, trW)
+        val oneRow = tiW + 2 * (side + gapPx) <= inner
+        val rowH = maxOf(rowHeight.roundToPx(), ld.maxOfOrNull { it.height } ?: 0, tr.maxOfOrNull { it.height } ?: 0)
+        val height = if (oneRow) maxOf(rowH, tiH) else rowH + tiH + 4.dp.roundToPx()
+        layout(w, height) {
+            ld.forEach { it.place(edgePx, (rowH - it.height) / 2) }
+            tr.forEach { it.place(w - edgePx - it.width, (rowH - it.height) / 2) }
+            ti.forEach { p ->
+                val x = (w - p.width) / 2
+                if (oneRow) p.place(x, (rowH - p.height) / 2) else p.place(x, rowH)
+            }
+        }
+    }
+}

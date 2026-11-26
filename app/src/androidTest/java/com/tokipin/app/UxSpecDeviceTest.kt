@@ -58,7 +58,7 @@ class UxSpecDeviceTest {
 
     private val spec by lazy {
         Json.parseToJsonElement(
-            InstrumentationRegistry.getInstrumentation().context.assets.open("Tokipin-Native-UX-v0.2.json").reader().readText(),
+            InstrumentationRegistry.getInstrumentation().context.assets.open("Tokipin-Native-UX-v0.3.json").reader().readText(),
         ).jsonObject
     }
     private val swipeSpec get() = spec["swipe"]!!.jsonObject
@@ -360,18 +360,14 @@ class UxSpecDeviceTest {
     private fun header(year: Int) = exists(compose.onNode(hasText(year.toString()) and !hasAnyAncestor(hasTestTag("monthRail"))))
     private fun railSelected(month: String) = exists(compose.onNode(hasTestTag("rail_$month") and selected))
 
-    @Test fun bodySwipesOneMonthThroughAnEmptyDecemberIntoTheNextYear() {
+    @Test fun bodySwipeSkipsTheEmptyDecemberAndEndsOnTheEmptyCurrentMonth() {
+        // Listed: 2026-10, 2026-11, 2027-01 and this month 2027-03 (empty). December and February are not pages.
         launch(data = monthsData)
         showRecordedMonth("2026-11")
+        compose.onNodeWithTag("rail_2026-12").assertDoesNotExist()
         val w = bounds(compose.onNodeWithTag("recordsBody")).width / density
         var before = ticks()
-        drag("recordsBody", -0.23f * w, 0f, 900, slow = true)
-        assertTrue("December", railSelected("2026-12"))
-        compose.onNodeWithTag("monthEmpty").assertExists()
-        assertTrue(header(2026))
-        assertEquals(before + 1, ticks())
         // Half way to January and back: cancelled, still 2026, no tick.
-        before = ticks()
         compose.onNodeWithTag("recordsBody").performTouchInput {
             val start = Offset(width * 0.7f, height * 0.3f)
             down(start)
@@ -381,19 +377,28 @@ class UxSpecDeviceTest {
             up()
         }
         compose.waitForIdle(); Thread.sleep(400); compose.waitForIdle()
-        assertTrue(railSelected("2026-12"))
+        assertTrue(railSelected("2026-11"))
         assertTrue(header(2026))
         assertEquals(before, ticks())
-        // All the way: January 2027, header 2027, one tick.
-        drag("recordsBody", -0.4f * w, 0f, 900, slow = true)
-        assertTrue(railSelected("2027-01"))
+        // One slot: straight to January 2027, header 2027, one tick.
+        drag("recordsBody", -0.23f * w, 0f, 900, slow = true)
+        assertTrue("January, not the empty December", railSelected("2027-01"))
         assertTrue(header(2027))
+        compose.onNodeWithTag("card_2027-01-03").assertExists()
         assertEquals(before + 1, ticks())
-        // A long fling still moves one month only.
-        drag("recordsBody", 0.9f * w, 0f, 120, slow = false)
-        assertTrue("one page even for a long fling", railSelected("2026-12"))
+        // Next slot: this month, empty, with the rabbit card.
+        drag("recordsBody", -0.3f * w, 0f, 900, slow = true)
+        assertTrue(railSelected("2027-03"))
+        compose.onNodeWithTag("monthEmpty").assertExists()
         assertEquals(before + 2, ticks())
-        assertEquals("selected day untouched", true, exists(compose.onNode(hasTestTag("rail_2026-12"))))
+        // Nothing after this month: no move, no tick.
+        drag("recordsBody", -0.4f * w, 0f, 600, slow = true)
+        assertTrue(railSelected("2027-03"))
+        assertEquals(before + 2, ticks())
+        // A long fling back still moves one slot only.
+        drag("recordsBody", 0.9f * w, 0f, 120, slow = false)
+        assertTrue("one page even for a long fling", railSelected("2027-01"))
+        assertEquals(before + 3, ticks())
     }
 
     @Test fun railTapAndFlingCommitOnceEach() {
@@ -478,9 +483,13 @@ class UxSpecDeviceTest {
 
     @Test fun railMonthsReadTheirYearForTalkBack() {
         launch(data = monthsData)
-        showRecordedMonth("2026-12")
+        showRecordedMonth("2026-11")
         compose.onNode(hasContentDescription("2027년 1월") and hasTestTag("rail_2027-01")).assertExists()
-        assertTrue(exists(compose.onNode(hasContentDescription("2026년 12월") and selected)))
+        assertTrue(exists(compose.onNode(hasContentDescription("2026년 11월") and selected)))
+        // The small 2027 over January is shown, but it is part of January's one TalkBack node.
+        compose.onNode(hasTestTag("railHint_2027-01"), useUnmergedTree = true).assertExists()
+        val hint = compose.onNode(hasTestTag("railHint_2027-01"), useUnmergedTree = true).fetchSemanticsNode()
+        assertTrue("hint is not its own element", !hint.config.contains(SemanticsProperties.Text))
     }
 
     // endregion
@@ -657,9 +666,9 @@ class UxSpecDeviceTest {
 
     @Test fun emptyMonthPictureSitsInThePageAndTheCalendarStillShowsEveryDay() {
         launch(data = editData)
-        showRecordedMonth("2026-12")
+        showRecordedMonth("2027-03") // this month (pinned 2027-03-15), the only empty page
         compose.onNodeWithTag("monthEmpty").assertExists()
-        assertEquals("12월에 남긴 기록이 없어요.", compose.onNodeWithTag("monthEmpty").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
+        assertEquals("3월에 남긴 기록이 없어요.", compose.onNodeWithTag("monthEmpty").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
         assertTrue(centerFraction("monthEmpty", "recordsBody") in 0.18f..0.36f)
         compose.onNodeWithText("이달에 남긴 기록이 없어요.").assertDoesNotExist()
         menu("MONTH")
@@ -756,6 +765,185 @@ class UxSpecDeviceTest {
         assertEquals(before, ticks())
     }
 
+    // region v0.3 기록한 달 목록·연도 힌트·날짜 헤더 (same fixture, today 2026-11-26)
+
+    private fun hint(month: String) = compose.onNode(hasTestTag("railHint_$month"), useUnmergedTree = true)
+    private fun unmerged(tag: String) = bounds(compose.onNode(hasTestTag(tag), useUnmergedTree = true))
+
+    @Test fun archiveAprilAndJanuarySwapInOneSlotWithYearHints() {
+        launchRange()
+        showRecordedMonth("2023-04")
+        compose.onNodeWithTag("card_2023-04-08").assertExists()
+        compose.onNodeWithText("책방").assertExists()
+        assertTrue(header(2023))
+        // 2023.04: 2017 over May (left), 2024 over January (right), none over July 2024.
+        hint("2017-05").assertExists(); hint("2024-01").assertExists(); hint("2024-07").assertDoesNotExist(); hint("2023-04").assertDoesNotExist()
+        val capsule = unmerged("railCapsule").center
+        val numberTop = unmerged("railNumber_2023-04").top
+        val w = bounds(compose.onNodeWithTag("recordsBody")).width / density
+        val before = ticks()
+        drag("recordsBody", -0.23f * w, 0f, 900, slow = true)
+        assertTrue("2023.04 → 2024.01 in one slot", railSelected("2024-01"))
+        assertTrue(header(2024))
+        compose.onNodeWithTag("card_2024-01-10").assertExists()
+        compose.onNodeWithText("산책").assertExists()
+        assertEquals(before + 1, ticks())
+        Thread.sleep(400); compose.waitForIdle()
+        // 2024.01: 2017 over May, 2023 over April, none over July 2024, 2025 over February.
+        hint("2017-05").assertExists(); hint("2023-04").assertExists(); hint("2024-07").assertDoesNotExist(); hint("2025-02").assertExists()
+        assertEquals("capsule centre fixed", capsule.x, unmerged("railCapsule").center.x, 1.5f)
+        assertEquals("capsule centre fixed", capsule.y, unmerged("railCapsule").center.y, 1.5f)
+        assertEquals("number row fixed", numberTop, unmerged("railNumber_2024-01").top, 1.5f)
+        drag("recordsBody", 0.23f * w, 0f, 900, slow = true)
+        assertTrue("and back", railSelected("2023-04"))
+        assertTrue(header(2023))
+        assertEquals(before + 2, ticks())
+    }
+
+    @Test fun novemberStepsBackToSeptemberOverTheEmptyOctober() {
+        launchRange()
+        showRecordedMonth("2026-11")
+        compose.onNodeWithTag("rail_2026-10").assertDoesNotExist()
+        listOf("2026-08", "2026-09", "2026-11").forEach { hint(it).assertDoesNotExist() } // all in 2026
+        val w = bounds(compose.onNodeWithTag("recordsBody")).width / density
+        val before = ticks()
+        drag("recordsBody", 0.23f * w, 0f, 900, slow = true)
+        assertTrue(railSelected("2026-09"))
+        assertEquals(before + 1, ticks())
+        // The month calendar still shows every date of the empty October.
+        menu("MONTH")
+        scrollTo("day_2026-10-15")
+        compose.onNodeWithTag("day_2026-10-15").assertExists()
+    }
+
+    @Test fun enteringFromAnEmptyPastMonthOpensTheNearestRecentMonthAndKeepsTheDay() {
+        launchRange()
+        selectDay("2026-10-12") // empty October; September and November are both one month away
+        val before = ticks()
+        menu("RECORDS")
+        assertTrue("tie goes to the more recent month", railSelected("2026-11"))
+        scenario!!.onActivity { assertEquals(java.time.LocalDate.parse("2026-10-12"), it.vm.selectedDate) }
+        assertEquals("only the level change ticks", before + 1, ticks())
+    }
+
+    @Test fun deletingAMonthsLastRecordMovesToTheNearestMonthSilently() {
+        val data = """{"version":1,"days":[
+            {"date":"2023-04-08","updatedAt":"2023-04-08T10:00:00Z","items":[${item("word", "책방", "p1")}]},
+            {"date":"2026-07-10","updatedAt":"2026-07-10T10:00:00Z","items":[${item("word", "칠월", "p2")}]},
+            {"date":"2026-08-10","updatedAt":"2026-08-10T10:00:00Z","items":[${item("word", "팔월", "p3")}]},
+            {"date":"2026-09-10","updatedAt":"2026-09-10T10:00:00Z","items":[${item("word", "구월", "p4")}]}]}"""
+        launch(data = data, today = rangeToday)
+        showRecordedMonth("2026-08")
+        var before = ticks()
+        scenario!!.onActivity { it.vm.deleteDay(java.time.LocalDate.parse("2026-08-10")) }
+        compose.waitUntil(3_000) { !exists(compose.onNodeWithTag("rail_2026-08")) }
+        compose.waitForIdle()
+        assertTrue("July and September are both one away: the more recent", railSelected("2026-09"))
+        compose.onNodeWithTag("card_2026-09-10").assertExists()
+        assertEquals(before, ticks())
+        // Undo brings August back to the list; the committed month stays where it is.
+        compose.onNodeWithText("실행 취소").performClick()
+        compose.waitUntil(3_000) { exists(compose.onNodeWithTag("rail_2026-08")) }
+        assertTrue(railSelected("2026-09"))
+        // The only past record of 2023: its month leaves, the nearest is July 2026.
+        showRecordedMonth("2023-04")
+        before = ticks()
+        scenario!!.onActivity { it.vm.deleteDay(java.time.LocalDate.parse("2023-04-08")) }
+        compose.waitUntil(3_000) { !exists(compose.onNodeWithTag("rail_2023-04")) }
+        compose.waitForIdle()
+        assertTrue(railSelected("2026-07"))
+        assertTrue(header(2026))
+        assertEquals(before, ticks())
+    }
+
+    @Test fun monthBoundaryReplacesAnEmptyCurrentMonthWithTheNewOne() {
+        val data = """{"version":1,"days":[{"date":"2026-09-01","updatedAt":"2026-09-01T10:00:00Z","items":[${item("word", "구월", "r1")}]}]}"""
+        launch(data = data, today = rangeToday)
+        showRecordedMonth("2026-11")
+        compose.onNodeWithTag("monthEmpty").assertExists()
+        val before = ticks()
+        com.tokipin.app.rules.AppClock.override = java.time.LocalDate.of(2026, 12, 1)
+        scenario!!.onActivity { it.vm.refreshToday() }
+        compose.waitUntil(3_000) { railSelected("2026-12") }
+        compose.onNodeWithTag("rail_2026-11").assertDoesNotExist()
+        compose.onNodeWithTag("monthEmpty").assertExists()
+        assertEquals(before, ticks())
+    }
+
+    @Test fun inDecemberTheEmptyCurrentMonthFollowsNovember() {
+        launch(data = fixture, today = java.time.LocalDate.of(2026, 12, 15))
+        showRecordedMonth("2026-12")
+        compose.onNodeWithTag("monthEmpty").assertExists()
+        assertTrue(header(2026))
+        val w = bounds(compose.onNodeWithTag("recordsBody")).width / density
+        val before = ticks()
+        drag("recordsBody", 0.23f * w, 0f, 900, slow = true)
+        assertTrue("before December comes November", railSelected("2026-11"))
+        assertEquals(before + 1, ticks())
+        drag("recordsBody", 0.23f * w, 0f, 900, slow = true)
+        assertTrue("then September (October is empty)", railSelected("2026-09"))
+    }
+
+    private fun assertTitleCentred(tag: String, title: String?) {
+        val rootW = bounds(compose.onRoot()).width
+        if (title != null) compose.onNode(hasTestTag(tag) and hasText(title, substring = true)).assertExists()
+        assertEquals("$tag on the screen's centre line", rootW / 2, bounds(compose.onNodeWithTag(tag)).center.x, 2f)
+        // No button overlaps the title.
+        val t = bounds(compose.onNodeWithTag(tag))
+        compose.onAllNodes(androidx.compose.ui.test.hasClickAction() and hasAnyAncestor(hasTestTag("topBar") or hasTestTag("editorTopBar")) and !hasTestTag(tag))
+            .fetchSemanticsNodes().forEach { n ->
+                val b = n.boundsInRoot
+                assertTrue("button ${n.config} overlaps $tag", b.right <= t.left || b.left >= t.right || b.bottom <= t.top || b.top >= t.bottom)
+                assertTrue("touch target ≥ 48dp", b.width >= 47.5f * density && b.height >= 47.5f * density)
+            }
+    }
+
+    private fun walkHeaders() {
+        selectDay("2017-05-14")
+        assertTitleCentred("headerTitle", "2017.05")
+        menu("RECORDS")
+        showRecordedMonth("2024-01")
+        assertTitleCentred("headerTitle", "2024")
+        menu("MONTH")
+        assertTitleCentred("headerTitle", null)
+        menu("YEAR")
+        compose.onNodeWithTag("headerTitle").assertDoesNotExist()
+        // Day opened from a search result: "검색 결과" on the left, title still centred.
+        scenario!!.onActivity {
+            val date = java.time.LocalDate.parse("2023-04-08")
+            it.vm.openSearchResult(date, it.vm.journal.itemsOn(date).first())
+        }
+        compose.waitUntil(3_000) { exists(level("DAILY")) }
+        compose.onNodeWithTag("searchReturn").assertExists()
+        assertTitleCentred("headerTitle", "2023.04")
+        scenario!!.onActivity { it.vm.openEditor(java.time.LocalDate.parse("2026-11-25")) }
+        compose.waitForIdle()
+        assertTitleCentred("editorDate", "2026.11.25")
+    }
+
+    @Test fun dateHeadersSitOnTheCentreLine() {
+        launchRange()
+        walkHeaders()
+    }
+
+    @Test fun dateHeadersStayCentredAndClearOfButtonsWithLargeText() {
+        val ui = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val old = ui.executeShellCommand("settings get system font_scale").let { fd ->
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).reader().readText().trim()
+        }
+        fun setScale(v: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(ui.executeShellCommand("settings put system font_scale $v")).readBytes()
+        try {
+            setScale("2.0")
+            Thread.sleep(800)
+            launchRange()
+            walkHeaders()
+        } finally {
+            setScale(if (old == "null" || old.isBlank()) "1.0" else old)
+        }
+    }
+
+    // endregion
+
     @Test fun pickerCancelKeepsTheDraftAndANewFragmentMovesAfterTheTargetsRecords() {
         launchRange()
         selectDay("2026-11-26")
@@ -769,7 +957,7 @@ class UxSpecDeviceTest {
         compose.onNodeWithText("파도").assertExists()
         scenario!!.onActivity { it.vm.changeDraftDate(java.time.LocalDate.parse("2017-05-14")) }
         compose.waitForIdle()
-        assertTrue(exists(compose.onNodeWithText("2017.05.14(일)")))
+        assertTrue(exists(compose.onNodeWithText("2017.05.14")))
         compose.onNodeWithContentDescription("기록 저장").performClick()
         compose.waitUntil(3_000) { exists(level("DAILY")) }
         assertEquals(listOf("바닷가", "파도"), savedValues("2017-05-14"))

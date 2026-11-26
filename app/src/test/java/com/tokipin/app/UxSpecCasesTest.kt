@@ -9,6 +9,8 @@ import com.tokipin.app.data.EntryRules
 import com.tokipin.app.data.Journal
 import com.tokipin.app.data.JournalStore
 import com.tokipin.app.rules.CalendarRules
+import com.tokipin.app.rules.DateHeaders
+import com.tokipin.app.rules.RecordedMonths
 import com.tokipin.app.rules.EmojiRules
 import com.tokipin.app.rules.HapticRules
 import com.tokipin.app.rules.Level
@@ -40,13 +42,13 @@ import java.time.YearMonth
 import java.util.Locale
 
 /**
- * Runs every case of the shared Tokipin-Native-UX-v0.2.json (the same file the iOS tests read)
+ * Runs every case of the shared Tokipin-Native-UX-v0.3.json (the same file the iOS tests read)
  * against the Android rules. Cases that need a running UI are listed in [ON_DEVICE] and run in
  * androidTest (UxSpecDeviceTest); a case missing from both fails this test.
  */
 class UxSpecCasesTest {
     private val spec: JsonObject = Json.parseToJsonElement(
-        javaClass.classLoader!!.getResource("Tokipin-Native-UX-v0.2.json")!!.readText(),
+        javaClass.classLoader!!.getResource("Tokipin-Native-UX-v0.3.json")!!.readText(),
     ).jsonObject
 
     private val cases: List<JsonObject> = spec["tests"]!!.jsonArray.map { it.jsonObject }
@@ -62,6 +64,8 @@ class UxSpecCasesTest {
         assertEquals(UxSpec.DISTANCE_COMMIT_W, swipe.f("distanceCommitFractionOfW"))
         assertEquals(UxSpec.FLICK_MIN_DISTANCE_W, swipe.f("flickMinDistanceFractionOfW"))
         assertEquals(UxSpec.FLICK_MIN_SPEED_W_PER_S, swipe.f("flickMinSameDirectionSpeedInWidthsPerSecond"))
+        assertEquals(UxSpec.RECORDED_SLOT_STEP, swipe["stepsInVisibleMonthSlots"]!!.jsonObject["recordedDaysBody"]!!.jsonPrimitive.int)
+        assertTrue("v0.3 has no calendar-month step for 기록한 날", swipe["stepsInMonths"] == null)
         assertEquals(UxSpec.AXIS_LOCK_RATIO, swipe["axisLock"]!!.jsonObject.f("horizontalWhenAbsDxAtLeastAbsDyTimes"))
         val pinch = spec["pinch"]!!.jsonObject
         assertEquals(UxSpec.ZOOM_IN_AT_OR_ABOVE, pinch.f("enterDetailAtOrAbove"))
@@ -109,6 +113,9 @@ class UxSpecCasesTest {
             "emojiEdit" -> emojiEdit(given, expected)
             "capability" -> capability(given, expected)
             "recordedMonths" -> recordedMonths(case.s("id"), given, expected)
+            "visibleMonthIndex" -> visibleMonthIndex(case.s("id"), given, expected)
+            "monthYearHints" -> monthYearHints(case.s("id"), given, expected)
+            "dateHeaders" -> dateHeaders(case.s("id"), given, expected)
             else -> error("unknown group")
         }
     }
@@ -252,13 +259,50 @@ class UxSpecCasesTest {
         assertEquals(e["fragmentValues"]!!.strings(), d.items.map { it.value })
     }
 
-    /** 기록한 날 v0.2 cases, driven through the same RecordedMonths model the screen uses. */
-    private fun recordedMonths(id: String, g: JsonObject, e: JsonObject) {
+    /** The shared "달력 범위 예시" (calendarRangeArchive): the same file the debug build loads. */
+    private val archiveDates: List<LocalDate> by lazy {
+        Json.parseToJsonElement(java.io.File("src/debug/assets/calendar-range-records.json").readText())
+            .jsonObject["days"]!!.jsonArray.map { it.jsonObject }
+            .filter { it["items"]!!.jsonArray.isNotEmpty() }
+            .map { LocalDate.parse(it["date"]!!.jsonPrimitive.content) }
+    }
+
+    private fun recordDates(g: JsonObject): List<LocalDate> =
+        if (g["fixture"]?.jsonPrimitive?.content == "calendarRangeArchive") archiveDates
+        else g["availableRecordDates"]?.strings()?.map(LocalDate::parse).orEmpty()
+
+    private fun model(g: JsonObject, dates: List<LocalDate> = recordDates(g)): RecordedMonths {
         val committed = YearMonth.parse(g.s("committedMonth"))
         val selected = g["selectedDay"]?.let { LocalDate.parse(it.jsonPrimitive.content) } ?: committed.atDay(1)
-        val model = com.tokipin.app.rules.RecordedMonths(committed, selected)
-        val available = g["availableRecordDates"]?.strings()?.map(LocalDate::parse).orEmpty()
-        val enabled = g.b("appHapticsEnabled", true)
+        val today = LocalDate.parse(g.s("deviceToday"))
+        return RecordedMonths(committed, selected, RecordedMonths.visibleMonths(dates, today))
+    }
+
+    private fun JsonElement.monthsOrNull(): List<String?> = jsonArray.map { if (it is JsonNull) null else it.jsonPrimitive.content }
+
+    /** Checks shared by the 기록한 날 groups after one action on [model]. */
+    private fun checkRecorded(id: String, g: JsonObject, e: JsonObject, model: RecordedMonths, events: List<NavEvent>, dates: List<LocalDate>) {
+        e["committedMonth"]?.let { assertEquals(id, YearMonth.parse(it.jsonPrimitive.content), model.committed) }
+        e["centeredMonth"]?.let { assertEquals(id, YearMonth.parse(it.jsonPrimitive.content), model.centered) }
+        e["headerYear"]?.let { assertEquals(id, it.jsonPrimitive.int, model.headerYear) }
+        e["selectedDay"]?.let { assertEquals(id, LocalDate.parse(it.jsonPrimitive.content), model.selectedDay) }
+        e["visibleMonths"]?.let { assertEquals(id, it.strings(), model.months.map(YearMonth::toString)) }
+        e["visibleCardDates"]?.let { exp -> assertEquals(id, exp.strings(), dates.filter { YearMonth.from(it) == model.committed }.map { it.toString() }) }
+        e["showMonthEmptyState"]?.let { assertEquals(id, it.jsonPrimitive.boolean, dates.none { YearMonth.from(it) == model.committed }) }
+        e["spatialTransition"]?.let { assertEquals(id, it.jsonPrimitive.boolean, !g.b("reduceMotion")) }
+        // Hints and the capsule live in a fixed-height rail: the device test measures both shifts.
+        e["baselineShift"]?.let { assertEquals(id, 0, it.jsonPrimitive.int) }
+        e["capsuleCenterShift"]?.let { assertEquals(id, 0, it.jsonPrimitive.int) }
+        e["level"]?.let { if (it.jsonPrimitive.content == "recordedDays") assertEquals("today", g.s("action")) }
+        val ticks = (e["appTicks"] ?: e["monthTicks"])!!.jsonPrimitive.int
+        assertEquals(id, ticks, HapticRules.ticks(events, g.b("appHapticsEnabled", true)))
+    }
+
+    /** 기록한 날 cases, driven through the same RecordedMonths model the screen uses. */
+    private fun recordedMonths(id: String, g: JsonObject, e: JsonObject) {
+        val dates = recordDates(g)
+        val model = model(g, dates)
+        val committed = model.committed
         val events: List<NavEvent> = when (g["action"]?.jsonPrimitive?.content ?: "pinch") {
             "bodySwipeRelease" -> model.bodyRelease(
                 g.f("W"), g.f("dx"), g.f("dy"), g.f("vx"),
@@ -276,9 +320,9 @@ class UxSpecCasesTest {
             }
             "verticalDragAtBottom" -> listOf(NavEvent.SCROLL)
             "renderRail" -> {
-                val window = com.tokipin.app.rules.RecordedMonths.window(committed, g["sideSlotsInThisFixture"]!!.jsonPrimitive.int)
-                assertEquals(e["visibleMonthKeys"]!!.strings(), window.map { it.toString() })
-                assertEquals(e["visibleMonthNumbers"]!!.jsonArray.map { it.jsonPrimitive.int }, window.map { it.monthValue })
+                val window = model.window(g["sideSlotsInThisFixture"]!!.jsonPrimitive.int)
+                assertEquals(e["visibleMonthKeys"]!!.monthsOrNull(), window.map { it?.toString() })
+                assertEquals(e["visibleMonthNumbers"]!!.jsonArray.map { it.jsonPrimitive.int }, window.map { it?.monthValue })
                 emptyList()
             }
             "tapRailMonth" -> model.tap(YearMonth.parse(g.s("tappedMonth")))
@@ -304,15 +348,93 @@ class UxSpecCasesTest {
             }
             else -> error("action")
         }
-        e["committedMonth"]?.let { assertEquals(YearMonth.parse(it.jsonPrimitive.content), model.committed) }
-        e["centeredMonth"]?.let { assertEquals(YearMonth.parse(it.jsonPrimitive.content), model.centered) }
-        e["headerYear"]?.let { assertEquals(it.jsonPrimitive.int, model.headerYear) }
-        e["selectedDay"]?.let { assertEquals(LocalDate.parse(it.jsonPrimitive.content), model.selectedDay) }
-        e["visibleCardDates"]?.let { exp -> assertEquals(exp.strings(), available.filter { YearMonth.from(it) == model.committed }.map { it.toString() }) }
-        e["showMonthEmptyState"]?.let { assertEquals(it.jsonPrimitive.boolean, available.none { YearMonth.from(it) == model.committed }) }
-        e["spatialTransition"]?.let { assertEquals(it.jsonPrimitive.boolean, !g.b("reduceMotion")) }
-        e["level"]?.let { if (it.jsonPrimitive.content == "recordedDays") assertEquals("today", g.s("action")) }
-        assertEquals(id, e["appTicks"]!!.jsonPrimitive.int, HapticRules.ticks(events, enabled))
+        checkRecorded(id, g, e, model, events, dates)
+    }
+
+    /** v0.3 visible-month list: building it, stepping one slot, resolving and recalculating. */
+    private fun visibleMonthIndex(id: String, g: JsonObject, e: JsonObject) {
+        val dates = recordDates(g)
+        val today = LocalDate.parse(g.s("deviceToday"))
+        when (g.s("action")) {
+            "buildVisibleMonths" -> {
+                // Draft-only dates are never passed in: drafts live apart from the saved journal.
+                val months = RecordedMonths.visibleMonths(dates, today)
+                assertEquals(id, e["visibleMonths"]!!.strings(), months.map(YearMonth::toString))
+                e["showMonthEmptyState"]?.let { assertEquals(id, it.jsonPrimitive.boolean, dates.none { YearMonth.from(it) == YearMonth.from(today) }) }
+            }
+            "bodySlotStep" -> {
+                val model = model(g, dates)
+                checkRecorded(id, g, e, model, model.step(g["direction"]!!.jsonPrimitive.int), dates)
+            }
+            "resolveAnchor" -> {
+                val selected = LocalDate.parse(g.s("selectedDay"))
+                val model = RecordedMonths(YearMonth.from(today), selected, RecordedMonths.visibleMonths(dates, today))
+                val events = model.resolve(YearMonth.parse(g.s("requestedMonth")))
+                checkRecorded(id, g, e, model, events, dates)
+            }
+            "refresh" -> {
+                val model = model(g, dates)
+                val removed = g["remove"]?.strings()?.map(LocalDate::parse).orEmpty().toSet()
+                val inserted = g["insert"]?.strings()?.map(LocalDate::parse).orEmpty()
+                val after = dates.filterNot { it in removed } + inserted
+                val newToday = g["newDeviceToday"]?.let { LocalDate.parse(it.jsonPrimitive.content) } ?: today
+                checkRecorded(id, g, e, model, model.refresh(RecordedMonths.visibleMonths(after, newToday)), after)
+            }
+            "cancelBodyDrag" -> {
+                val model = model(g, dates)
+                val preview = YearMonth.parse(g.s("previewMonth"))
+                model.dragging(if (preview > model.committed) -0.6f else 0.6f)
+                assertEquals(id, preview, model.preview)
+                checkRecorded(id, g, e, model, model.cancel(), dates)
+            }
+            else -> error("action")
+        }
+    }
+
+    /** v0.3 small years above the rail's month numbers. */
+    private fun monthYearHints(id: String, g: JsonObject, e: JsonObject) {
+        val dates = recordDates(g)
+        val model = model(g, dates)
+        when (g.s("action")) {
+            "renderHints" -> {
+                val side = g["sideSlotsInThisFixture"]!!.jsonPrimitive.int
+                val window = model.window(side)
+                assertEquals(id, e["visibleMonthKeys"]!!.monthsOrNull(), window.map { it?.toString() })
+                assertEquals(id, e["visibleMonthNumbers"]!!.jsonArray.map { if (it is JsonNull) null else it.jsonPrimitive.int }, window.map { it?.monthValue })
+                assertEquals(id, e["hintsBySlot"]!!.monthsOrNull(), model.hints(side))
+                checkRecorded(id, g, e, model, emptyList(), dates)
+            }
+            "inspectRailAccessibility" -> {
+                val target = YearMonth.parse(g.s("targetMonth"))
+                assertTrue(id, target in model.months)
+                val value = e["monthValue"]!!.jsonObject
+                assertEquals(id, YearMonth.of(value["year"]!!.jsonPrimitive.int, value["month"]!!.jsonPrimitive.int), target)
+                assertEquals(id, e["isSelected"]!!.jsonPrimitive.boolean, target == model.committed)
+                assertEquals(id, e["hintIsSeparateAccessibleElement"]!!.jsonPrimitive.boolean, !UxSpec.RAIL_HINT_MERGED_INTO_SLOT)
+            }
+            "tapRailMonth" -> checkRecorded(id, g, e, model, model.tap(YearMonth.parse(g.s("tappedMonth"))), dates)
+            else -> error("action")
+        }
+    }
+
+    private fun dateHeaders(id: String, g: JsonObject, e: JsonObject) {
+        val title: String? = when (g.s("level")) {
+            "day" -> DateHeaders.day(LocalDate.parse(g.s("selectedDay")))
+            "recordedDays" -> DateHeaders.recordedDays(YearMonth.parse(g.s("committedMonth")))
+            "month" -> DateHeaders.month(YearMonth.parse(g.s("visibleMonth")))
+            "year" -> DateHeaders.year(g.s("yearBlock").toInt())
+            "editor" -> DateHeaders.editor(LocalDate.parse(g.s("draftDay")))
+            else -> error("level")
+        }
+        val expectedTitle = e["globalTitle"]!!.let { if (it is JsonNull) null else it.jsonPrimitive.content }
+        assertEquals(id, expectedTitle, title)
+        val center = e["titleCenterX"]!!.let { if (it is JsonNull) null else it.jsonPrimitive.float }
+        if (center != null) {
+            assertEquals(id, center, DateHeaders.titleCenterX(g.f("width"), g.f("leadingActionsWidth"), g.f("trailingActionsWidth")))
+            assertEquals(id, "viewportCenter", e.s("anchor"))
+        } else {
+            assertEquals(id, "blockLeading", e.s("anchor"))
+        }
     }
 
     private fun capability(g: JsonObject, e: JsonObject) {

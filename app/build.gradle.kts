@@ -50,16 +50,16 @@ android {
 }
 
 /**
- * Native UX v0.2 shared with iOS: one copy lives in the web repo (../tokipin/native-spec/v0.2), not
+ * Native UX v0.3 shared with iOS: one copy lives in the web repo (../tokipin/native-spec/v0.3), not
  * in this repository. Tests read it from there; the SHA-256 pin makes a changed or missing spec fail
  * the build instead of silently testing against another version.
  */
-val uxSpecDir = rootProject.file("../tokipin/native-spec/v0.2")
-val uxSpecSha256 = "418fbe56ed8127f591a295b6fb924b683a94825e2d322d535a23f2b2c0105ea9"
+val uxSpecDir = rootProject.file("../tokipin/native-spec/v0.3")
+val uxSpecSha256 = "6bddea73872758395ec047089b96a96ba996fa0cdaef11117363347655599512"
 
 val verifyUxSpec by tasks.registering {
     group = "verification"
-    val spec = uxSpecDir.resolve("Tokipin-Native-UX-v0.2.json")
+    val spec = uxSpecDir.resolve("Tokipin-Native-UX-v0.3.json")
     inputs.file(spec)
     doLast {
         if (!spec.isFile) throw GradleException("UX spec not found at $spec (clone elpalaiso/tokipin next to this repo)")

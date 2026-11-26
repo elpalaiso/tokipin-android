@@ -267,39 +267,46 @@ fun EditorScreen(vm: AppViewModel) {
 @Composable
 private fun EditorHeader(vm: AppViewModel, hasItems: Boolean) {
     val draft = vm.draft ?: return
-    Box(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 12.dp)) {
-        RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor, Modifier.align(Alignment.CenterStart))
-        // The date in the middle opens the date picker; choosing applies the date to the draft only.
-        var picking by remember { mutableStateOf(false) }
-        val dateLabel = draft.localDate.fullLabel()
-        val changeDate = stringResource(R.string.cd_change_date)
-        Row(
-            Modifier
-                .align(Alignment.Center)
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(onClickLabel = changeDate, role = Role.Button) { picking = true }
-                .testTag("editorDate")
-                .semantics(mergeDescendants = true) { contentDescription = dateLabel }
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(dateLabel, style = TkType.label)
-            Spacer(Modifier.width(4.dp))
-            TkIcon(R.drawable.ic_chevron_right, size = 12.dp, tint = Tk.Secondary, modifier = Modifier.graphicsLayer { rotationZ = 90f })
-        }
-        if (picking) {
-            EntryDatePicker(
-                initial = draft.localDate,
-                lastMonth = vm.range.last,
-                onDismiss = { picking = false },
-                onConfirm = { picking = false; vm.changeDraftDate(it) },
-            )
-        }
-        Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            if (hasItems) RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_select_items), vm::beginSelection)
-            RoundIconButton(R.drawable.ic_check, stringResource(R.string.cd_save_record), vm::saveDraft)
-        }
+    // v0.3: the draft's whole date ("2026.11.25 ⌄") on the screen's centre line, one button with
+    // its chevron; choosing a date in the picker moves the draft only, ✓ saves.
+    var picking by remember { mutableStateOf(false) }
+    val dateLabel = com.tokipin.app.rules.DateHeaders.editor(draft.localDate)
+    val spoken = draft.localDate.fullLabel()
+    val changeDate = stringResource(R.string.cd_change_date)
+    CenteredTitleBar(
+        modifier = Modifier.testTag("editorTopBar"),
+        edge = 12.dp,
+        leading = { RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor) },
+        title = {
+            Row(
+                Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClickLabel = changeDate, role = Role.Button) { picking = true }
+                    .testTag("editorDate")
+                    .semantics(mergeDescendants = true) { contentDescription = spoken }
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(dateLabel, style = TkType.title, maxLines = 1)
+                Spacer(Modifier.width(4.dp))
+                TkIcon(R.drawable.ic_chevron_right, size = 12.dp, tint = Tk.Secondary, modifier = Modifier.graphicsLayer { rotationZ = 90f })
+            }
+        },
+        trailing = {
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (hasItems) RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_select_items), vm::beginSelection)
+                RoundIconButton(R.drawable.ic_check, stringResource(R.string.cd_save_record), vm::saveDraft)
+            }
+        },
+    )
+    if (picking) {
+        EntryDatePicker(
+            initial = draft.localDate,
+            lastMonth = vm.range.last,
+            onDismiss = { picking = false },
+            onConfirm = { picking = false; vm.changeDraftDate(it) },
+        )
     }
 }
 
