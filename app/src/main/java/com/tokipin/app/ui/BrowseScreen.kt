@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -538,25 +539,6 @@ private fun DailyItem(entry: Entry, lead: Boolean, highlighted: Boolean) {
 
 // region Recorded days (bento)
 
-private sealed interface RecordRow {
-    data class Header(val month: YearMonth) : RecordRow
-    data class Cards(val dates: List<LocalDate>) : RecordRow
-}
-
-/** One month's cards, newest first, alternating one wide card and two side by side. */
-private fun monthRows(dates: List<LocalDate>): List<RecordRow.Cards> {
-    val rows = mutableListOf<RecordRow.Cards>()
-    var i = 0
-    var wide = true
-    while (i < dates.size) {
-        val take = if (wide) 1 else 2
-        rows += RecordRow.Cards(dates.subList(i, minOf(i + take, dates.size)))
-        i += take
-        wide = !wide
-    }
-    return rows
-}
-
 /**
  * 기록한 날 v0.2: a fixed year header and month rail above one page per month. The body pages
  * ±1 month with the day view's swipe rules; the rail follows the body's drag progress, can be
@@ -714,97 +696,222 @@ private val RAIL_HINT_BAND = 14.dp
 private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDate) -> Unit) {
     val haptics = LocalHaptics.current
     val dates = vm.journal.datesIn(month)
-    val rows = remember(dates) { monthRows(dates) }
-    val state = rememberLazyListState()
-    LaunchedEffect(vm.focusRequest, month) {
-        if (month != vm.recordedMonth) return@LaunchedEffect
-        val restore = vm.recordedRestore
-        val entry = vm.entry
-        if (entry is AppViewModel.ListEntry.Restore && restore != null && restore.month == month) {
-            // Back from a day: same top card and offset; if that card is gone, the nearest one.
-            val idx = rows.indexOfFirst { restore.topCard in it.dates }.takeIf { it >= 0 }
-                ?: rows.indexOfFirst { r -> r.dates.any { restore.topCard == null || it <= restore.topCard } }.coerceAtLeast(0)
-            if (rows.isNotEmpty()) state.scrollToItem(idx, if (restore.topCard in rows[idx].dates) restore.offset else 0)
-        } else {
-            val idx = rows.indexOfFirst { vm.selectedDate in it.dates }
-            if (idx > 0) state.placeAt(idx, (entry as? AppViewModel.ListEntry.Anchor)?.y) else state.scrollToItem(0)
-        }
-    }
-    if (rows.isEmpty()) {
+    if (dates.isEmpty()) {
         // Empty month: the same rabbit card inside this month's page, so it slides with the page
         // and comes back with it on cancel. No words on screen; TalkBack hears it once on settling.
         EmptyStateArea(stringResource(R.string.month_empty_cd, month.monthValue), tag = "monthEmpty")
         return
     }
-    LazyColumn(
-        state = state,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 110.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxSize().testTag("monthPage_$month"),
-    ) {
-        itemsIndexed(rows, key = { _, row -> "c${row.dates.first()}" }) { _, row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.dates.forEach { date ->
-                    DayCard(
-                        date = date,
-                        items = vm.journal.itemsOn(date),
-                        wide = row.dates.size == 1,
-                        selected = date == vm.selectedDate,
-                        onClick = {
-                            // The list holds only card rows (the month is named by the rail and header).
-                            val top = rows.getOrNull(state.firstVisibleItemIndex)?.dates?.first()
-                            val offset = if (top != null) state.firstVisibleItemScrollOffset else 0
-                            haptics.commitIf(vm.openDayFromRecords(date, top, offset), NavEvent.TAP_DATE)
-                        },
-                        onLongClick = { onLongPress(date) },
-                        modifier = Modifier.weight(1f),
-                    )
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Figma 5-2183: 14 at each edge of a 390 body (the 12–18 range), so 362 for the rows.
+        val edge = BENTO_EDGE
+        val rowWidth = maxWidth - edge * 2
+        val measure = rememberBentoMeasure()
+        val time = LocalTimeDisplay.current
+        val journal = vm.journal
+        val rows = remember(dates, journal, rowWidth, measure, time) {
+            val laid = dates.map { measure.card(it, journal.itemsOn(it), time, rowWidth.value) }
+            val geometry = com.tokipin.app.rules.Bento.rows(laid.map { it.size }, rowWidth.value)
+            geometry.map { r -> BentoRowUi(r.cards.map { dates[it] }, r.cards.map { laid[it] }, r) }
+        }
+        val state = rememberLazyListState()
+        LaunchedEffect(vm.focusRequest, month) {
+            if (month != vm.recordedMonth) return@LaunchedEffect
+            val restore = vm.recordedRestore
+            val entry = vm.entry
+            if (entry is AppViewModel.ListEntry.Restore && restore != null && restore.month == month) {
+                // Back from a day: same top card and offset; if that card is gone, the nearest one.
+                val idx = rows.indexOfFirst { restore.topCard in it.dates }.takeIf { it >= 0 }
+                    ?: rows.indexOfFirst { r -> r.dates.any { restore.topCard == null || it <= restore.topCard } }.coerceAtLeast(0)
+                if (rows.isNotEmpty()) state.scrollToItem(idx, if (restore.topCard in rows[idx].dates) restore.offset else 0)
+            } else {
+                val idx = rows.indexOfFirst { vm.selectedDate in it.dates }
+                if (idx > 0) state.placeAt(idx, (entry as? AppViewModel.ListEntry.Anchor)?.y) else state.scrollToItem(0)
+            }
+        }
+        LazyColumn(
+            state = state,
+            contentPadding = PaddingValues(start = edge, end = edge, top = 4.dp, bottom = 110.dp),
+            verticalArrangement = Arrangement.spacedBy(com.tokipin.app.rules.Bento.GAP.dp),
+            modifier = Modifier.fillMaxSize().testTag("monthPage_$month"),
+        ) {
+            items(rows, key = { "c${it.dates.first()}" }) { row ->
+                val height = row.cards.maxOf { it.height }
+                Row(Modifier.fillMaxWidth().height(height.dp), horizontalArrangement = Arrangement.spacedBy(com.tokipin.app.rules.Bento.GAP.dp)) {
+                    if (row.geometry.bentoSide == com.tokipin.app.rules.Bento.Side.LEFT) EmptyBento(row.geometry.bento!!)
+                    row.dates.forEachIndexed { i, date ->
+                        DayCard(
+                            date = date,
+                            layout = row.cards[i],
+                            width = row.geometry.widths[i],
+                            selected = date == vm.selectedDate,
+                            onClick = {
+                                // The list holds only card rows (the month is named by the rail and header).
+                                val top = rows.getOrNull(state.firstVisibleItemIndex)?.dates?.first()
+                                val offset = if (top != null) state.firstVisibleItemScrollOffset else 0
+                                haptics.commitIf(vm.openDayFromRecords(date, top, offset), NavEvent.TAP_DATE)
+                            },
+                            onLongClick = { onLongPress(date) },
+                        )
+                    }
+                    if (row.geometry.bentoSide == com.tokipin.app.rules.Bento.Side.RIGHT) EmptyBento(row.geometry.bento!!)
                 }
             }
         }
     }
 }
 
+private val BENTO_EDGE = 14.dp
+private val BENTO_SHAPE = RoundedCornerShape(16.dp)
+
+private class BentoRowUi(val dates: List<LocalDate>, val cards: List<BentoCard>, val geometry: com.tokipin.app.rules.Bento.Row)
+
+/** One piece of a card's flowing line: a fragment (icon for place and time) or the " · " between. */
+private class BentoPiece(val entry: Entry?, val text: String, val width: Float)
+
+/** A measured card: its lines of pieces, natural size and height, all in dp. */
+private class BentoCard(val label: String, val lines: List<List<BentoPiece>>, val size: com.tokipin.app.rules.Bento.Card, val height: Float)
+
+/**
+ * Measures cards with the real font and font scale (Figma 5-2183): label 12/16 on top, fragments
+ * 15/24 below in entered order, " · " between them (2 + 9 + 4), a 13dp icon and 2dp before place
+ * and time text, 13 leading and 18 trailing padding.
+ */
+private class BentoMeasure(
+    private val measurer: androidx.compose.ui.text.TextMeasurer,
+    private val density: androidx.compose.ui.unit.Density,
+    val fragment: androidx.compose.ui.text.TextStyle,
+    val label: androidx.compose.ui.text.TextStyle,
+) {
+    private fun widthOf(text: String, style: androidx.compose.ui.text.TextStyle): Float =
+        with(density) { measurer.measure(text, style, softWrap = false, maxLines = 1).size.width.toDp().value }
+
+    private val lineHeight: Float = with(density) { measurer.measure("가", fragment).size.height.toDp().value }
+    private val labelHeight: Float = with(density) { measurer.measure("26 / 목", label).size.height.toDp().value }
+
+    fun card(date: LocalDate, items: List<Entry>, time: TimeDisplay, rowWidth: Float): BentoCard {
+        val label = date.cardLabel()
+        val pieces = mutableListOf<BentoPiece>()
+        items.forEachIndexed { i, e ->
+            if (i > 0) pieces += BentoPiece(null, "·", SEP_BEFORE + SEP + SEP_AFTER)
+            val icon = if (e.kind == EntryKind.PLACE || e.kind == EntryKind.TIME) ICON + ICON_GAP else 0f
+            val text = time.text(e)
+            pieces += BentoPiece(e, text, icon + widthOf(text, fragment))
+        }
+        val maxContent = rowWidth - com.tokipin.app.rules.Bento.PAD_LEADING - com.tokipin.app.rules.Bento.PAD_TRAILING
+        // Wrap between fragments; a separator never starts a line.
+        val lines = mutableListOf(mutableListOf<BentoPiece>())
+        var used = 0f
+        var k = 0
+        while (k < pieces.size) {
+            val p = pieces[k]
+            if (p.entry == null) {
+                val next = pieces[k + 1]
+                if (used + p.width + next.width > maxContent && lines.last().isNotEmpty()) {
+                    lines += mutableListOf<BentoPiece>(); used = 0f
+                    k++ // drop the separator at the break
+                    continue
+                }
+            }
+            lines.last() += p; used += p.width
+            k++
+        }
+        val widest = lines.maxOf { l -> l.sumOf { it.width.toDouble() }.toFloat() }
+        val labelWidth = widthOf(label, this.label)
+        val natural = com.tokipin.app.rules.Bento.natural(maxOf(widest, labelWidth), rowWidth)
+        val height = TOP + labelHeight + LABEL_GAP + lineHeight * lines.size + BOTTOM
+        return BentoCard(label, lines, com.tokipin.app.rules.Bento.Card(natural, lines.size > 1), height)
+    }
+
+    companion object {
+        const val SEP_BEFORE = 2f
+        const val SEP = 9f
+        const val SEP_AFTER = 4f
+        const val ICON = 13f
+        const val ICON_GAP = 2f
+        const val TOP = 10f
+        const val LABEL_GAP = 5f
+        const val BOTTOM = 11f
+    }
+}
+
+@Composable
+private fun rememberBentoMeasure(): BentoMeasure {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer(cacheSize = 256)
+    val density = LocalDensity.current
+    return remember(measurer, density) {
+        BentoMeasure(
+            measurer, density,
+            fragment = TkType.body.copy(fontSize = 15.sp, lineHeight = 24.sp, color = Tk.Primary),
+            label = TkType.small,
+        )
+    }
+}
+
+/** The empty bento: decoration only, never touched, focused or read. */
+@Composable
+private fun EmptyBento(width: Float) {
+    Box(
+        Modifier.width(width.dp).fillMaxHeight()
+            .clip(BENTO_SHAPE)
+            // A soft frosted tile, lighter than the cards and without an outline (Figma 5-2183).
+            .background(Tk.Primary.copy(alpha = 0.11f))
+            .clearAndSetSemantics { }
+            .testTag("emptyBento"),
+    )
+}
+
 @Composable
 private fun DayCard(
     date: LocalDate,
-    items: List<Entry>,
-    wide: Boolean,
+    layout: BentoCard,
+    width: Float,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(20.dp)
     val time = LocalTimeDisplay.current
-    val title = items.firstOrNull()
-    val rest = items.drop(1)
+    val measure = rememberBentoMeasure()
+    // Extra width beyond the natural one goes to the leading side; the content keeps its 18 trailing.
+    val extra = (width - layout.size.natural).coerceAtLeast(0f)
     Column(
-        modifier
+        Modifier
+            .width(width.dp)
+            .fillMaxHeight()
             .pinchTarget(date)
             .testTag("card_$date")
-            .heightIn(min = if (wide) 140.dp else 120.dp)
-            .clip(shape)
+            .clip(BENTO_SHAPE)
             .background(Tk.Card)
-            .border(if (selected) 1.dp else 0.8.dp, if (selected) Tk.Secondary.copy(alpha = 0.7f) else Tk.CardBorder, shape)
+            .border(if (selected) 1.dp else 0.8.dp, if (selected) Tk.Secondary.copy(alpha = 0.7f) else Tk.CardBorder, BENTO_SHAPE)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .semantics(mergeDescendants = true) { contentDescription = date.fullLabel() + ", " + items.joinToString(", ") { time.text(it) } }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .semantics(mergeDescendants = true) {
+                contentDescription = date.fullLabel() + ", " + layout.lines.flatten().mapNotNull { it.entry }.joinToString(", ") { time.text(it) }
+            }
+            .padding(
+                start = (com.tokipin.app.rules.Bento.PAD_LEADING + extra).dp,
+                end = com.tokipin.app.rules.Bento.PAD_TRAILING.dp,
+                top = BentoMeasure.TOP.dp,
+            ),
     ) {
-        Text(date.cardLabel(), style = TkType.small)
-        Spacer(Modifier.height(14.dp))
-        if (title != null) {
-            Text(
-                time.text(title), style = if (wide) TkType.title.copy(fontSize = 26.sp) else TkType.title,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (rest.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                rest.joinToString("  ·  ") { time.text(it) }, style = TkType.label,
-                maxLines = if (wide) 2 else 1, overflow = TextOverflow.Ellipsis,
-            )
+        Text(layout.label, style = measure.label, maxLines = 1)
+        Spacer(Modifier.height(BentoMeasure.LABEL_GAP.dp))
+        layout.lines.forEach { line ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                line.forEach { piece ->
+                    val e = piece.entry
+                    if (e == null) {
+                        Spacer(Modifier.width(BentoMeasure.SEP_BEFORE.dp))
+                        Text("·", style = measure.fragment.copy(color = Tk.Secondary), textAlign = TextAlign.Center, modifier = Modifier.width(BentoMeasure.SEP.dp))
+                        Spacer(Modifier.width(BentoMeasure.SEP_AFTER.dp))
+                    } else {
+                        if (e.kind == EntryKind.PLACE || e.kind == EntryKind.TIME) {
+                            TkIcon(e.kind.icon(), size = BentoMeasure.ICON.dp, tint = Tk.Secondary)
+                            Spacer(Modifier.width(BentoMeasure.ICON_GAP.dp))
+                        }
+                        Text(piece.text, style = measure.fragment, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
         }
     }
 }

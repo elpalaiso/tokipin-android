@@ -132,7 +132,7 @@ fun LocalDate.fullLabel(locale: Locale = AppLocale.current): String =
     "%04d.%02d.%02d(%s)".format(year, monthValue, dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
 
 fun LocalDate.cardLabel(locale: Locale = AppLocale.current): String =
-    "%02d / %s".format(dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
+    "%d / %s".format(dayOfMonth, dayOfWeek.getDisplayName(DateTextStyle.SHORT, locale))
 
 fun YearMonth.label(): String = "%04d.%02d".format(year, monthValue)
 
