@@ -10,6 +10,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -97,21 +99,33 @@ private fun DayOfWeek.short(): String = getDisplayName(DateTextStyle.NARROW, App
 fun BrowseScreen(vm: AppViewModel) {
     val haptics = LocalHaptics.current
     var dayMenuFor by remember { mutableStateOf<LocalDate?>(null) }
+    var pinchScale by remember { mutableFloatStateOf(1f) }
+    val pinchTargets = remember { PinchTargets() }
 
     BackHandler(enabled = vm.level == Level.DAILY || (vm.level != Level.YEAR && !vm.journal.isEmpty)) {
         vm.goUp(); haptics.tick()
     }
 
     TkBackground {
+      CompositionLocalProvider(LocalPinchTargets provides pinchTargets) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             BrowseTopBar(vm, onDayMenu = { dayMenuFor = vm.selectedDate })
             Box(
                 Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .testTag("level_${vm.level.name}")
+                    .graphicsLayer {
+                        // Follow the fingers a little so the pinch reads before the level switches.
+                        val s = pinchScale.coerceIn(0.92f, 1.08f)
+                        scaleX = s; scaleY = s
+                    }
                     .pinchLevels(
-                        onZoomIn = { if (vm.level != Level.DAILY) { vm.zoomIn(); haptics.tick() } },
-                        onZoomOut = { if (vm.level != Level.YEAR) { vm.zoomOut(); haptics.tick() } },
+                        onProgress = { pinchScale = it },
+                        onPinch = { zoomIn, at ->
+                            val target = pinchTargets.at(at)
+                            if (if (zoomIn) vm.zoomIn(target) else vm.zoomOut(target)) haptics.tick()
+                        },
                     ),
             ) {
                 when {
@@ -123,6 +137,7 @@ fun BrowseScreen(vm: AppViewModel) {
                 }
             }
         }
+      }
         BottomActions(vm)
     }
 
@@ -540,6 +555,7 @@ private fun DayCard(
     val description = date.fullLabel() + ", " + items.joinToString(", ") { it.value }
     Column(
         modifier
+            .pinchTarget(date)
             .heightIn(min = if (wide) 140.dp else 120.dp)
             .clip(shape)
             .background(Tk.Card)
@@ -650,6 +666,7 @@ private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, to
     val label = date.fullLabel() + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { it.value }
     Column(
         Modifier
+            .pinchTarget(date)
             .fillMaxWidth()
             .heightIn(min = 82.dp)
             .padding(2.dp)
@@ -720,6 +737,7 @@ private fun MiniMonth(month: YearMonth, recorded: Set<LocalDate>, selected: Bool
     val description = stringResource(R.string.cd_month, month.monthValue) + if (count > 0) ", $count" else ""
     Column(
         modifier
+            .pinchTarget(month)
             .clip(RoundedCornerShape(12.dp))
             .background(if (selected) Color(0xFF4A5C6B).copy(alpha = 0.8f) else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)

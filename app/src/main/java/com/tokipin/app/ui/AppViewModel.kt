@@ -269,8 +269,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         focusRequest++
     }
 
-    fun zoomIn() { Level.entries.getOrNull(level.ordinal + 1)?.let(::changeLevel) }
-    fun zoomOut() { Level.entries.getOrNull(level.ordinal - 1)?.let(::changeLevel) }
+    fun zoomIn(target: Any? = null): Boolean = zoom(level.ordinal + 1, target)
+    fun zoomOut(target: Any? = null): Boolean = zoom(level.ordinal - 1, target)
+
+    /**
+     * Pinch keeps the date between the fingers in view: the year view opens that month, the month
+     * calendar and recorded days select that date, and daily ↔ recorded days keep the selected day.
+     * Returns whether the level changed (for the single haptic tick).
+     */
+    private fun zoom(ordinal: Int, target: Any?): Boolean {
+        val next = Level.entries.getOrNull(ordinal) ?: return false
+        when (target) {
+            is LocalDate -> selectedDate = target
+            is YearMonth -> if (YearMonth.from(selectedDate) != target) {
+                selectedDate = journal.recordedDates().firstOrNull { YearMonth.from(it) == target } ?: target.atDay(1)
+            }
+        }
+        changeLevel(next)
+        return true
+    }
 
     /** The "< parent" button in the top bar. */
     fun goUp() {

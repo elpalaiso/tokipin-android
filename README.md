@@ -14,12 +14,14 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+With an emulator or device connected, `./gradlew :app:connectedDebugAndroidTest` runs real two-finger pinches through all four levels (`PinchTest`).
+
 ## What's in v0.1
 
 - **Start**: the Android system splash shows the peek-rabbit icon. A slow read shows a bento skeleton; a read failure shows "기록을 불러오지 못했어요" with 다시 시도 and never overwrites saved records.
 - **First run** opens the editor for today with the word tool; later launches open 기록한 날. An unfinished draft (also after the process is killed) reopens the editor.
 - **Editor**: items stack in entered order. The four tools (단어 · 이모지 · 장소 · 시간) stay above the keyboard; switching tool confirms the current value first. Enter confirms one item (after Hangul composition ends), ✓ saves the whole day including the value being typed. Tap an item to edit it, swipe left to reveal delete, long-press or `…` to multi-select. Deletes can be undone. Emoji tool shows the quick row 🍊🧣🎧☕🌿📷🌙; time tool opens a 24-hour Material time picker. Save failure keeps the input and offers 다시 시도. Back keeps the draft; `+` continues it.
-- **Browse** (four levels, pinch or the top-right view menu): 일간 (week strip, swipe the strip for weeks and the body for days, item `…` → 수정/삭제, day `…` → delete day), 기록한 날 (bento cards by month, long-press → "이날 기록 N개 삭제" with 8 s undo), 월간 달력 (vertical months, fixed weekday header, up to three entries + "+N"), 연간 (vertical years of mini calendars). `오늘` jumps back to today. Back goes up a level.
+- **Browse** (four levels, pinch or the top-right view menu; a pinch zooms around the date or month between the fingers, the view follows the fingers slightly, and a pinch released near 1× changes nothing): 일간 (week strip, swipe the strip for weeks and the body for days, item `…` → 수정/삭제, day `…` → delete day), 기록한 날 (bento cards by month, long-press → "이날 기록 N개 삭제" with 8 s undo), 월간 달력 (vertical months, fixed weekday header, up to three entries + "+N"), 연간 (vertical years of mini calendars). `오늘` jumps back to today. Back goes up a level.
 - **Search**: words, emoji, places, times, kind names ("장소") and dates ("11.25"), newest first. Opening a result highlights the item; "검색 결과" returns to the list.
 - **Settings** (last entry of the view menu): touch feedback, JSON export (system file picker), storage note, privacy policy and terms.
 - **Haptics**: one `SEGMENT_TICK` (API 34+, `CLOCK_TICK` before) when the day or level settles; off when the setting is off.
