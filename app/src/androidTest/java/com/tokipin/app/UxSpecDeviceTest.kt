@@ -561,6 +561,41 @@ class UxSpecDeviceTest {
         compose.onNodeWithText("bam").assertExists()
     }
 
+    /** Tokipin에 한마디 (Figma 267-1266): under 기록 내보내기, copy confirms for ~2s, back keeps the sheet. */
+    @Test fun feedbackCopiesTheAddressAndBackReturnsToSettings() {
+        launch(data = editData)
+        compose.onNodeWithContentDescription("탐색 보기").performClick()
+        compose.onNodeWithText("설정").performClick()
+        compose.waitForIdle()
+        val export = bounds(compose.onNodeWithText("기록 내보내기"))
+        val row = bounds(compose.onNodeWithTag("feedbackRow"))
+        assertTrue("row sits under 기록 내보내기", row.top >= export.bottom)
+        compose.onNodeWithTag("feedbackRow").performClick()
+        compose.onNodeWithTag("feedbackPage").assertExists()
+        compose.onNodeWithText("쓰면서 떠오른 생각이 있나요?\n어떤 이야기든 반가워요.").assertExists()
+        compose.onNodeWithTag("feedbackCopy").performClick()
+        compose.onNodeWithText("주소를 복사했어요").assertExists()
+        var clip: String? = null
+        scenario!!.onActivity {
+            clip = it.getSystemService(android.content.ClipboardManager::class.java).primaryClip?.getItemAt(0)?.text?.toString()
+        }
+        assertEquals("hello@tokipin.com", clip)
+        // The confirmation's 2 s runs on the composition clock, which the test drives.
+        compose.mainClock.advanceTimeBy(1_500)
+        compose.onNodeWithText("주소를 복사했어요").assertExists()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        compose.onNodeWithText("주소 복사").assertExists()
+        compose.onNodeWithTag("feedbackAddress").assertDoesNotExist()
+        // System back goes to the sheet's window: it returns to the settings, not out of them.
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+        compose.waitForIdle()
+        compose.onNodeWithTag("feedbackRow").assertExists()
+        compose.onNodeWithTag("feedbackRow").performClick()
+        compose.onNodeWithContentDescription("설정으로").performClick()
+        compose.onNodeWithTag("feedbackRow").assertExists() // the settings sheet, as it was
+    }
+
     @Test fun emptyDayPlusSavesTheFirstFragmentAndPencilReopensItWithoutKeyboard() {
         launch(data = editData)
         openDayOnRail("2026-11-25", "2026.11.24(화)")

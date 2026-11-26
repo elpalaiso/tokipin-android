@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The one place the support address lives ({{support_contact}} in Figma 267-1266):
+         both the mail recipient and the copied address read it. -->
+    <string name="support_contact" translatable="false">hello@tokipin.com</string>
+</resources>

@@ -137,4 +137,11 @@
     <string name="debug_clear">모든 기록 지우기</string>
     <string name="debug_samples_done">예시 기록을 넣었어요.</string>
     <string name="debug_cleared">모든 기록을 지웠어요.</string>
+    <string name="settings_feedback">Tokipin에 한마디</string>
+    <string name="feedback_lead">쓰면서 떠오른 생각이 있나요?\n어떤 이야기든 반가워요.</string>
+    <string name="feedback_mail">메일로 보내기</string>
+    <string name="feedback_copy">주소 복사</string>
+    <string name="feedback_copied">주소를 복사했어요</string>
+    <string name="feedback_fallback">메일 앱을 열 수 없어요. 아래 주소로 보내주세요.</string>
+    <string name="cd_back_to_settings">설정으로</string>
 </resources>

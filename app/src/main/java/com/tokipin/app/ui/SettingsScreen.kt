@@ -31,6 +31,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,6 +58,8 @@ import java.time.LocalDate
 fun SettingsSheet(vm: AppViewModel) {
     var confirmRangeSamples by rememberSaveable { mutableStateOf(false) }
     var confirmLargeSamples by rememberSaveable { mutableStateOf(false) }
+    // Tokipin에 한마디 opens inside the same sheet; back returns to the settings as they were.
+    var feedbackOpen by rememberSaveable { mutableStateOf(false) }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) vm.export(uri)
     }
@@ -63,6 +69,11 @@ fun SettingsSheet(vm: AppViewModel) {
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = Tk.Sheet,
     ) {
+        if (feedbackOpen) {
+            BackHandler { feedbackOpen = false }
+            FeedbackPage(onBack = { feedbackOpen = false })
+            return@ModalBottomSheet
+        }
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.settings), style = TkType.title, modifier = Modifier.weight(1f).semantics { heading() })
@@ -99,6 +110,20 @@ fun SettingsSheet(vm: AppViewModel) {
                         )
                     }
                     TkIcon(R.drawable.ic_download, size = 20.dp, tint = if (canExport) Tk.Primary else Tk.Muted)
+                }
+                HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
+                // Available with or without records.
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                        .clickable(role = Role.Button) { feedbackOpen = true }
+                        .testTag("feedbackRow")
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TkIcon(R.drawable.ic_bubble, size = 20.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.settings_feedback), style = TkType.body, modifier = Modifier.weight(1f))
+                    TkIcon(R.drawable.ic_chevron_right, size = 18.dp)
                 }
             }
             if (com.tokipin.app.data.SampleData.AVAILABLE) {
@@ -156,6 +181,105 @@ fun SettingsSheet(vm: AppViewModel) {
                 TextButton(onClick = { confirmLargeSamples = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
+    }
+}
+
+/**
+ * Tokipin에 한마디 (Figma 267-1266): a mail draft to the support address, or the address copied.
+ * Nothing is attached and nothing is sent by the app; sending stays the person's choice. When no
+ * mail app opens or copying fails, the address is shown to select by hand.
+ */
+@Composable
+private fun FeedbackPage(onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val view = androidx.compose.ui.platform.LocalView.current
+    val reduceMotion = LocalReduceMotion.current
+    val address = stringResource(R.string.support_contact).trim()
+    val copiedText = stringResource(R.string.feedback_copied)
+    var copied by remember { mutableStateOf(false) }
+    var showAddress by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(copied) { if (copied) { kotlinx.coroutines.delay(2_000); copied = false } }
+
+    fun sendMail() {
+        if (address.isEmpty()) { showAddress = true; return }
+        val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:$address"))
+            .putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(address))
+        try {
+            context.startActivity(intent)
+        } catch (e: android.content.ActivityNotFoundException) {
+            showAddress = true
+        } catch (e: SecurityException) {
+            showAddress = true
+        }
+    }
+
+    fun copyAddress() {
+        if (address.isEmpty()) { showAddress = true; return }
+        val ok = runCatching {
+            val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)!!
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(address, address))
+        }.isSuccess
+        if (!ok) { showAddress = true; return }
+        copied = true
+        view.announceForAccessibility(copiedText)
+    }
+
+    val fade = androidx.compose.animation.core.tween<Float>(if (reduceMotion) 0 else 200)
+    Column(Modifier.fillMaxWidth().padding(bottom = 28.dp).testTag("feedbackPage")) {
+        Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_to_settings), onBack, glass = false)
+            Spacer(Modifier.width(2.dp))
+            Text(stringResource(R.string.settings_feedback), style = TkType.title, modifier = Modifier.semantics { heading() })
+        }
+        Column(Modifier.padding(horizontal = 22.dp)) {
+            Text(
+                stringResource(R.string.feedback_lead),
+                style = TkType.body.copy(fontSize = 19.sp, lineHeight = 30.sp),
+                modifier = Modifier.padding(top = 28.dp),
+            )
+            Row(
+                Modifier.padding(top = 40.dp).fillMaxWidth().heightIn(min = 52.dp)
+                    .clip(RoundedCornerShape(26.dp)).background(Color(0xFFD5E0CC))
+                    .clickable(role = Role.Button, onClick = ::sendMail)
+                    .testTag("feedbackMail"),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TkIcon(R.drawable.ic_mail, size = 18.dp, tint = Color(0xFF263028))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.feedback_mail), style = TkType.body.copy(fontSize = 16.sp, color = Color(0xFF263028)))
+            }
+            Row(
+                Modifier.padding(top = 16.dp).fillMaxWidth().heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .clickable(role = Role.Button, onClick = ::copyAddress)
+                    .testTag("feedbackCopy")
+                    .semantics(mergeDescendants = true) { },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                androidx.compose.animation.Crossfade(copied, animationSpec = fade, label = "copied") { done ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TkIcon(if (done) R.drawable.ic_check else R.drawable.ic_copy, size = 16.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(if (done) R.string.feedback_copied else R.string.feedback_copy), style = TkType.label.copy(fontSize = 15.sp, color = Tk.Primary))
+                    }
+                }
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                showAddress,
+                enter = androidx.compose.animation.fadeIn(fade),
+                exit = androidx.compose.animation.fadeOut(fade),
+            ) {
+                Column(Modifier.fillMaxWidth().padding(top = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stringResource(R.string.feedback_fallback), style = TkType.small.copy(fontSize = 13.sp, color = Tk.Secondary), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Spacer(Modifier.height(12.dp))
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(address, style = TkType.body.copy(fontSize = 16.sp), modifier = Modifier.testTag("feedbackAddress"))
+                    }
+                }
+            }
+        }
     }
 }
 
