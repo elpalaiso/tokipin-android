@@ -61,6 +61,13 @@
     <string name="terms_h3">Cambio de dispositivo o borrado de datos</string>
     <string name="terms_b3">Tokipin no sincroniza las notas mediante una cuenta. Antes de cambiar de dispositivo o borrar los datos de la app, exporta desde los ajustes las notas que quieras conservar a un archivo JSON.</string>
     <string name="terms_h4">Responsable de Tokipin y consultas sobre la app</string>
+    <string name="usage_label">Compartir estadísticas de uso de la app</string>
+    <string name="usage_prompt">¿Nos ayudas a mejorar Tokipin?</string>
+    <string name="usage_body">Puedes ayudarnos a que sea más fácil tomar notas. Si aceptas compartir, enviamos a Google Analytics cuántas veces abres la app y guardas notas. No enviamos el contenido de tus notas ni tus búsquedas.</string>
+    <string name="usage_share">Compartir</string>
+    <string name="usage_later">Ahora no</string>
+    <string name="privacy_usage_body">Si aceptas, Google Analytics procesa las aperturas de la app, las veces que guardas notas, un identificador de la instalación y datos del dispositivo. No enviamos el contenido ni las fechas de tus notas, ni tus términos de búsqueda. Puedes desactivar esta opción en cualquier momento en Ajustes.</string>
+    <string name="privacy_usage_title">Compartir estadísticas de uso de la app</string>
     <string name="cd_tool_word">Escribir una palabra</string>
     <string name="cd_tool_emoji">Escribir un emoji</string>
     <string name="cd_tool_place">Escribir un lugar</string>

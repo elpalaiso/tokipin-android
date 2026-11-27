@@ -61,6 +61,13 @@
     <string name="terms_h3">Cihaz değiştirirken veya uygulama verilerini silerken</string>
     <string name="terms_b3">Tokipin notlarını bir hesap aracılığıyla eşitlemez. Cihazını değiştirmeden veya uygulama verilerini temizlemeden önce, saklamak istediğin notları ayarlardan JSON dosyası olarak dışa aktar.</string>
     <string name="terms_h4">Uygulama sorumlusu ve kullanımla ilgili sorular</string>
+    <string name="usage_label">Uygulama kullanım istatistiklerini paylaş</string>
+    <string name="usage_prompt">Tokipin’i geliştirmemize yardımcı olur musunuz?</string>
+    <string name="usage_body">Not tutmayı kolaylaştırmamıza yardımcı olabilirsiniz. Paylaşmayı seçerseniz uygulamayı kaç kez açtığınızı ve kaç kez not kaydettiğinizi Google Analytics’e bildiririz. Notlarınızın içeriğini ve arama terimlerinizi göndermeyiz.</string>
+    <string name="usage_share">Paylaş</string>
+    <string name="usage_later">Şimdi değil</string>
+    <string name="privacy_usage_body">Onay verirseniz Google Analytics uygulama açma ve not kaydetme olaylarını, uygulama yüklemenize ait bir tanımlayıcıyı ve cihaz bilgilerini işler. Not içeriklerini, not tarihlerini veya arama terimlerinizi göndermeyiz. Paylaşımı istediğiniz zaman Ayarlar’dan kapatabilirsiniz.</string>
+    <string name="privacy_usage_title">Uygulama kullanım istatistiklerini paylaş</string>
     <string name="cd_tool_word">Kelime yaz</string>
     <string name="cd_tool_emoji">Emoji gir</string>
     <string name="cd_tool_place">Yer adı yaz</string>

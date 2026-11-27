@@ -25,6 +25,7 @@ class BaselineProfileGenerator {
         pressHome()
         startActivityAndWait(Intent().setClassName(packageName, "$packageName.MainActivity").putExtra("tokipin.seed", "large"))
         device.wait(Until.hasObject(By.res("level_RECORDS")), 30_000)
+        device.wait(Until.findObject(By.res("usageLater")), 1_000)?.click()
         device.waitForIdle()
 
         device.findObject(By.res("recordsBody"))?.let { body ->

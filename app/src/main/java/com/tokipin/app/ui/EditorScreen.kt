@@ -151,7 +151,8 @@ fun EditorScreen(vm: AppViewModel) {
 
     // "+" opens with the keyboard; the pencil opens with it closed until a fragment or tool is tapped.
     var allowFocus by remember { mutableStateOf(vm.editorAutoFocus) }
-    LaunchedEffect(draft.kind, draft.editId, selection == null) {
+    LaunchedEffect(draft.kind, draft.editId, selection == null, vm.usagePromptOpen) {
+        if (vm.usagePromptOpen) return@LaunchedEffect
         if (draft.editId != null) allowFocus = true
         if (allowFocus && selection == null && draft.kind != EntryKind.TIME) {
             // The tool's own field is laid out on the next frame; focus it then.

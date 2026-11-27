@@ -61,6 +61,13 @@
     <string name="terms_h3">更換裝置或清除 App 資料</string>
     <string name="terms_b3">Tokipin 不會透過帳號同步紀錄。更換裝置或清除 App 資料前，請先在設定中將想保留的紀錄匯出成 JSON 檔案。</string>
     <string name="terms_h4">營運者資訊與使用問題聯絡窗口</string>
+    <string name="usage_label">分享 App 使用統計</string>
+    <string name="usage_prompt">願意一起改善 Tokipin 嗎？</string>
+    <string name="usage_body">你可以幫助我們讓記錄更方便。如果選擇分享，我們會將開啟 App 和儲存紀錄的次數傳送給 Google Analytics，不會傳送紀錄內容或搜尋字詞。</string>
+    <string name="usage_share">分享</string>
+    <string name="usage_later">暫時不要</string>
+    <string name="privacy_usage_body">如果你同意，Google Analytics 會處理開啟 App 和儲存紀錄的事件、App 安裝識別碼及裝置資訊。我們不會傳送紀錄內容、紀錄日期或搜尋字詞。你可以隨時在設定中關閉分享。</string>
+    <string name="privacy_usage_title">分享 App 使用統計</string>
     <string name="cd_tool_word">輸入詞語</string>
     <string name="cd_tool_emoji">輸入表情符號</string>
     <string name="cd_tool_place">輸入地點</string>

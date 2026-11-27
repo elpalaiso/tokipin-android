@@ -61,6 +61,13 @@
     <string name="terms_h3">เมื่อเปลี่ยนอุปกรณ์หรือล้างข้อมูลแอป</string>
     <string name="terms_b3">Tokipin ไม่ซิงค์บันทึกผ่านบัญชี ก่อนเปลี่ยนอุปกรณ์หรือล้างข้อมูลแอป โปรดไปที่การตั้งค่าเพื่อส่งออกบันทึกที่ต้องการเก็บไว้เป็นไฟล์ JSON</string>
     <string name="terms_h4">ผู้ให้บริการและการติดต่อเรื่องการใช้งาน</string>
+    <string name="usage_label">แชร์สถิติการใช้แอป</string>
+    <string name="usage_prompt">ช่วยกันปรับปรุง Tokipin ไหม</string>
+    <string name="usage_body">คุณช่วยให้เราพัฒนาการจดบันทึกให้สะดวกขึ้นได้ หากคุณเลือกแชร์ เราจะส่งจำนวนครั้งที่คุณเปิดแอปและบันทึกโน้ตให้ Google Analytics โดยไม่ส่งเนื้อหาในบันทึกหรือคำค้นของคุณ</string>
+    <string name="usage_share">แชร์</string>
+    <string name="usage_later">ไว้ก่อน</string>
+    <string name="privacy_usage_body">หากคุณยินยอม Google Analytics จะประมวลผลเหตุการณ์การเปิดแอปและการบันทึกโน้ต ตัวระบุการติดตั้งแอป และข้อมูลอุปกรณ์ เราไม่ส่งเนื้อหาหรือวันที่ของบันทึก รวมถึงคำค้นของคุณ คุณปิดการแชร์ได้ทุกเมื่อในการตั้งค่า</string>
+    <string name="privacy_usage_title">แชร์สถิติการใช้แอป</string>
     <string name="cd_tool_word">ป้อนคำ</string>
     <string name="cd_tool_emoji">ป้อนอีโมจิ</string>
     <string name="cd_tool_place">ป้อนสถานที่</string>

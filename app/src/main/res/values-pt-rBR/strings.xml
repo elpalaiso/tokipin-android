@@ -61,6 +61,13 @@
     <string name="terms_h3">Ao trocar de dispositivo ou limpar os dados do app</string>
     <string name="terms_b3">O Tokipin não sincroniza suas anotações por meio de uma conta. Antes de trocar de dispositivo ou limpar os dados do app, abra as configurações e exporte para um arquivo JSON as anotações que quiser guardar.</string>
     <string name="terms_h4">Responsável pelo app e dúvidas sobre o uso</string>
+    <string name="usage_label">Compartilhar estatísticas de uso do app</string>
+    <string name="usage_prompt">Quer ajudar a melhorar o Tokipin?</string>
+    <string name="usage_body">Você pode nos ajudar a tornar mais fácil fazer anotações. Se aceitar compartilhar, enviamos ao Google Analytics quantas vezes você abre o app e salva anotações. Não enviamos o conteúdo das anotações nem seus termos de busca.</string>
+    <string name="usage_share">Compartilhar</string>
+    <string name="usage_later">Agora não</string>
+    <string name="privacy_usage_body">Se você aceitar, o Google Analytics processará as aberturas do app, os eventos de salvamento de anotações, um identificador da instalação do app e informações do dispositivo. Não enviamos o conteúdo ou as datas das anotações, nem os termos de busca. Você pode desativar o compartilhamento a qualquer momento nas configurações.</string>
+    <string name="privacy_usage_title">Compartilhar estatísticas de uso do app</string>
     <string name="cd_tool_word">Digitar uma palavra</string>
     <string name="cd_tool_emoji">Inserir um emoji</string>
     <string name="cd_tool_place">Digitar um lugar</string>

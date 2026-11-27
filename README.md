@@ -1,8 +1,14 @@
 # Tokipin Android
 
-Native Android app for Tokipin: leave a small mark (word, emoji, place, time) on the moments you want to remember. Kotlin + Jetpack Compose, Android 8.0+ (minSdk 26, targetSdk 36), package `com.tokipin.app`, no account, no network, no permissions.
+Native Android app for Tokipin: leave a small mark (word, emoji, place, time) on the moments you want to remember. Kotlin + Jetpack Compose, Android 8.0+ (minSdk 26, targetSdk 36), package `com.tokipin.app`, no account or location/calendar permissions. Records stay on the device. Optional usage statistics use Google Analytics for Firebase.
 
 Design source: Figma "Tokipin — Brand · Native App" (pages 01 브랜드, 02 기록 입력, 03 기록 탐색, 04 제품 기준). Copy, policies and editor rules are shared with the homepage in `../tokipin`; behavior and the data format match the iOS app in `../tokipin-ios`.
+
+## Usage statistics
+
+The first launch with no previous choice shows one optional sheet, before the editor keyboard. Declining or dismissing keeps collection off. Settings can change the choice at any time. Firebase initializes only after opt-in. Only successful, changed, nonempty manual saves log the parameter-free `record_saved` event. The app never sends entries, their dates or search text. Advertising identifiers, ad personalization and automatic screen reporting are disabled.
+
+For a configured build, download the Android config for `com.tokipin.app` from Firebase project `tokipin-app` and place it at `app/google-services.json` (gitignored). Without it debug builds run locally and omit the sharing sheet and switch. Release builds require a config matching both the project and package.
 
 ## Run
 
@@ -23,7 +29,7 @@ With an emulator or device connected, `./gradlew :app:connectedDebugAndroidTest`
 - **Editor**: items stack in entered order. The four tools (단어 · 이모지 · 장소 · 시간) stay above the keyboard; switching tool confirms the current value first. Enter confirms one item (after Hangul composition ends), ✓ saves the whole day including the value being typed. Tap an item to edit it, swipe left to reveal delete, long-press or `…` to multi-select. Deletes can be undone. Emoji tool opens the person's keyboard (a short hint appears only while the field is empty or something invalid was typed) and keeps only valid emoji sequences; time tool shows Material's numeric time input inline, in the device's 12/24-hour format, with `+` for one time and ✓ for the whole day. Save failure keeps the input and offers 다시 시도. Back keeps the draft; `+` continues it.
 - **Browse** (four levels, pinch or the top-right view menu; a pinch zooms around the date or month between the fingers, the view follows the fingers slightly, and a pinch released near 1× changes nothing): 일간 (week strip, swipe the strip for weeks and the body for days, item `…` → 수정/삭제, day `…` → delete day), 기록한 날 (bento cards by month, long-press → "이날 기록 N개 삭제" with 8 s undo), 월간 달력 (vertical months, fixed weekday header, up to three entries + "+N"), 연간 (vertical years of mini calendars). `오늘` jumps back to today. Back goes up a level.
 - **Search**: words, emoji, places, times, kind names ("장소") and dates ("11.25"), newest first. Opening a result highlights the item; "검색 결과" returns to the list.
-- **Settings** (last entry of the view menu): touch feedback, JSON export (system file picker), storage note, privacy policy and terms.
+- **Settings** (last entry of the view menu): vibration, optional usage statistics, JSON export (system file picker), storage note, privacy policy and terms.
 - **Haptics**: one `SEGMENT_TICK` (API 34+, `CLOCK_TICK` before) when the day or level settles; off when the setting is off.
 - **Language**: Korean only for now. Every string is in `res/values/strings.xml` and dates use `YYYY.MM.DD(요일)` / cards `DD / 요일` from the app locale, so devices in other languages still get a fully Korean app. To add a language: translate `strings.xml` into `values-<lang>/`, add the code to `AppLocale.supported` and `res/xml/locales_config.xml`.
 

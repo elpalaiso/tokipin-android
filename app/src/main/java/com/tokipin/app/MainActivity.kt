@@ -31,6 +31,7 @@ import com.tokipin.app.ui.LocalHaptics
 import com.tokipin.app.ui.PolicyScreen
 import com.tokipin.app.ui.Screen
 import com.tokipin.app.ui.SearchScreen
+import com.tokipin.app.ui.UsageSharingSheet
 import com.tokipin.app.ui.SettingsSheet
 import com.tokipin.app.ui.TkBackground
 import com.tokipin.app.ui.TokipinTheme
@@ -106,7 +107,9 @@ class MainActivity : ComponentActivity() {
                             Screen.Search -> SearchScreen(vm)
                         }
                     }
-                    if (vm.settingsOpen) SettingsSheet(vm)
+                    if (vm.usagePromptOpen && vm.screen != Screen.Loading && vm.screen != Screen.LoadFailed) {
+                        UsageSharingSheet(vm::usagePromptPresented, vm::chooseUsageSharing)
+                    } else if (vm.settingsOpen) SettingsSheet(vm)
                 }
               }
             }

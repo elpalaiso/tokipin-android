@@ -126,4 +126,11 @@
     <string name="cd_back_to_settings">설정으로</string>
     <!-- TP-0348 (new, 2026.11.27): the swipe-revealed delete button reads its action and target. -->
     <string name="cd_delete_item">%1$s 삭제</string>
+    <string name="usage_label">앱 사용 통계 공유</string>
+    <string name="usage_prompt">토키핀 개선에 함께할까요?</string>
+    <string name="usage_body">기록 기능을 더 편하게 만드는 데 도움이 돼요. 공유하면 앱 실행과 저장 횟수를 Google Analytics로 보내요. 기록 내용과 검색어는 보내지 않아요.</string>
+    <string name="usage_later">지금은 안 함</string>
+    <string name="usage_share">공유하기</string>
+    <string name="privacy_usage_body">선택한 경우 Google Analytics가 앱 실행·저장 이벤트, 앱 설치 식별자와 기기 정보를 처리해요. 기록 내용·기록 날짜·검색어는 보내지 않아요. 설정에서 언제든지 끌 수 있어요.</string>
+    <string name="privacy_usage_title">앱 사용 통계 공유</string>
 </resources>
