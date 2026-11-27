@@ -142,6 +142,7 @@ fun SearchScreen(vm: AppViewModel) {
 
     TkBackground {
         Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding().imePadding()) {
+            SampleControls(vm)
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_close_search), vm::closeSearch)
                 Spacer(Modifier.width(8.dp))

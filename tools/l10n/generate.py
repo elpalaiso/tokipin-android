@@ -10,7 +10,7 @@ Korean, the source, lives in values-ko/.
   Korean text in values-ko (never by position: reordering a JSON file changes nothing). The TP ids
   below document the handoff row.
 - Rows marked 조정 / 별도 come from tools/l10n/app_strings.py.
-- Development-only strings (debug_*), the brand name and pure number formats are not translated.
+- Development-only strings without explicit translations, the brand name and pure number formats are excluded.
 
 Usage: python3 tools/l10n/generate.py <path to a checkout of the web repo's locales directory>
 """
@@ -42,6 +42,28 @@ WEB = {  # resource id -> (domain, TP number)
     "usage_share": ("demo", 351), "usage_later": ("demo", 352),
     "privacy_usage_body": ("site", 353), "privacy_usage_title": ("site", 354),
     "usage_later_hint": ("demo", 356),
+    "onboarding_day_swipe": ("demo", 59),
+    "onboarding_day_zoom": ("demo", 60),
+    "onboarding_records_swipe": ("demo", 61),
+    "onboarding_records_zoom": ("demo", 62),
+    "onboarding_month_scroll": ("demo", 63),
+    "onboarding_month_zoom": ("demo", 64),
+    "onboarding_year_open": ("demo", 65),
+    "onboarding_open_day": ("demo", 66),
+    "onboarding_run_action": ("demo", 67),
+    "onboarding_dismiss_guide": ("demo", 68),
+    "onboarding_replay_editor": ("demo", 97),
+    "onboarding_first_save": ("demo", 102),
+    "onboarding_record_saved": ("demo", 103),
+    "onboarding_record_cleared": ("demo", 104),
+    "onboarding_write_place": ("demo", 113),
+    "onboarding_write_word": ("demo", 114),
+    "onboarding_save_guide": ("demo", 115),
+    "onboarding_dismiss_editor": ("demo", 127),
+    "onboarding_emoji_tool": ("demo", 129),
+    "onboarding_add_time": ("demo", 134),
+    "onboarding_replay_explore": ("demo", 135),
+
     # TP-0198 is split per tool on Android so each uses the web's own phrase (TP-0108…0111).
     "cd_tool_word": ("demo", 108), "cd_tool_emoji": ("demo", 109), "cd_tool_place": ("demo", 110), "cd_tool_time": ("demo", 111),
 }
@@ -62,10 +84,10 @@ def android(text: str) -> str:
 
 
 def source_names(res: str):
-    """Every user-facing name in the Korean source (values-ko); debug_* and untranslatable excluded."""
+    """Every user-facing name in the Korean source (values-ko); debug_* without explicit translations and untranslatable strings excluded."""
     text = open(os.path.join(res, "values-ko", "strings.xml"), encoding="utf-8").read()
     names = re.findall(r'<(?:string|plurals) name="([^"]+)"(?![^>]*translatable="false")', text)
-    return [n for n in names if not n.startswith("debug_")]
+    return [n for n in names if not n.startswith("debug_") or n in APP]
 
 
 def source_texts(res: str):
@@ -115,6 +137,16 @@ def main(locales: str, res: str):
                 out.append(f'    <string name="{rid}">{android(value)}</string>')
         out.append("</resources>\n")
         outputs[os.path.join(res, FOLDER[lang], "strings.xml")] = "\n".join(out)
+    # Keep all sample vocabulary offline using Android's normal locale selection for raw resources.
+    tokens = set(json.load(open(os.path.join(locales, "samples", "en.json"), encoding="utf-8")))
+    for tag, folder in {**FOLDER, "ko": "values-ko"}.items():
+        text = open(os.path.join(locales, "samples", f"{tag}.json"), encoding="utf-8").read()
+        words = json.loads(text)
+        if set(words) != tokens or any(not isinstance(v, str) or not v for v in words.values()):
+            raise SystemExit(f"Incomplete sample vocabulary for {tag}")
+        outputs[os.path.join(res, folder.replace("values", "raw", 1), "sample_words.json")] = (
+            json.dumps(words, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+        )
     for path, text in outputs.items():
         os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, "w", encoding="utf-8").write(text)

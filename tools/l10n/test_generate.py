@@ -13,6 +13,10 @@ def snapshot():
         p = os.path.join(res, d, "strings.xml")
         if d.startswith("values") and d != "values-ko" and os.path.exists(p):
             out[d] = open(p, encoding="utf-8").read()
+        if d.startswith("raw"):
+            p = os.path.join(res, d, "sample_words.json")
+            if os.path.exists(p):
+                out[d] = open(p, encoding="utf-8").read()
     return out
 
 

@@ -95,6 +95,7 @@ import com.tokipin.app.rules.CalendarRules
 import com.tokipin.app.rules.Level
 import com.tokipin.app.rules.NavEvent
 import com.tokipin.app.rules.UxSpec
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -167,8 +168,13 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
     TkBackground {
         CompositionLocalProvider(LocalPinchTargets provides pinchTargets) {
             Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding()) {
+                SampleControls(vm)
                 BrowseTopBar(vm, onDayMenu = { dayMenuFor = vm.selectedDate })
                 if (showUsageHint) UsageLaterHint()
+                vm.tour?.let { tour ->
+                    SampleReceipt(tour)
+                    SampleHint(vm, tour.cue.message)
+                }
                 Box(
                     Modifier
                         .weight(1f)
@@ -932,6 +938,32 @@ private fun MonthView(vm: AppViewModel) {
         com.tokipin.app.rules.CalendarFolding.months(range, recorded, vm.expandedMonthGaps)
     }
     val state = rememberLazyListState()
+    val tour = vm.tour
+    val dragging by state.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(dragging) {
+        if (dragging && tour?.guided == true && tour.cue == BrowseCue.MonthScroll) {
+            val initialRow = state.firstVisibleItemIndex
+            val initialOffset = state.firstVisibleItemScrollOffset
+            snapshotFlow { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset }.first { (row, offset) ->
+                row != initialRow || kotlin.math.abs(offset - initialOffset) > with(density) { 18.dp.roundToPx() }
+            }
+            tour.scrolled()
+        }
+    }
+    LaunchedEffect(tour?.scrollTarget) {
+        val target = tour?.scrollTarget ?: return@LaunchedEffect
+        val index = rows.indexOfFirst {
+            when (it) {
+                is com.tokipin.app.rules.MonthRow.Month -> it.month == target
+                is com.tokipin.app.rules.MonthRow.Gap -> target >= it.from && target <= it.to
+            }
+        }
+        if (index >= 0) {
+            state.scrollToItem(index)
+            vm.scrolledTo(target)
+            tour.scrolled()
+        }
+    }
     TrackScroll(vm, Level.MONTH, state) { y ->
         val month = YearMonth.from(vm.selectedDate)
         val idx = rows.indexOfFirst { it is com.tokipin.app.rules.MonthRow.Month && it.month == month }.takeIf { it >= 0 } ?: return@TrackScroll

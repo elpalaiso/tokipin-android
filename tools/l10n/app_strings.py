@@ -467,5 +467,40 @@ APP = {
         "Delete %1$s", "%1$sを削除", "%1$s löschen", "Supprimer %1$s", "Hapus %1$s", "Xóa %1$s", "%1$s öğesini sil",
         "Удалить: %1$s", "%1$s मिटाएँ", "ลบ %1$s", "Excluir %1$s", "Eliminar %1$s", "Eliminar %1$s", "删除%1$s", "刪除%1$s", "刪除%1$s",
     ],
+    # TP-0362
+    "onboarding_start": [
+        "Start", "始める", "Starten", "Commencer",
+        "Mulai", "Bắt đầu", "Başla", "Начать",
+        "शुरू करें", "เริ่ม", "Começar", "Empezar",
+        "Empezar", "开始", "開始", "開始",
+    ],
+    # TP-0363
+    "onboarding_invitation": [
+        "Ready to start a journal of your own?", "そろそろ、自分だけの記録を重ねてみませんか？", "Möchtest du jetzt mit deinem eigenen Tagebuch beginnen?", "Et si vous commenciez votre propre journal ?",
+        "Siap mulai mengisi jurnalmu sendiri?", "Bạn đã sẵn sàng viết nhật ký của riêng mình chưa?", "Şimdi kendi günlüğünü tutmaya başlamak ister misin?", "Готовы начать вести свой дневник?",
+        "अब अपनी डायरी लिखना शुरू करें?", "พร้อมเริ่มเก็บบันทึกของตัวเองหรือยัง", "Que tal começar seu próprio diário agora?", "¿Te animas a empezar tu propio diario?",
+        "¿Te animas a empezar tu propio diario?", "现在开始一点点写下自己的记录，好吗？", "現在開始慢慢寫下自己的紀錄，好嗎？", "現在開始慢慢寫下自己的記錄，好嗎？",
+    ],
+    # TP-0364
+    "onboarding_next": [
+        "Next", "次へ", "Weiter", "Suivant",
+        "Berikutnya", "Tiếp", "İleri", "Далее",
+        "आगे", "ถัดไป", "Avançar", "Siguiente",
+        "Siguiente", "下一步", "下一步", "下一步",
+    ],
+    # TP-0365
+    "onboarding_keep_exploring": [
+        "Keep exploring", "もう少し見てみる", "Weiter erkunden", "Continuer à explorer",
+        "Terus menjelajah", "Tiếp tục khám phá", "Keşfetmeye devam et", "Продолжить знакомство",
+        "और देखें", "สำรวจต่อ", "Continuar explorando", "Seguir explorando",
+        "Seguir explorando", "继续浏览", "繼續瀏覽", "繼續瀏覽",
+    ],
+    # TP-0366
+    "debug_replay_onboarding": [
+        "Replay onboarding", "オンボーディングをもう一度体験", "Einführung erneut durchlaufen", "Revoir le parcours de découverte",
+        "Coba lagi panduan awal", "Trải nghiệm lại phần hướng dẫn ban đầu", "Tanıtımı yeniden dene", "Пройти знакомство с приложением ещё раз",
+        "शुरुआती गाइड फिर से देखें", "ลองขั้นตอนแนะนำแอปอีกครั้ง", "Refazer a introdução", "Repetir el recorrido inicial",
+        "Repetir el recorrido inicial", "重新体验新手引导", "重新體驗新手導覽", "重新體驗新手導覽",
+    ],
 }
 APP["terms_b4"] = APP["privacy_b5"]

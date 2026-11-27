@@ -2,7 +2,7 @@ package com.tokipin.app.data
 
 import java.time.LocalDate
 
-/** Release builds carry no sample data (see src/debug). */
+/** Release builds omit debug commands that replace the personal journal. */
 object SampleData {
     const val AVAILABLE = false
 

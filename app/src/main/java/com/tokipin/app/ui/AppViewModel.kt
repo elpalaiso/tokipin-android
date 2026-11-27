@@ -17,6 +17,7 @@ import com.tokipin.app.data.DraftRules
 import com.tokipin.app.rules.Level
 import com.tokipin.app.data.Journal
 import com.tokipin.app.data.JournalStore
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -25,27 +26,32 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 
-enum class Screen { Loading, LoadFailed, Editor, Browse, Search }
+enum class Screen { Loading, LoadFailed, Sample, Editor, Browse, Search }
 
 
 enum class Policy { PRIVACY, TERMS }
 
 data class Undo(val message: String, val action: () -> Unit)
 
-class AppViewModel internal constructor(application: Application, private val usage: UsageSharing) : AndroidViewModel(application) {
+class AppViewModel private constructor(
+    application: Application,
+    private val usage: UsageSharing?,
+    private val store: JournalStore?,
+    internal val tour: SampleTour?,
+) : AndroidViewModel(application) {
+    internal constructor(application: Application, usage: UsageSharing) : this(application, usage, JournalStore(application), null)
     constructor(application: Application) : this(application, UsageSharing(application))
-
-    private val store = JournalStore(application)
-    val usageAvailable get() = usage.available
-    var usagePromptOpen by mutableStateOf(usage.available && !usage.hasChoice); private set
-    var usageEnabled by mutableStateOf(usage.enabled); private set
+    val usageAvailable get() = usage?.available == true
+    private val shouldOfferUsage get() = usageAvailable && usage?.hasChoice != true
+    var usagePromptOpen by mutableStateOf(false); private set
+    var usageEnabled by mutableStateOf(usage?.enabled == true); private set
     private var savingDraft = false
 
-    fun usagePromptPresented() = usage.markPresented()
+    fun usagePromptPresented() { usage?.markPresented() }
 
     fun chooseUsageSharing(value: Boolean) {
-        usage.setEnabled(value)
-        usageEnabled = usage.enabled
+        usage?.setEnabled(value)
+        usageEnabled = usage?.enabled == true
         usagePromptOpen = false
     }
     // Messages use the app language (AppLocale), not the device language the Application starts with.
@@ -56,6 +62,11 @@ class AppViewModel internal constructor(application: Application, private val us
     var showSkeleton by mutableStateOf(false); private set
     var journal by mutableStateOf(Journal()); private set
     var draft by mutableStateOf<Draft?>(null); private set
+
+    internal var sample by mutableStateOf<AppViewModel?>(null); private set
+
+    internal val replayingOnboarding get() = sample != null && screen != Screen.Sample
+    private var replayJob: Job? = null
 
     // Browse
     var level by mutableStateOf(Level.RECORDS); private set
@@ -78,17 +89,18 @@ class AppViewModel internal constructor(application: Application, private val us
     var undo by mutableStateOf<Undo?>(null); private set
     var settingsOpen by mutableStateOf(false); private set
     var policy by mutableStateOf<Policy?>(null); private set
-    var hapticsEnabled by mutableStateOf(store.hapticsEnabled); private set
+    var hapticsEnabled by mutableStateOf(store?.hapticsEnabled ?: true); private set
     var transientMessage by mutableStateOf<String?>(null)
 
     private var undoJob: Job? = null
 
-    init { load() }
+
 
     /** Set by MainActivity before the first load finishes (debug and benchmark builds only). */
     internal var seedRequest: String? = null
 
     fun load() {
+        val store = store ?: return
         screen = Screen.Loading
         viewModelScope.launch {
             val skeleton = launch { delay(SKELETON_DELAY_MS); showSkeleton = true }
@@ -114,18 +126,64 @@ class AppViewModel internal constructor(application: Application, private val us
             keptDrafts = drafts.drafts.filter { it.hasContent }.associateBy { it.date }
             draft = drafts.active?.let { keptDrafts[it] }
             val firstLaunch = !store.hasLaunchedBefore
+            if (firstLaunch && journal.isEmpty && drafts.drafts.isEmpty() && usage?.hasChoice != true) {
+                sample = newSampleSession()
+                screen = Screen.Sample
+                return@launch
+            }
             store.hasLaunchedBefore = true
+            usagePromptOpen = shouldOfferUsage
             selectedDate = journal.recordedDates().firstOrNull() ?: com.tokipin.app.rules.AppClock.today()
             recordedMonth = listedMonth(YearMonth.from(selectedDate))
             when {
                 draft?.hasContent == true -> screen = Screen.Editor
-                firstLaunch && journal.isEmpty -> {
+                firstLaunch && journal.isEmpty && keptDrafts.isEmpty() -> {
                     draft = Draft(date = com.tokipin.app.rules.AppClock.today().toString())
                     screen = Screen.Editor
                 }
                 else -> screen = Screen.Browse
             }
         }
+    }
+
+    private suspend fun newSampleSession(): AppViewModel {
+        val newTour = withContext(Dispatchers.Default) { SampleTour.create(today, res) }
+        return AppViewModel(getApplication(), null, null, newTour).also { it.hapticsEnabled = hapticsEnabled }
+    }
+
+    internal fun replayOnboarding() {
+        if (!com.tokipin.app.data.SampleData.AVAILABLE || !settingsOpen || tour != null ||
+            sample != null || replayJob?.isActive == true) return
+        replayJob = viewModelScope.launch { sample = newSampleSession() }
+    }
+
+    internal fun closeDeveloperReplay() {
+        if (!replayingOnboarding) return
+        if (screen == Screen.Browse) entry = ListEntry.Restore
+        disposeSample()
+    }
+
+    private fun disposeSample() {
+        sample?.viewModelScope?.cancel()
+        sample = null
+    }
+
+    internal fun startPersonalJournal() {
+        if (replayingOnboarding) {
+            if (usageAvailable) sample?.tour?.previewUsage() else closeDeveloperReplay()
+            return
+        }
+        if (screen != Screen.Sample) return
+        store?.hasLaunchedBefore = true
+        disposeSample()
+        usagePromptOpen = shouldOfferUsage
+        draft = Draft(date = com.tokipin.app.rules.AppClock.today().toString())
+        screen = Screen.Editor
+    }
+
+    override fun onCleared() {
+        sample?.viewModelScope?.cancel()
+        super.onCleared()
     }
 
     // region Editor
@@ -147,6 +205,7 @@ class AppViewModel internal constructor(application: Application, private val us
         draft = keptDrafts[date.toString()]?.takeIf { it.hasContent }
             ?: Draft(date = date.toString(), items = journal.itemsOn(date))
         editorAutoFocus = focus
+        tour?.resetEditor()
         resetEditorFeedback()
         screen = Screen.Editor
         persistDraft()
@@ -231,7 +290,7 @@ class AppViewModel internal constructor(application: Application, private val us
             }
             Commit.EmptyEdit -> { editorMessage = res.getString(R.string.editor_empty_edit); false }
             is Commit.Ok -> {
-                if (result.draft != d) { draft = result.draft; persistDraft() }
+                if (result.draft != d) { draft = result.draft; tour?.committed(); persistDraft() }
                 editorMessage = null
                 true
             }
@@ -249,9 +308,10 @@ class AppViewModel internal constructor(application: Application, private val us
     /** Switching tools first commits a valid pending value, then opens the next kind. */
     fun setKind(kind: EntryKind): Boolean {
         val d = draft ?: return false
-        if (kind == d.kind) return true
+        if (kind == d.kind) { tour?.chooseTool(); return true }
         if (!commitRaw()) return false
         draft = draft!!.copy(kind = kind)
+        tour?.chooseTool()
         persistDraft()
         return true
     }
@@ -302,7 +362,7 @@ class AppViewModel internal constructor(application: Application, private val us
     fun saveDraft() {
         if (savingDraft || !commitRaw()) return
         val d = draft ?: return
-        if (!d.changed) {
+        if (!d.changed && (tour == null || d.items == journal.itemsOn(d.localDate))) {
             if (d.items.isEmpty()) { editorMessage = res.getString(R.string.editor_need_one); return }
             closeEditor(d.localDate, keepDraft = false, saved = true)
             return
@@ -314,14 +374,14 @@ class AppViewModel internal constructor(application: Application, private val us
         val next = journal.withDay(d.localDate, d.items)
         savingDraft = true
         viewModelScope.launch {
-            val result = runCatching { store.saveJournal(next) }
+            val result = runCatching { store?.saveJournal(next) }
             savingDraft = false
             if (result.isFailure) {
                 saveFailed = true
                 return@launch
             }
             journal = next
-            if (countSave) usage.recordSaved()
+            if (countSave) usage?.recordSaved()
             closeEditor(d.localDate, keepDraft = false, saved = true)
         }
     }
@@ -354,10 +414,16 @@ class AppViewModel internal constructor(application: Application, private val us
             level = Level.DAILY
             entry = ListEntry.Anchor(null)
         }
+        if (tour != null && saved) {
+            tour.didSave(journal.itemsOn(date).isNotEmpty())
+        } else if (tour != null && tour.guided) {
+            tour.replayBrowse(level)
+        }
         focusRequest++
     }
 
     private fun persistDraft() {
+        val store = store ?: return
         val current = draft
         val all = (keptDrafts + (current?.let { mapOf(it.date to it) } ?: emptyMap())).values.filter { it.hasContent || it == current }
         val file = com.tokipin.app.data.DraftsFile(active = current?.date, drafts = all.toList())
@@ -477,6 +543,7 @@ class AppViewModel internal constructor(application: Application, private val us
     fun recorded(action: com.tokipin.app.rules.RecordedMonths.() -> List<com.tokipin.app.rules.NavEvent>): List<com.tokipin.app.rules.NavEvent> {
         months.reset(recordedMonth, selectedDate, visibleRecordMonths)
         val events = months.action()
+        if (recordedMonth != months.committed) tour?.advance(BrowseCue.RecordsSwipe, BrowseCue.RecordsZoom)
         recordedMonth = months.committed
         recordedPreview = months.preview
         if (months.selectedDay != selectedDate) selectedDate = months.selectedDay
@@ -511,7 +578,9 @@ class AppViewModel internal constructor(application: Application, private val us
             recordedMonth = listedMonth(if (entryMode is ListEntry.Restore && restore != null) restore.month else YearMonth.from(selectedDate))
             recordedPreview = null
         }
+        val previous = level
         level = next
+        tour?.enteredLevel(previous, next)
         entry = entryMode
         visibleMonth = YearMonth.from(selectedDate)
         openedFromSearch = false
@@ -555,13 +624,17 @@ class AppViewModel internal constructor(application: Application, private val us
     fun selectDate(date: LocalDate): Boolean {
         highlightId = null
         if (date == selectedDate) return false
+        if (level == Level.DAILY) tour?.advance(BrowseCue.DaySwipe, BrowseCue.DayZoom)
         selectedDate = date
         return true
     }
 
     fun openDay(date: LocalDate): Boolean {
+        val pickedLastDay = level == Level.MONTH && tour?.guided == true && tour.cue == BrowseCue.PickDay
         val changed = selectDate(date)
-        return changeLevel(Level.DAILY) || changed
+        val opened = changeLevel(Level.DAILY)
+        if (pickedLastDay && opened) tour?.invite()
+        return opened || changed
     }
 
     fun openMonth(month: YearMonth): Boolean {
@@ -601,7 +674,7 @@ class AppViewModel internal constructor(application: Application, private val us
 
     private fun persistJournal(next: Journal, then: () -> Unit = {}) {
         viewModelScope.launch {
-            if (runCatching { store.saveJournal(next) }.isSuccess) {
+            if (runCatching { store?.saveJournal(next) }.isSuccess) {
                 journal = next
                 reconcileRecorded()
                 then()
@@ -638,6 +711,7 @@ class AppViewModel internal constructor(application: Application, private val us
         recordedMonth = listedMonth(YearMonth.from(date))
         if (level != Level.DAILY) dailyReturnLevel = level
         level = Level.DAILY
+        tour?.replayBrowse(level)
         this.entry = ListEntry.Anchor(null)
         openedFromSearch = true
         highlightId = entry.id
@@ -650,12 +724,15 @@ class AppViewModel internal constructor(application: Application, private val us
     // region Settings
 
     fun openSettings() { settingsOpen = true }
-    fun closeSettings() { settingsOpen = false }
+    fun closeSettings() {
+        replayJob?.cancel()
+        settingsOpen = false
+    }
     fun openPolicy(p: Policy?) { policy = p }
 
     fun setHaptics(enabled: Boolean) {
         hapticsEnabled = enabled
-        store.hapticsEnabled = enabled
+        store?.hapticsEnabled = enabled
     }
 
     /** Debug builds (개발용 테스트 데이터): replace all records with the homepage's sample journal. */
@@ -673,6 +750,7 @@ class AppViewModel internal constructor(application: Application, private val us
     }
 
     private fun replaceWithAsset(name: String, done: Int) {
+        val store = store ?: return
         if (!com.tokipin.app.data.SampleData.AVAILABLE) return
         viewModelScope.launch {
             val next = try {
@@ -711,6 +789,7 @@ class AppViewModel internal constructor(application: Application, private val us
     }
 
     fun export(uri: Uri) {
+        val store = store ?: return
         val resolver = getApplication<Application>().contentResolver
         viewModelScope.launch {
             val ok = runCatching {
@@ -738,6 +817,17 @@ class AppViewModel internal constructor(application: Application, private val us
     fun clearUndo() {
         undoJob?.cancel()
         undo = null
+    }
+
+    init {
+        if (tour == null) {
+            load()
+        } else {
+            journal = tour.seed
+            draft = Draft(date = today.toString(), items = tour.starter)
+            editorAutoFocus = false
+            screen = Screen.Editor
+        }
     }
 
     companion object {

@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -105,8 +107,10 @@ fun EntryKind.editorStyle(large: Boolean): TextStyle = if (large) textStyle() el
 @Composable
 fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
     val draft = vm.draft ?: return
+    val listState = rememberLazyListState()
     val selection = vm.selection
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val haptics = LocalHaptics.current
     val focus = remember { FocusRequester() }
     var revealedId by remember { mutableStateOf<String?>(null) }
@@ -137,6 +141,7 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
                 else -> TextFieldValue(result.text, TextRange(result.selectionStart, result.selectionEnd))
             }
         } else value
+        vm.tour?.composing = next.composition != null
         field = next
         if (next.text != draft.raw) vm.updateRaw(next.text)
     }
@@ -151,10 +156,37 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
 
     // "+" opens with the keyboard; the pencil opens with it closed until a fragment or tool is tapped.
     var allowFocus by remember { mutableStateOf(vm.editorAutoFocus) }
-    LaunchedEffect(draft.kind, draft.editId, selection == null, vm.usagePromptOpen) {
+    val tour = vm.tour
+    val cue = tour?.takeIf { it.guided && selection == null }?.editorCue(draft)
+    val imeHeight = WindowInsets.ime.getBottom(LocalDensity.current)
+    val heightDp = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
+    val compactTour = tour != null && selection == null && imeHeight > 0 &&
+        heightDp - with(LocalDensity.current) { imeHeight.toDp().value } < 470f
+    fun nextGuideAction() {
+        if (selection != null) vm.endSelection()
+        if (field.composition != null || tour?.composing == true || (draft.kind == EntryKind.EMOJI && EmojiRules.filter(field.text) != field.text)) {
+            // Explicitly finish the IME composition before using the committed value as a guide action.
+            val committed = if (draft.kind == EntryKind.EMOJI) EmojiRules.filter(field.text) else field.text
+            allowFocus = false
+            focusManager.clearFocus(force = true)
+            keyboard?.hide()
+            field = TextFieldValue(committed, TextRange(committed.length))
+            tour?.composing = false
+            vm.updateRaw(committed)
+            if (committed.isNotBlank()) return
+        }
+        if (cue == R.string.onboarding_emoji_tool) allowFocus = true
+        tour?.next(vm)
+    }
+    val editingIndex = draft.items.indexOfFirst { it.id == draft.editId }.takeIf { it >= 0 } ?: draft.items.size
+    LaunchedEffect(tour, imeHeight > 0, draft.kind) {
+        if (tour != null && imeHeight > 0 && selection == null && draft.kind != EntryKind.TIME) listState.scrollToItem(editingIndex)
+    }
+    LaunchedEffect(allowFocus, draft.kind, draft.editId, selection == null, vm.usagePromptOpen) {
         if (vm.usagePromptOpen) return@LaunchedEffect
         if (draft.editId != null) allowFocus = true
         if (allowFocus && selection == null && draft.kind != EntryKind.TIME) {
+            if (tour != null) listState.scrollToItem(editingIndex)
             // The tool's own field is laid out on the next frame; focus it then.
             androidx.compose.runtime.withFrameNanos { }
             focusField()
@@ -163,10 +195,11 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
 
     TkBackground {
         Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding().navigationBarsPadding().imePadding()) {
-            if (selection != null) SelectionHeader(vm, selection) else EditorHeader(vm, draft.items.isNotEmpty())
+            if (!compactTour) SampleControls(vm, onNext = ::nextGuideAction)
+            if (selection != null) SelectionHeader(vm, selection) else EditorHeader(vm, draft.items.isNotEmpty(), compactTour, ::nextGuideAction)
             if (showUsageHint) UsageLaterHint()
+            if (cue == R.string.onboarding_save_guide) SampleHint(vm, cue, Modifier.align(Alignment.End))
 
-            val listState = rememberLazyListState()
             val edge = with(LocalDensity.current) { 64.dp.toPx() }
             val listBounds = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
             fun edgeScroll(windowY: Float): Float {
@@ -185,7 +218,7 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
                     .fillMaxWidth()
                     .testTag("editorList")
                     .onGloballyPositioned { listBounds[0] = it.boundsInWindow() },
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 24.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = if (compactTour) 2.dp else 24.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(draft.items, key = { it.id }) { item ->
@@ -248,7 +281,8 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
                 }
                 if (vm.saveFailed) SaveFailedBanner(onRetry = vm::saveDraft)
                 vm.undo?.let { UndoBar(it) }
-                if (draft.kind == EntryKind.EMOJI && selection == null && (field.text.isEmpty() || emojiBlocked)) {
+                if (cue != null && cue != R.string.onboarding_save_guide) SampleHint(vm, cue)
+                if (tour == null && draft.kind == EntryKind.EMOJI && selection == null && (field.text.isEmpty() || emojiBlocked)) {
                     // Android cannot open an arbitrary keyboard on its emoji panel, so a short hint shows
                     // only while it helps: the field is empty, or something that is not an emoji was typed.
                     EmojiKeyHint()
@@ -257,12 +291,13 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
                     TimePanel(
                         key = Triple(draft.editId, draft.items.size, draft.raw.isEmpty()),
                         initial = draft.raw.takeIf { it.isNotEmpty() },
+                        onDisplayed = { tour?.displayedTime = it },
                         onChoose = { vm.updateRaw(it) },
                         onAdd = { value -> vm.updateRaw(value); vm.commitRaw() },
                         onCancel = vm::cancelPending,
                     )
                 }
-                KindToolbar(draft.kind) { kind ->
+                KindToolbar(draft.kind, guideEmoji = cue == R.string.onboarding_emoji_tool) { kind ->
                     revealedId = null
                     allowFocus = true
                     if (vm.setKind(kind)) {
@@ -280,7 +315,7 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
 }
 
 @Composable
-private fun EditorHeader(vm: AppViewModel, hasItems: Boolean) {
+private fun EditorHeader(vm: AppViewModel, hasItems: Boolean, compactTour: Boolean, nextAction: () -> Unit) {
     val draft = vm.draft ?: return
     // v0.3: the draft's whole date ("2026.11.25 ⌄") on the screen's centre line, one button with
     // its chevron; choosing a date in the picker moves the draft only, ✓ saves.
@@ -288,7 +323,23 @@ private fun EditorHeader(vm: AppViewModel, hasItems: Boolean) {
     val dateLabel = com.tokipin.app.rules.DateHeaders.editor(draft.localDate)
     val spoken = DateWords.spoken(draft.localDate)
     val changeDate = stringResource(R.string.cd_change_date)
-    CenteredTitleBar(
+    @Composable fun EditorActions() {
+        if (hasItems) RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_select_items), vm::beginSelection)
+        RoundIconButton(R.drawable.ic_check, stringResource(R.string.cd_save_record), vm::saveDraft,
+            Modifier.tourTarget(vm.tour?.let { it.guided && it.editorCue(draft) == R.string.onboarding_save_guide } == true))
+    }
+    if (compactTour) {
+        // Leave space for the actual composing line above a tall IME on a short screen.
+        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp).testTag("editorTopBar"), verticalAlignment = Alignment.CenterVertically) {
+            val closeReplay = LocalCloseDeveloperReplay.current
+            if (closeReplay != null) DeveloperReplayClose(closeReplay)
+            else RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor)
+            RoundIconButton(R.drawable.ic_view_month, "$spoken, $changeDate", { picking = true }, Modifier.testTag("editorDate"))
+            Spacer(Modifier.weight(1f))
+            EditorActions()
+            SampleControls(vm, inline = true, onNext = nextAction)
+        }
+    } else CenteredTitleBar(
         modifier = Modifier.testTag("editorTopBar"),
         edge = 12.dp,
         leading = { RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor) },
@@ -310,8 +361,7 @@ private fun EditorHeader(vm: AppViewModel, hasItems: Boolean) {
         },
         trailing = {
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (hasItems) RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_select_items), vm::beginSelection)
-                RoundIconButton(R.drawable.ic_check, stringResource(R.string.cd_save_record), vm::saveDraft)
+                EditorActions()
             }
         },
     )
@@ -663,7 +713,7 @@ private fun SaveFailedBanner(onRetry: () -> Unit) {
 
 /** The four tools stay above the keyboard (Figma 02 · 고정 입력도구의 활성 상태). */
 @Composable
-fun KindToolbar(current: EntryKind, onSelect: (EntryKind) -> Unit) {
+fun KindToolbar(current: EntryKind, guideEmoji: Boolean = false, onSelect: (EntryKind) -> Unit) {
     val selectedText = stringResource(R.string.cd_selected)
     Row(
         Modifier.fillMaxWidth().height(56.dp).glass(RoundedCornerShape(28.dp)).padding(5.dp),
@@ -678,6 +728,7 @@ fun KindToolbar(current: EntryKind, onSelect: (EntryKind) -> Unit) {
                     .weight(1f)
                     .height(46.dp)
                     .padding(horizontal = 10.dp)
+                    .tourTarget(guideEmoji && kind == EntryKind.EMOJI)
                     .clip(RoundedCornerShape(14.dp))
                     .background(if (active) Tk.Focus else androidx.compose.ui.graphics.Color.Transparent)
                     .clickable(role = Role.Tab) { onSelect(kind) }
@@ -743,6 +794,7 @@ private fun PendingTime(value: String, large: Boolean) {
 private fun TimePanel(
     key: Any,
     initial: String?,
+    onDisplayed: (String) -> Unit,
     onChoose: (String) -> Unit,
     onAdd: (String) -> Unit,
     onCancel: () -> Unit,
@@ -756,6 +808,7 @@ private fun TimePanel(
         androidx.compose.runtime.snapshotFlow { state.hour to state.minute }
             .collect { (h, m) ->
                 val value = com.tokipin.app.rules.TimeRules.canonical(h, m)
+                onDisplayed(value)
                 if (value != initial && !(initial == null && h == start.hour && m == start.minute)) onChoose(value)
             }
     }

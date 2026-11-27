@@ -49,6 +49,11 @@ class UsageSharingTest {
     @Test fun launchOffersOnceBeforeKeyboardAndSettingsStartsOff() {
         assumeTrue(BuildConfig.USAGE_SHARING_AVAILABLE)
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("sampleNext")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("usageInvitation").assertDoesNotExist()
+        compose.onNodeWithTag("sampleDismiss").performClick()
+        compose.onNodeWithTag("sampleEarlyStart").performClick()
+        compose.onNodeWithTag("onboardingStart").performClick()
         compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("usageInvitation")).fetchSemanticsNodes().isNotEmpty() }
         val resources = AppLocale.resources(app)
         compose.onNodeWithText(resources.getString(R.string.usage_prompt)).assertIsDisplayed()
@@ -97,6 +102,44 @@ class UsageSharingTest {
         }
     }
 
+    @Test fun developerReplayDoesNotCallTheOptedInSinkAndOmitsAnUnavailableOffer() {
+        val changes = mutableListOf<Boolean>()
+        var saves = 0
+        val sink = object : UsageAnalytics {
+            override fun setCollection(enabled: Boolean) { changes += enabled }
+            override fun recordSaved() { saves++ }
+        }
+        val preferences = app.getSharedPreferences("tokipin.usage", Context.MODE_PRIVATE)
+        preferences.edit().putBoolean("enabled", true).commit()
+        com.tokipin.app.data.JournalStore(app).hasLaunchedBefore = true
+        for (configured in listOf(true, false)) {
+            lateinit var vm: AppViewModel
+            main { vm = AppViewModel(app, UsageSharing(app, sink, available = configured)) }
+            compose.waitUntil(8_000) { vm.screen == Screen.Browse }
+            main { vm.openSettings(); vm.replayOnboarding() }
+            compose.waitUntil(8_000) { vm.sample != null }
+            val sample = requireNotNull(vm.sample)
+            main { sample.updateRaw("practice only"); sample.saveDraft() }
+            compose.waitUntil(8_000) { sample.screen == Screen.Browse }
+            main {
+                sample.tour!!.invite()
+                vm.startPersonalJournal()
+                if (configured) {
+                    assertEquals(com.tokipin.app.ui.TourSheet.PreviewUsage, sample.tour.sheet)
+                    vm.closeDeveloperReplay()
+                }
+                assertNull(vm.sample)
+                assertTrue(vm.settingsOpen)
+                assertEquals(Screen.Browse, vm.screen)
+                assertFalse(vm.usagePromptOpen)
+                assertTrue(vm.journal.isEmpty)
+            }
+            assertTrue(preferences.getBoolean("enabled", false))
+            assertEquals(listOf(true), changes) // Only initialization of the configured personal client.
+            assertEquals(0, saves)
+        }
+    }
+
     @Test fun consentGatesSuccessfulManualSavesAndPersistsAcrossLaunches() {
         val changes = mutableListOf<Boolean>()
         var saves = 0
@@ -106,6 +149,18 @@ class UsageSharingTest {
         }
         lateinit var vm: AppViewModel
         main { vm = AppViewModel(app, UsageSharing(app, sink, available = true)) }
+        compose.waitUntil(8_000) { vm.screen == Screen.Sample }
+        main {
+            assertFalse(vm.usagePromptOpen)
+            vm.sample!!.run {
+                setKind(com.tokipin.app.data.EntryKind.EMOJI)
+                updateRaw("✨")
+                saveDraft()
+            }
+            assertEquals(0, saves)
+            assertTrue(changes.isEmpty())
+            vm.startPersonalJournal()
+        }
         compose.waitUntil(8_000) { vm.screen == Screen.Editor }
         main {
             assertTrue(vm.usagePromptOpen)

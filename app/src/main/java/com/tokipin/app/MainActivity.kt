@@ -32,6 +32,7 @@ import com.tokipin.app.ui.LoadingSkeleton
 import com.tokipin.app.ui.LocalHaptics
 import com.tokipin.app.ui.PolicyScreen
 import com.tokipin.app.ui.Screen
+import com.tokipin.app.ui.SampleExitSheet
 import com.tokipin.app.ui.SearchScreen
 import com.tokipin.app.ui.UsageSharingSheet
 import com.tokipin.app.ui.SettingsSheet
@@ -60,30 +61,34 @@ class MainActivity : ComponentActivity() {
         }.getOrDefault(false)
 
         // Debug and benchmark builds only: `--es tokipin.seed large` starts from with the
-        // ten-year sample, so performance checks start from the same data. Release has no samples.
+        // ten-year sample, so performance checks start from the same data. Release omits this debug seed override.
         if (savedInstanceState == null && com.tokipin.app.data.SampleData.AVAILABLE &&
             intent?.getStringExtra("tokipin.seed") == "large"
         ) vm.seedRequest = "large"
 
         setContent {
+            val personal = this@MainActivity.vm
+            val vm = personal.sample ?: personal
             TokipinTheme {
               // Test tags double as resource ids so UI Automator (benchmarks) can find the same nodes.
               androidx.compose.foundation.layout.Box(
                   androidx.compose.ui.Modifier.semantics { testTagsAsResourceId = true },
               ) {
                 val view = LocalView.current
-                val haptics = remember(view) { Haptics(view) { vm.hapticsEnabled } }
+                val haptics = remember(view, vm) { Haptics(view) { vm.hapticsEnabled } }
                 val context = androidx.compose.ui.platform.LocalContext.current
                 // Re-read the 12/24-hour setting whenever the app comes back to the foreground.
                 var resumes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { resumes++; vm.refreshToday(); onPauseOrDispose { } }
+                androidx.lifecycle.compose.LifecycleResumeEffect(vm) { resumes++; vm.refreshToday(); onPauseOrDispose { } }
                 val timeDisplay = androidx.compose.runtime.remember(resumes) { com.tokipin.app.ui.TimeDisplay.from(context) }
+                val retainedSettings = if (personal.settingsOpen) androidx.compose.runtime.saveable.rememberSaveableStateHolder() else null
                 CompositionLocalProvider(
+                    com.tokipin.app.ui.LocalCloseDeveloperReplay provides if (personal.replayingOnboarding) personal::closeDeveloperReplay else null,
                     LocalHaptics provides haptics,
                     com.tokipin.app.ui.LocalReduceMotion provides reduceMotion,
                     com.tokipin.app.ui.LocalTimeDisplay provides timeDisplay,
                 ) {
-                    var showUsageHint by remember(vm.screen, vm.settingsOpen) { mutableStateOf(false) }
+                    var showUsageHint by remember(vm, vm.screen, vm.settingsOpen) { mutableStateOf(false) }
                     val accessibility = LocalAccessibilityManager.current
                     LaunchedEffect(showUsageHint) {
                         if (showUsageHint) {
@@ -105,17 +110,20 @@ class MainActivity : ComponentActivity() {
                     }
                     // Editor ↔ home: a short fade (Figma 04 · 180–240ms 시작값), instant when motion is reduced.
                     val duration = if (reduceMotion) com.tokipin.app.rules.UxSpec.REDUCED_MOTION_FADE_MS else com.tokipin.app.rules.UxSpec.COMMIT_MS
-                    AnimatedContent(
-                        targetState = vm.screen,
-                        transitionSpec = { fadeIn(tween(duration)) togetherWith fadeOut(tween(duration)) },
-                        label = "screen",
-                    ) { screen ->
-                        when (screen) {
-                            Screen.Loading -> if (vm.showSkeleton) LoadingSkeleton() else TkBackground {}
-                            Screen.LoadFailed -> LoadFailedScreen(onRetry = vm::load)
-                            Screen.Editor -> EditorScreen(vm, showUsageHint)
-                            Screen.Browse -> BrowseScreen(vm, showUsageHint)
-                            Screen.Search -> SearchScreen(vm)
+                    androidx.compose.runtime.key(vm) {
+                        AnimatedContent(
+                            targetState = vm.screen,
+                            transitionSpec = { fadeIn(tween(duration)) togetherWith fadeOut(tween(duration)) },
+                            label = "screen",
+                        ) { screen ->
+                            when (screen) {
+                                Screen.Loading -> if (vm.showSkeleton) LoadingSkeleton() else TkBackground {}
+                                Screen.LoadFailed -> LoadFailedScreen(onRetry = vm::load)
+                                Screen.Sample -> TkBackground {}
+                                Screen.Editor -> EditorScreen(vm, showUsageHint)
+                                Screen.Browse -> BrowseScreen(vm, showUsageHint)
+                                Screen.Search -> SearchScreen(vm)
+                            }
                         }
                     }
                     if (vm.usagePromptOpen && vm.screen != Screen.Loading && vm.screen != Screen.LoadFailed) {
@@ -123,7 +131,11 @@ class MainActivity : ComponentActivity() {
                             vm.chooseUsageSharing(false)
                             showUsageHint = true
                         }
-                    } else if (vm.settingsOpen) SettingsSheet(vm)
+                    } else if (vm.settingsOpen) {
+                        if (vm === personal && retainedSettings != null) {
+                            retainedSettings.SaveableStateProvider("personalSettings") { SettingsSheet(vm) }
+                        } else SettingsSheet(vm)
+                    } else SampleExitSheet(vm, personal::startPersonalJournal)
                 }
               }
             }
