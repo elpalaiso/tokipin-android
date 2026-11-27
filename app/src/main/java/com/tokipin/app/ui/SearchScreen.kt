@@ -73,13 +73,22 @@ fun search(
  * Searchable text of every saved day, prepared once per journal, language and time format: the
  * stored values, what the screen shows (a time as "6:45 PM"), and the date both as stored (ISO) and
  * as written in the app ("2026.11.25(Wed)"), so whatever is on screen can be typed back. Text is
- * folded with the app language's case rules (Turkish İ/ı included), then compared off the main thread.
+ * folded with the app language's case rules (Turkish İ/ı kept apart) and one kind of space, then compared off the main thread.
  */
 class SearchIndex(journal: Journal, private val locale: java.util.Locale, shown: (Entry) -> String) {
     private class Day(val date: LocalDate, val dateText: String, val entries: List<Entry>, val texts: List<String>)
 
-    /** Case-insensitive form: the language's own lower case, then dotted/dotless i made equal. */
-    fun fold(text: String): String = text.lowercase(locale).replace("\u0307", "").replace('ı', 'i')
+    /**
+     * Comparable form: the language's own lower case (Turkish İ→i, I→ı, so kir and kır stay
+     * different), a stray combining dot dropped (İ lower-cased outside Turkish), and every kind of
+     * space — the narrow no-break space formatters put in "6:45 PM", no-break spaces — made one
+     * ordinary space, so a time typed on a keyboard finds the time shown on screen.
+     */
+    fun fold(text: String): String = text.lowercase(locale).replace("\u0307", "").replace(SPACES, " ")
+
+    private companion object {
+        val SPACES = Regex("[\\s\\u00A0\\u2007\\u202F\\u2000-\\u200A\\u3000]+")
+    }
 
     private val days: List<Day> = journal.dates.map { date ->
         val entries = journal.itemsOn(date)

@@ -80,13 +80,31 @@ class LocalizationTest {
             com.tokipin.app.data.EntryKind.PLACE to "Yer", com.tokipin.app.data.EntryKind.TIME to "Saat",
         )
         val shown = { e: com.tokipin.app.data.Entry -> if (e.value == "18:45") "6:45 PM" else e.value }
-        listOf("İstanbul", "istanbul", "ISTANBUL", "İSTANBUL").forEach { q ->
+        listOf("İstanbul", "istanbul", "İSTANBUL").forEach { q ->
             assertEquals(q, listOf("İstanbul"), com.tokipin.app.ui.search(journal, q, names, tr, shown).map { it.entry.value })
         }
         assertEquals(listOf("İstanbul"), com.tokipin.app.ui.search(journal, "YER", names, tr, shown).map { it.entry.value })
+        // Dotted and dotless i are different letters in Turkish: kir and kır never find each other.
+        val words = com.tokipin.app.data.Journal().withDay(day, listOf(
+            com.tokipin.app.data.Entry(kind = com.tokipin.app.data.EntryKind.WORD, value = "kir"),
+            com.tokipin.app.data.Entry(kind = com.tokipin.app.data.EntryKind.WORD, value = "kır"),
+        ))
+        assertEquals(listOf("kir"), com.tokipin.app.ui.search(words, "kir", names, tr).map { it.entry.value })
+        assertEquals(listOf("kır"), com.tokipin.app.ui.search(words, "kır", names, tr).map { it.entry.value })
+        assertEquals(listOf("kır"), com.tokipin.app.ui.search(words, "KIR", names, tr).map { it.entry.value })
         // The time as stored and as shown.
         assertEquals(listOf("18:45"), com.tokipin.app.ui.search(journal, "18:45", names, tr, shown).map { it.entry.value })
         assertEquals(listOf("18:45"), com.tokipin.app.ui.search(journal, "6:45 pm", names, tr, shown).map { it.entry.value })
+        // Formatters put a narrow no-break space (U+202F) in "6:45 PM"; a keyboard types an ordinary one.
+        for (tag in listOf("en-GB", "en-US", "fr", "es-419")) {
+            val l = Locale.forLanguageTag(tag)
+            val pattern = java.time.format.DateTimeFormatter.ofPattern("h:mm\u202Fa", l)
+            val onScreen = pattern.format(java.time.LocalTime.of(18, 45))
+            val typed = onScreen.replace('\u202F', ' ')
+            val show = { e: com.tokipin.app.data.Entry -> if (e.value == "18:45") onScreen else e.value }
+            assertEquals(tag, listOf("18:45"), com.tokipin.app.ui.search(journal, typed, names, l, show).map { it.entry.value })
+            assertEquals(tag, listOf("18:45"), com.tokipin.app.ui.search(journal, onScreen, names, l, show).map { it.entry.value })
+        }
         // The date as stored and as written in the app.
         assertEquals(2, com.tokipin.app.ui.search(journal, "2026-11-26", names, tr, shown).size)
         assertEquals(2, com.tokipin.app.ui.search(journal, fullLabelOf(day, tr), names, tr, shown).size)

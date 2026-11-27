@@ -35,3 +35,21 @@ changed = [d for d in before if before[d] != after.get(d)]
 if changed:
     raise SystemExit(f"shuffling the web dictionaries changed {changed}")
 print(f"ok: {len(before)} folders unchanged after shuffling every web dictionary")
+
+# A key missing in a later language (Japanese) after an earlier one (English) changed: the run
+# fails and no file changes at all.
+with tempfile.TemporaryDirectory() as tmp:
+    broken = os.path.join(tmp, "locales")
+    shutil.copytree(locales, broken)
+    en = os.path.join(broken, "demo", "en.json")
+    d = json.load(open(en, encoding="utf-8")); d["진동"] = "Vibration (changed)"
+    json.dump(d, open(en, "w", encoding="utf-8"), ensure_ascii=False)
+    ja = os.path.join(broken, "demo", "ja.json")
+    d = json.load(open(ja, encoding="utf-8")); del d["진동"]
+    json.dump(d, open(ja, "w", encoding="utf-8"), ensure_ascii=False)
+    result = subprocess.run([sys.executable, os.path.join(here, "generate.py"), broken], capture_output=True, text=True)
+    if result.returncode == 0:
+        raise SystemExit("generation with a missing Japanese key should fail")
+    if snapshot() != before:
+        raise SystemExit("a failed generation changed some files")
+print("ok: a missing key fails without touching any file")

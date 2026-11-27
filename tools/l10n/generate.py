@@ -83,6 +83,9 @@ def main(locales: str, res: str):
         if len(values) != len(LANGS):
             raise SystemExit(f"{rid}: {len(values)} values for {len(LANGS)} languages")
     korean = source_texts(res)
+    # Every language is checked and prepared first; files are written only when all of them pass,
+    # so a missing key in one language never leaves the others half regenerated.
+    outputs = {}
     for i, lang in enumerate(LANGS):
         dicts = {d: json.load(open(os.path.join(locales, d, f"{lang}.json"), encoding="utf-8")) for d in ("demo", "site")}
         out = ['<?xml version="1.0" encoding="utf-8"?>',
@@ -107,9 +110,10 @@ def main(locales: str, res: str):
             else:
                 out.append(f'    <string name="{rid}">{android(value)}</string>')
         out.append("</resources>\n")
-        folder = os.path.join(res, FOLDER[lang])
-        os.makedirs(folder, exist_ok=True)
-        open(os.path.join(folder, "strings.xml"), "w", encoding="utf-8").write("\n".join(out))
+        outputs[os.path.join(res, FOLDER[lang], "strings.xml")] = "\n".join(out)
+    for path, text in outputs.items():
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, "w", encoding="utf-8").write(text)
 
 
 if __name__ == "__main__":
