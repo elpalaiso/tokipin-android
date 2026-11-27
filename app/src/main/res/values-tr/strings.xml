@@ -42,8 +42,8 @@
     <string name="cd_close_search">Aramayı kapat</string>
     <string name="privacy_policy">Gizlilik politikası</string>
     <string name="terms">Kullanım koşulları</string>
-    <string name="policy_draft_badge">Yayın öncesi taslak · iOS ve Android uygulamaları</string>
-    <string name="privacy_lead">Tokipin, iOS ve Android’de hesap açmadan kullanabileceğin bir not uygulaması. Notların ve üzerinde çalıştığın taslaklar cihazında, uygulamanın kendi alanında saklanır.</string>
+    <string name="policy_revision">Gözden geçirilmiş taslak · 27 Kasım 2026</string>
+    <string name="privacy_lead">Tokipin uygulamalarını ve web demosunu Kore Cumhuriyeti merkezli Stepzu işletir. Kişisel günlüğünüz cihazınızda kalır. Bu politika, paylaşmayı seçtiğiniz kullanım istatistiklerini ve bize gönderdiğiniz e-postaları nasıl işlediğimizi açıklar.</string>
     <string name="privacy_h1">Hangi bilgiler saklanır?</string>
     <string name="privacy_b1">Eklediğin kelimeler, emojiler, yerler ve saatlerle birlikte notun tarihi ve öğelerin sırası saklanır. Bu bilgiler ve taslakların sayesinde çevrimdışıyken yazmaya devam edebilir, notlarını tarihe göre bulup düzenleyebilirsin.</string>
     <string name="privacy_h2">Tokipin konumuma veya takvimime erişir mi?</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">Dışa aktarılan dosyalar ve cihaz yedekleri</string>
     <string name="privacy_b4">Kaydettiğin notları ayarlardan JSON dosyası olarak dışa aktarabilirsin. Uygulamadaki notları silsen bile dosya kaydettiğin yerde kalır. Dosyayı oradan yönetebilirsin. Tokipin, notları bir hesap aracılığıyla eşitlemez. Notlarının cihaz yedeğine dahil edilip geri yüklenebilmesi, işletim sistemine ve uygulamanın yedekleme ayarlarına bağlıdır.</string>
     <string name="privacy_h5">Uygulama sorumlusu ve gizlilikle ilgili sorular</string>
-    <string name="terms_lead">Bu koşullar, iOS ve Android için Tokipin uygulamasında kişisel not oluştururken ve notlarını görüntülerken geçerlidir.</string>
+    <string name="terms_lead">Bu koşullar, Kore Cumhuriyeti merkezli Stepzu’nun sunduğu iOS ve Android için Tokipin uygulamaları ile web demosu için geçerlidir.</string>
     <string name="terms_h1">Uygulamanın kullanımı</string>
     <string name="terms_b1">Hesap açmadan kelimeleri, emojileri, yerleri ve saatleri istediğin sırayla kaydedebilirsin. Takvimde bir güne, not aldığın günlere, bir aya ya da tüm yıla bakabilirsin. Ayrıca notlarını arayabilir, düzenleyebilir veya silebilirsin.</string>
     <string name="terms_h2">Notların üzerindeki hakların</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">Uygulamanın kaç kez açıldığı ve notların kaç kez kaydedildiği gibi kullanım istatistikleri, yaşanan zorlukları fark etmemize ve özellikleri iyileştirmemize yardımcı olur. Notlarınızın içeriğini veya arama terimlerinizi göndermeyiz.</string>
     <string name="usage_share">Ben de varım</string>
     <string name="usage_later">Şimdi değil</string>
-    <string name="privacy_usage_body">Onay verirseniz Google Analytics uygulama açma ve not kaydetme olaylarını, uygulama yüklemenize ait bir tanımlayıcıyı ve cihaz bilgilerini işler. Not içeriklerini, not tarihlerini veya arama terimlerinizi göndermeyiz. Paylaşımı istediğiniz zaman Ayarlar’dan kapatabilirsiniz.</string>
+    <string name="privacy_usage_body">Paylaşımı açarsanız uygulamanın nasıl kullanıldığını anlamak ve özelliklerini geliştirmek için Google LLC (ABD) tarafından sunulan Google Analytics for Firebase hizmetini kullanırız. Uygulama; açılışlar, kullanım süresi ve not kaydetme işlemleriyle ilgili verilerin yanı sıra uygulama kurulumuna ait bir tanımlayıcıyı, uygulama sürümünü, cihaz ve işletim sistemi bilgilerini şifreli bir bağlantı üzerinden Google’a gönderir. Not içerikleriniz, not tarihleriniz, taslaklarınız ve arama terimleriniz gönderilmez.</string>
     <string name="privacy_usage_title">Uygulama kullanım istatistiklerini paylaş</string>
+    <string name="privacy_b5">Stepzu’nun elinde bulunan kişisel verilerinize erişmek, bunların düzeltilmesini, silinmesini veya işlenmesinin durdurulmasını istemek için aşağıdaki gizlilik iletişim adresine yazabilirsiniz. Yalnızca cihazınızda saklanan notları uygulama içinde görüntüleyebilir, düzenleyebilir ve silebilirsiniz.</string>
+    <string name="terms_b4">Tokipin’in kullanımı veya bu koşullar hakkında sorunuz varsa Stepzu’ya e-posta gönderebilirsiniz.</string>
+    <string name="privacy_usage_choice">Kullanım istatistiklerini paylaşma seçeneği başlangıçta kapalıdır. Örnek takvimden çıkıp kendi günlüğünüze başlarken paylaşımı açabilirsiniz. Paylaşımı reddetseniz de günlüğün tüm özelliklerini kullanabilirsiniz. Kararınızı istediğiniz zaman Ayarlar’dan değiştirebilirsiniz.</string>
+    <string name="privacy_usage_transfer">Google, yaklaşık konumunuzu belirlemek için IP adresinizi kullanır ve adresi kayda almadan siler. İstatistikler yakındaki bir veri toplama merkezinden geçer ve yurt dışındaki sunucularda işlenebilir. Paylaşımı kapattığınızda yeni veri toplanması durur. Etkinlik verileri 2 ay, kullanıcı tanımlayıcısına bağlı veriler ise son etkinlikten itibaren 14 ay saklanır. Bu süreler standart toplu raporlar için geçerli değildir.</string>
+    <string name="privacy_google_info">Google verileri nasıl işler?</string>
+    <string name="privacy_google_retention">Google Analytics verileri ne kadar süre saklar?</string>
+    <string name="privacy_google_contact">Gizlilikle ilgili olarak Google’a ulaşın</string>
+    <string name="privacy_web_title">Web demosu ve dil ayarları</string>
+    <string name="privacy_web_body">Web demosu notlarınızı, taslaklarınızı veya arama terimlerinizi sunucuya göndermez. Sayfayı yenilediğinizde girdiğiniz bilgiler silinir ve demo ayarları sıfırlanır. Tarayıcınıza yalnızca kendinizin seçtiği dil kaydedilir. Site verilerini temizleyerek bu seçimi silebilirsiniz. Kullanım istatistiklerini paylaşma anahtarı demoda yalnızca örnek olarak gösterilir. Sayfa yüklenirken sunucu, IP adresinizi ve istenen dosyanın yolunu işler.</string>
+    <string name="privacy_support_title">Destek e-postaları ve saklama süresi</string>
+    <string name="privacy_support_body">Bize e-posta gönderdiğinizde Stepzu, talebinizi yanıtlamak ve takip etmek için e-posta adresinizi, mesajınızı ve eklediğiniz dosyaları kullanır. Talebiniz sonuçlandıktan sonra e-postayı ve eklerini 30 gün içinde sileriz. Yasalar daha uzun bir süre saklamamızı gerektiriyorsa bu sürenin sonunda sileriz.</string>
+    <string name="terms_practice_title">Örnek takvim ve kişisel günlük</string>
+    <string name="terms_practice_body">Uygulamada örnek takvimi inceleyebilir ve not eklemeyi deneyebilirsiniz. Kendi günlüğünüze başladığınızda boş bir takvim açılır. Deneme sırasında yazdığınız notlar buraya aktarılmaz. Web demosunda eklediğiniz notlar sayfayı yenilediğinizde silinir. Bunları saklamak için sayfayı yenilemeden önce Ayarlar’dan JSON dosyası olarak dışa aktarın.</string>
     <string name="usage_later_hint">Ayarlar’da “Uygulama kullanım istatistiklerini paylaş” seçeneğini istediğiniz zaman açabilirsiniz.</string>
     <string name="onboarding_day_swipe">Önceki veya sonraki güne geçmek için sağa ya da sola kaydır.</string>
     <string name="onboarding_day_zoom">Not aldığın günleri görmek için ekranda iki parmağını birbirine yaklaştır.</string>
@@ -164,12 +177,10 @@
     <string name="cd_collapse">Daralt</string>
     <string name="cd_clear_search">Aramayı temizle</string>
     <string name="search_results">Arama sonuçları</string>
-    <string name="privacy_b5">Uygulama kullanıma açıldığında işletmeci bilgilerini, iletişim adresini ve yürürlük tarihini paylaşacağız.</string>
     <string name="cd_delete_item">%1$s öğesini sil</string>
     <string name="onboarding_start">Başla</string>
     <string name="onboarding_invitation">Şimdi kendi günlüğünü tutmaya başlamak ister misin?</string>
     <string name="onboarding_next">İleri</string>
     <string name="onboarding_keep_exploring">Keşfetmeye devam et</string>
     <string name="debug_replay_onboarding">Tanıtımı yeniden dene</string>
-    <string name="terms_b4">Uygulama kullanıma açıldığında işletmeci bilgilerini, iletişim adresini ve yürürlük tarihini paylaşacağız.</string>
 </resources>

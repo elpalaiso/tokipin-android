@@ -443,25 +443,6 @@ APP = {
         "Search results", "検索結果", "Suchergebnisse", "Résultats", "Hasil pencarian", "Kết quả tìm kiếm", "Arama sonuçları",
         "Результаты поиска", "खोज के नतीजे", "ผลการค้นหา", "Resultados da busca", "Resultados", "Resultados", "搜索结果", "搜尋結果", "搜尋結果",
     ],
-    # TP-0230 · adjusted from site/TP-0186: Android also promises the contact details
-    "privacy_b5": [
-        "We’ll publish the operator’s name, contact details and the effective date at launch.",
-        "運営者情報、お問い合わせ先、適用開始日は、アプリの正式リリース時にお知らせします。",
-        "Wer die App betreibt, wie du uns erreichst und ab wann diese Bestimmungen gelten, geben wir zum Start bekannt.",
-        "Nous publierons le nom de l’éditeur, ses coordonnées et la date d’entrée en vigueur lors du lancement.",
-        "Informasi tentang pengelola, kontak, dan tanggal mulai berlaku akan diumumkan saat aplikasi resmi diluncurkan.",
-        "Thông tin về đơn vị vận hành, cách liên hệ và ngày có hiệu lực sẽ được công bố khi ứng dụng chính thức ra mắt.",
-        "Uygulama kullanıma açıldığında işletmeci bilgilerini, iletişim adresini ve yürürlük tarihini paylaşacağız.",
-        "При запуске приложения мы укажем сведения об операторе, контакты и дату вступления документа в силу.",
-        "ऐप के आधिकारिक लॉन्च पर हम संचालक का विवरण, संपर्क की जानकारी और इस दस्तावेज़ के लागू होने की तारीख बताएँगे।",
-        "เราจะแจ้งข้อมูลผู้ให้บริการ ช่องทางติดต่อ และวันที่มีผลบังคับใช้เมื่อแอปเปิดตัวอย่างเป็นทางการ",
-        "No lançamento oficial, vamos divulgar os dados do responsável, o contato e a data de entrada em vigor.",
-        "Cuando lancemos la app, publicaremos los datos del responsable, el contacto y la fecha de entrada en vigor.",
-        "Cuando lancemos la app, publicaremos los datos del responsable, el contacto y la fecha de entrada en vigor.",
-        "应用正式上线时，我们会公布运营者信息、联系方式和生效日期。",
-        "App 正式上架時，我們會公布營運者資訊、聯絡方式與生效日期。",
-        "應用程式正式推出時，我們會公布營運者資料、聯絡方法及生效日期。",
-    ],
     # TP-0348 (new) · revealed swipe delete button: the action and its target, e.g. "단어 산책"
     "cd_delete_item": [
         "Delete %1$s", "%1$sを削除", "%1$s löschen", "Supprimer %1$s", "Hapus %1$s", "Xóa %1$s", "%1$s öğesini sil",
@@ -503,4 +484,3 @@ APP = {
         "Repetir el recorrido inicial", "重新体验新手引导", "重新體驗新手導覽", "重新體驗新手導覽",
     ],
 }
-APP["terms_b4"] = APP["privacy_b5"]

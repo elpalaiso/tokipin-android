@@ -5,7 +5,7 @@ default values/ folder, so any language outside the 17 falls back to English (as
 Korean, the source, lives in values-ko/.
 
 - Rows marked 그대로 in the Figma handoff (node 311-3097) are copied from the web dictionaries at
-  the reference commit (elpalaiso/tokipin 9e512c1, locales/demo and locales/site). The web
+  the matching web checkout (elpalaiso/tokipin, locales/demo and locales/site). The web
   dictionaries are keyed by the Korean source sentence, so each resource is looked up by its own
   Korean text in values-ko (never by position: reordering a JSON file changes nothing). The TP ids
   below document the handoff row.
@@ -33,7 +33,7 @@ WEB = {  # resource id -> (domain, TP number)
     "time_picker_cancel": ("demo", 80), "cd_add_time": ("demo", 133), "view_daily": ("demo", 47),
     "day_empty": ("demo", 69), "view_records": ("demo", 48), "view_month": ("demo", 49), "search_none": ("demo", 86),
     "search_hint": ("demo", 89), "cd_close_search": ("demo", 91), "privacy_policy": ("demo", 10), "terms": ("demo", 11),
-    "policy_draft_badge": ("site", 175), "privacy_lead": ("site", 176), "privacy_h1": ("site", 177),
+    "policy_revision": ("site", 175), "privacy_lead": ("site", 176), "privacy_h1": ("site", 177),
     "privacy_b1": ("site", 178), "privacy_h2": ("site", 179), "privacy_b2": ("site", 180), "privacy_h3": ("site", 181),
     "privacy_b3": ("site", 182), "privacy_h4": ("site", 183), "privacy_b4": ("site", 184), "privacy_h5": ("site", 185),
     "terms_lead": ("site", 188), "terms_h1": ("site", 189), "terms_b1": ("site", 190), "terms_h2": ("site", 191),
@@ -41,6 +41,14 @@ WEB = {  # resource id -> (domain, TP number)
     "usage_label": ("demo", 348), "usage_prompt": ("demo", 349), "usage_body": ("demo", 350),
     "usage_share": ("demo", 351), "usage_later": ("demo", 352),
     "privacy_usage_body": ("site", 353), "privacy_usage_title": ("site", 354),
+    # Revised policy copy published on the website. These rows have no original handoff number.
+    "privacy_b5": ("site", None), "terms_b4": ("site", None),
+    "privacy_usage_choice": ("site", None), "privacy_usage_transfer": ("site", None),
+    "privacy_google_info": ("site", None), "privacy_google_retention": ("site", None),
+    "privacy_google_contact": ("site", None), "privacy_web_title": ("site", None),
+    "privacy_web_body": ("site", None), "privacy_support_title": ("site", None),
+    "privacy_support_body": ("site", None), "terms_practice_title": ("site", None),
+    "terms_practice_body": ("site", None),
     "usage_later_hint": ("demo", 356),
     "onboarding_day_swipe": ("demo", 59),
     "onboarding_day_zoom": ("demo", 60),
@@ -120,7 +128,8 @@ def main(locales: str, res: str):
         for rid, (domain, tp) in WEB.items():
             key = korean[rid]
             if key not in dicts[domain]:
-                raise SystemExit(f"{rid} (TP-{tp:04d}): {key!r} is not a key of locales/{domain}/{lang}.json")
+                row = f" (TP-{tp:04d})" if tp is not None else ""
+                raise SystemExit(f"{rid}{row}: {key!r} is not a key of locales/{domain}/{lang}.json")
             value = dicts[domain][key]
             if not isinstance(value, str) or "{" in value:
                 raise SystemExit(f"{rid}: web value is not a plain string: {value!r}")

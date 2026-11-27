@@ -42,8 +42,8 @@
     <string name="cd_close_search">Tutup pencarian</string>
     <string name="privacy_policy">Kebijakan privasi</string>
     <string name="terms">Ketentuan penggunaan</string>
-    <string name="policy_draft_badge">Draf sebelum peluncuran · Aplikasi iOS dan Android</string>
-    <string name="privacy_lead">Tokipin adalah aplikasi catatan untuk iOS dan Android yang dapat digunakan tanpa mendaftar. Catatan dan draf yang sedang kamu tulis tersimpan di ruang penyimpanan aplikasi pada perangkatmu.</string>
+    <string name="policy_revision">Draf revisi · 27 November 2026</string>
+    <string name="privacy_lead">Stepzu, yang berkedudukan di Republik Korea, mengelola aplikasi Tokipin dan demo webnya. Catatan pribadi Anda tersimpan di perangkat Anda. Kebijakan ini menjelaskan cara kami menangani statistik penggunaan opsional dan email yang Anda kirimkan.</string>
     <string name="privacy_h1">Informasi apa yang disimpan?</string>
     <string name="privacy_b1">Aplikasi menyimpan kata, emoji, tempat, dan waktu yang kamu masukkan, beserta tanggal catatan dan urutan isinya. Informasi ini dan drafmu memungkinkan kamu terus menulis saat offline serta mencari dan mengedit catatan berdasarkan tanggal.</string>
     <string name="privacy_h2">Apakah Tokipin mengakses lokasi atau kalender saya?</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">File ekspor dan cadangan perangkat</string>
     <string name="privacy_b4">Di pengaturan, kamu bisa mengekspor catatan sebagai file JSON. File itu tetap ada meski catatannya dihapus dari aplikasi. Kamu bisa mengelolanya di tempat file itu disimpan. Tokipin tidak menyediakan sinkronisasi melalui akun. Apakah catatan disertakan saat perangkat dicadangkan atau dipulihkan bergantung pada sistem operasi dan pengaturan cadangan aplikasi.</string>
     <string name="privacy_h5">Pengelola dan pertanyaan privasi</string>
-    <string name="terms_lead">Ketentuan ini berlaku saat kamu membuat dan melihat catatan pribadi di aplikasi Tokipin untuk iOS dan Android.</string>
+    <string name="terms_lead">Ketentuan ini berlaku untuk aplikasi Tokipin di iOS dan Android serta demo web yang disediakan oleh Stepzu, yang berkedudukan di Republik Korea.</string>
     <string name="terms_h1">Menggunakan aplikasi</string>
     <string name="terms_b1">Tanpa mendaftar, kamu dapat mencatat kata, emoji, tempat, dan waktu dalam urutan apa pun. Lihat catatan berdasarkan tahun, bulan, hari yang berisi catatan, atau satu hari tertentu. Kamu juga dapat mencari, mengedit, dan menghapusnya.</string>
     <string name="terms_h2">Hak atas catatan</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">Statistik penggunaan, seperti seberapa sering aplikasi dibuka dan catatan disimpan, membantu kami melihat kendala dan memperbaiki fitur. Kami tidak mengirim isi catatan atau kata kunci pencarian Anda.</string>
     <string name="usage_share">Saya ikut</string>
     <string name="usage_later">Nanti saja</string>
-    <string name="privacy_usage_body">Jika Anda setuju, Google Analytics memproses aktivitas membuka aplikasi dan menyimpan catatan, pengenal instalasi aplikasi, serta informasi perangkat. Kami tidak mengirim isi atau tanggal catatan maupun kata pencarian Anda. Anda dapat menonaktifkan berbagi kapan saja di Pengaturan.</string>
+    <string name="privacy_usage_body">Jika Anda mengaktifkan berbagi statistik, kami menggunakan Google Analytics for Firebase dari Google LLC (Amerika Serikat) untuk memahami penggunaan aplikasi dan menyempurnakan fiturnya. Melalui koneksi terenkripsi, aplikasi mengirim ke Google informasi tentang pembukaan aplikasi, durasi penggunaan dan tindakan menyimpan catatan, beserta pengenal instalasi aplikasi, versi aplikasi, serta informasi perangkat dan sistem operasi. Isi dan tanggal catatan, draf, serta kata yang Anda cari tidak dikirim.</string>
     <string name="privacy_usage_title">Bagikan statistik penggunaan aplikasi</string>
+    <string name="privacy_b5">Untuk meminta akses, perbaikan, penghapusan, atau penghentian pemrosesan informasi pribadi yang disimpan Stepzu, hubungi kami melalui alamat email privasi di bawah ini. Catatan yang hanya tersimpan di perangkat dapat Anda lihat, ubah, dan hapus langsung di aplikasi.</string>
+    <string name="terms_b4">Kirim email ke Stepzu jika ada pertanyaan tentang penggunaan Tokipin atau ketentuan ini.</string>
+    <string name="privacy_usage_choice">Berbagi statistik penggunaan dinonaktifkan secara bawaan. Anda dapat memilih untuk mengaktifkannya saat beralih dari kalender contoh ke jurnal pribadi. Jika menolak, Anda tetap dapat menggunakan semua fitur jurnal. Pilihan ini dapat diubah kapan saja di Pengaturan.</string>
+    <string name="privacy_usage_transfer">Google menggunakan alamat IP Anda untuk memperkirakan lokasi lalu membuang alamat tersebut sebelum mencatat data. Statistik diteruskan melalui pusat pengumpulan terdekat dan dapat diproses di server di luar negeri. Menonaktifkan berbagi statistik menghentikan pengumpulan selanjutnya. Data peristiwa disimpan selama 2 bulan dan data yang terkait dengan pengenal pengguna selama 14 bulan sejak aktivitas terakhir. Jangka waktu ini tidak berlaku untuk laporan agregat standar.</string>
+    <string name="privacy_google_info">Cara Google menangani data</string>
+    <string name="privacy_google_retention">Retensi data Google Analytics</string>
+    <string name="privacy_google_contact">Hubungi Google tentang privasi</string>
+    <string name="privacy_web_title">Demo web dan pengaturan bahasa</string>
+    <string name="privacy_web_body">Demo web tidak mengirim catatan, draf, atau kata yang Anda cari ke server. Memuat ulang halaman akan menghapus isian Anda dan menyetel ulang pengaturan demo. Hanya bahasa yang Anda pilih sendiri yang disimpan di peramban. Untuk menghapusnya, hapus data situs. Sakelar berbagi statistik dalam demo hanya untuk mencoba fitur tersebut. Saat halaman dimuat, server memproses alamat IP Anda dan jalur berkas yang diminta.</string>
+    <string name="privacy_support_title">Email bantuan dan masa penyimpanan</string>
+    <string name="privacy_support_body">Saat Anda mengirim email, Stepzu menggunakan alamat email, isi pesan, dan berkas yang Anda lampirkan untuk menjawab dan menindaklanjuti pertanyaan Anda. Kami menghapus email dan lampiran dalam waktu 30 hari setelah pertanyaan selesai ditangani. Jika hukum mewajibkan penyimpanan lebih lama, kami menghapusnya setelah masa tersebut berakhir.</string>
+    <string name="terms_practice_title">Kalender contoh dan jurnal pribadi</string>
+    <string name="terms_practice_body">Anda dapat menjelajahi kalender contoh dan berlatih menulis catatan di aplikasi. Saat memulai jurnal pribadi, Anda akan mendapatkan kalender kosong. Catatan latihan tidak ikut dipindahkan. Memuat ulang demo web akan menghapus catatan yang Anda tambahkan di sana. Jika ingin menyimpannya, ekspor berkas JSON melalui Pengaturan terlebih dahulu.</string>
     <string name="usage_later_hint">Anda bisa mengaktifkan “Bagikan statistik penggunaan aplikasi” kapan saja di Pengaturan.</string>
     <string name="onboarding_day_swipe">Usap ke samping untuk melihat hari sebelumnya atau berikutnya.</string>
     <string name="onboarding_day_zoom">Rapatkan dua jari untuk melihat hari yang berisi catatan.</string>
@@ -157,12 +170,10 @@
     <string name="cd_collapse">Ciutkan</string>
     <string name="cd_clear_search">Hapus kata pencarian</string>
     <string name="search_results">Hasil pencarian</string>
-    <string name="privacy_b5">Informasi tentang pengelola, kontak, dan tanggal mulai berlaku akan diumumkan saat aplikasi resmi diluncurkan.</string>
     <string name="cd_delete_item">Hapus %1$s</string>
     <string name="onboarding_start">Mulai</string>
     <string name="onboarding_invitation">Siap mulai mengisi jurnalmu sendiri?</string>
     <string name="onboarding_next">Berikutnya</string>
     <string name="onboarding_keep_exploring">Terus menjelajah</string>
     <string name="debug_replay_onboarding">Coba lagi panduan awal</string>
-    <string name="terms_b4">Informasi tentang pengelola, kontak, dan tanggal mulai berlaku akan diumumkan saat aplikasi resmi diluncurkan.</string>
 </resources>

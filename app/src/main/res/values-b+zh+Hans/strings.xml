@@ -42,8 +42,8 @@
     <string name="cd_close_search">关闭搜索</string>
     <string name="privacy_policy">隐私政策</string>
     <string name="terms">使用条款</string>
-    <string name="policy_draft_badge">发布前草案 · 适用于 iOS 和 Android 应用</string>
-    <string name="privacy_lead">Tokipin 是一款无需注册的 iOS 和 Android 记录应用。记录和草稿都保存在设备上这款应用的存储空间内。</string>
+    <string name="policy_revision">修订草案 · 2026年11月27日</string>
+    <string name="privacy_lead">Tokipin 应用和网页版体验由位于韩国的 Stepzu 运营。你的个人日记保存在自己的设备上。本政策说明我们如何处理你选择分享的使用统计数据，以及你发给我们的电子邮件。</string>
     <string name="privacy_h1">会保存哪些信息？</string>
     <string name="privacy_b1">应用会保存你输入的词语、表情符号、地点、时间，以及记录日期和输入顺序。有了这些信息和草稿，你可以离线接着写，也可以按日期查找和编辑记录。</string>
     <string name="privacy_h2">会访问我的位置或日历吗？</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">导出的文件和设备备份</string>
     <string name="privacy_b4">你可以在设置中将已保存的记录导出为 JSON 文件。在应用中删除记录后，导出的文件仍会保留，请到保存的位置自行管理。Tokipin 不提供账号同步功能。设备备份和恢复时是否包含记录，取决于操作系统和应用的备份设置。</string>
     <string name="privacy_h5">运营方信息与隐私咨询</string>
-    <string name="terms_lead">本条款适用于你在 iOS 或 Android 版 Tokipin 中创建和查看个人记录。</string>
+    <string name="terms_lead">本条款适用于位于韩国的 Stepzu 提供的 Tokipin iOS 和 Android 应用及网页版体验。</string>
     <string name="terms_h1">使用应用</string>
     <string name="terms_b1">无需注册，就能按喜欢的顺序记下词语、表情符号、地点和时间。你可以按年、月、有记录的日子或单日浏览，也可以搜索、编辑和删除记录。</string>
     <string name="terms_h2">记录的权利归属</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">我们会参考打开应用和保存记录的次数等使用统计，了解哪里用起来不方便，并改进功能。我们不会发送你的记录内容或搜索词。</string>
     <string name="usage_share">我愿意</string>
     <string name="usage_later">暂不</string>
-    <string name="privacy_usage_body">如果你同意，Google Analytics 会处理应用打开和记录保存事件、应用安装标识符和设备信息。我们不会发送记录内容、记录日期或搜索词。你可以随时在设置中关闭分享。</string>
+    <string name="privacy_usage_body">如果开启共享，我们会使用美国 Google LLC 提供的 Google Analytics for Firebase，了解应用的使用情况并改进功能。应用会通过加密连接向 Google 发送应用启动、使用时长、是否保存了记录等信息，以及应用安装标识符、应用版本、设备和操作系统信息。记录的内容和日期、草稿及搜索词都不会发送。</string>
     <string name="privacy_usage_title">分享应用使用统计</string>
+    <string name="privacy_b5">如需查阅、更正或删除 Stepzu 持有的个人信息，或要求停止处理，请通过下方的隐私联系邮箱与我们联系。对于仅保存在自己设备上的记录，你可以直接在应用中查看、修改和删除。</string>
+    <string name="terms_b4">如果对 Tokipin 的使用或本条款有任何疑问，请发送电子邮件联系 Stepzu。</string>
+    <string name="privacy_usage_choice">应用默认关闭使用统计共享。结束示例日历体验、开始写自己的日记时，你可以选择是否开启。即使不分享，你仍可使用全部记录功能，也可以随时在设置中更改选择。</string>
+    <string name="privacy_usage_transfer">Google 会根据你的 IP 地址判断大致位置，随后丢弃该地址，不会将其写入日志。统计数据经附近的数据采集中心传输，可能在境外服务器上处理。关闭共享后即停止收集新数据。事件数据保留 2 个月，与用户标识符关联的数据自最后一次活动起保留 14 个月。这些期限不适用于标准汇总报告。</string>
+    <string name="privacy_google_info">Google 如何处理数据</string>
+    <string name="privacy_google_retention">Google Analytics 的数据保留期限</string>
+    <string name="privacy_google_contact">联系 Google 咨询隐私问题</string>
+    <string name="privacy_web_title">网页版体验和语言设置</string>
+    <string name="privacy_web_body">网页版体验不会将记录、草稿或搜索词发送到服务器。刷新网页会清除体验中输入的内容，并重置体验设置。浏览器只保存你手动选择的语言，清除网站数据即可删除这项设置。体验中的统计共享开关仅用于演示。加载网页时，服务器会处理你的 IP 地址和所请求的文件路径。</string>
+    <string name="privacy_support_title">联系邮件及保留期限</string>
+    <string name="privacy_support_body">当你联系我们时，Stepzu 会使用你的电子邮件地址、邮件内容和你主动添加的附件来回复并跟进。我们会在问题处理完毕后 30 天内删除邮件及附件。如果法律要求保留更长时间，我们会在法定期限届满后删除。</string>
+    <string name="terms_practice_title">示例日历和个人日记</string>
+    <string name="terms_practice_body">你可以在应用中浏览示例日历，练习添加记录。开始写自己的日记时会打开一个空日历，练习记录不会转入。刷新网页版体验会清除你在其中添加的记录。如需保留，请先在设置中将记录导出为 JSON 文件。</string>
     <string name="usage_later_hint">你随时可以在设置中开启“分享应用使用统计”。</string>
     <string name="onboarding_day_swipe">左右滑动，看看前一天或后一天。</string>
     <string name="onboarding_day_zoom">双指捏合，看看有记录的日子。</string>
@@ -157,12 +170,10 @@
     <string name="cd_collapse">收起</string>
     <string name="cd_clear_search">清除搜索词</string>
     <string name="search_results">搜索结果</string>
-    <string name="privacy_b5">应用正式上线时，我们会公布运营者信息、联系方式和生效日期。</string>
     <string name="cd_delete_item">删除%1$s</string>
     <string name="onboarding_start">开始</string>
     <string name="onboarding_invitation">现在开始一点点写下自己的记录，好吗？</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_keep_exploring">继续浏览</string>
     <string name="debug_replay_onboarding">重新体验新手引导</string>
-    <string name="terms_b4">应用正式上线时，我们会公布运营者信息、联系方式和生效日期。</string>
 </resources>
