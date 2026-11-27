@@ -95,6 +95,7 @@ import com.tokipin.app.rules.CalendarRules
 import com.tokipin.app.rules.Level
 import com.tokipin.app.rules.NavEvent
 import com.tokipin.app.rules.UxSpec
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -167,8 +168,13 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
     TkBackground {
         CompositionLocalProvider(LocalPinchTargets provides pinchTargets) {
             Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding()) {
+                SampleControls(vm)
                 BrowseTopBar(vm, onDayMenu = { dayMenuFor = vm.selectedDate })
                 if (showUsageHint) UsageLaterHint()
+                vm.tour?.let { tour ->
+                    SampleReceipt(tour)
+                    SampleHint(vm, tour.cue.message)
+                }
                 Box(
                     Modifier
                         .weight(1f)
@@ -511,7 +517,7 @@ private fun WeekRow(start: LocalDate, date: LocalDate, onSelect: (LocalDate) -> 
 
 /** Reading only: editing goes through the pencil at the bottom (no per-fragment ⋯ any more). */
 @Composable
-internal fun DailyItem(entry: Entry, highlighted: Boolean) {
+private fun DailyItem(entry: Entry, highlighted: Boolean) {
     // Figma 5-2105: every fragment has the same weight, the first one included: one row each, an
     // icon only for place and time, a divider under each.
     val text = entry.shown()
@@ -932,6 +938,32 @@ private fun MonthView(vm: AppViewModel) {
         com.tokipin.app.rules.CalendarFolding.months(range, recorded, vm.expandedMonthGaps)
     }
     val state = rememberLazyListState()
+    val tour = vm.tour
+    val dragging by state.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(dragging) {
+        if (dragging && tour?.guided == true && tour.cue == BrowseCue.MonthScroll) {
+            val initialRow = state.firstVisibleItemIndex
+            val initialOffset = state.firstVisibleItemScrollOffset
+            snapshotFlow { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset }.first { (row, offset) ->
+                row != initialRow || kotlin.math.abs(offset - initialOffset) > with(density) { 18.dp.roundToPx() }
+            }
+            tour.scrolled()
+        }
+    }
+    LaunchedEffect(tour?.scrollTarget) {
+        val target = tour?.scrollTarget ?: return@LaunchedEffect
+        val index = rows.indexOfFirst {
+            when (it) {
+                is com.tokipin.app.rules.MonthRow.Month -> it.month == target
+                is com.tokipin.app.rules.MonthRow.Gap -> target >= it.from && target <= it.to
+            }
+        }
+        if (index >= 0) {
+            state.scrollToItem(index)
+            vm.scrolledTo(target)
+            tour.scrolled()
+        }
+    }
     TrackScroll(vm, Level.MONTH, state) { y ->
         val month = YearMonth.from(vm.selectedDate)
         val idx = rows.indexOfFirst { it is com.tokipin.app.rules.MonthRow.Month && it.month == month }.takeIf { it >= 0 } ?: return@TrackScroll
@@ -1052,23 +1084,15 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
 }
 
 @Composable
-internal fun MonthCell(
-    date: LocalDate,
-    items: List<Entry>,
-    selected: Boolean,
-    today: Boolean,
-    modifier: Modifier = Modifier,
-    minHeight: androidx.compose.ui.unit.Dp = MONTH_CELL_MIN,
-    onClick: () -> Unit,
-) {
+private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, today: Boolean, onClick: () -> Unit) {
     val time = LocalTimeDisplay.current
     val (shown, more) = CalendarRules.preview(items)
     Column(
-        modifier
+        Modifier
             .pinchTarget(date)
             .testTag("day_$date")
             .fillMaxWidth()
-            .heightIn(min = minHeight)
+            .heightIn(min = MONTH_CELL_MIN)
             .padding(2.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) Color(0xFF4A5C6B) else Color.Transparent)

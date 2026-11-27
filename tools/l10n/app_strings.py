@@ -467,50 +467,33 @@ APP = {
         "Delete %1$s", "%1$sを削除", "%1$s löschen", "Supprimer %1$s", "Hapus %1$s", "Xóa %1$s", "%1$s öğesini sil",
         "Удалить: %1$s", "%1$s मिटाएँ", "ลบ %1$s", "Excluir %1$s", "Eliminar %1$s", "Eliminar %1$s", "删除%1$s", "刪除%1$s", "刪除%1$s",
     ],
-    # TP-0357
-    "onboarding_sample_calendar": [
-        "Sample calendar", "サンプルカレンダー", "Beispielkalender",
-        "Calendrier d’exemple", "Kalender contoh", "Lịch mẫu",
-        "Örnek takvim", "Календарь с примерами", "उदाहरण कैलेंडर",
-        "ปฏิทินตัวอย่าง", "Calendário de exemplo", "Calendario de ejemplo",
-        "Calendario de ejemplo", "示例日历", "範例日曆",
-        "示例日曆",
+    # TP-0362
+    "onboarding_start": [
+        "Start", "始める", "Starten", "Commencer",
+        "Mulai", "Bắt đầu", "Başla", "Начать",
+        "शुरू करें", "เริ่ม", "Começar", "Empezar",
+        "Empezar", "开始", "開始", "開始",
     ],
-    # TP-0358
-    "onboarding_start_journal": [
-        "Start my journal", "自分の記録を始める", "Mein Tagebuch starten",
-        "Commencer mon journal", "Mulai jurnal saya", "Bắt đầu ghi nhật ký",
-        "Günlüğüme başla", "Начать свой дневник", "मेरी डायरी शुरू करें",
-        "เริ่มบันทึกของฉัน", "Começar meu diário", "Empezar mi diario",
-        "Empezar mi diario", "开始我的记录", "開始我的紀錄",
-        "開始我的記錄",
+    # TP-0363
+    "onboarding_invitation": [
+        "Ready to start a journal of your own?", "そろそろ、自分だけの記録を重ねてみませんか？", "Möchtest du jetzt mit deinem eigenen Tagebuch beginnen?", "Et si vous commenciez votre propre journal ?",
+        "Siap mulai mengisi jurnalmu sendiri?", "Bạn đã sẵn sàng viết nhật ký của riêng mình chưa?", "Şimdi kendi günlüğünü tutmaya başlamak ister misin?", "Готовы начать вести свой дневник?",
+        "अब अपनी डायरी लिखना शुरू करें?", "พร้อมเริ่มเก็บบันทึกของตัวเองหรือยัง", "Que tal começar seu próprio diário agora?", "¿Te animas a empezar tu propio diario?",
+        "¿Te animas a empezar tu propio diario?", "现在开始一点点写下自己的记录，好吗？", "現在開始慢慢寫下自己的紀錄，好嗎？", "現在開始慢慢寫下自己的記錄，好嗎？",
     ],
-    # TP-0359
-    "onboarding_practice_emoji": [
-        "Try adding an emoji", "絵文字を残してみる", "Emoji ausprobieren",
-        "Essayer avec un émoji", "Coba tambahkan emoji", "Thử thêm emoji",
-        "Emoji eklemeyi dene", "Попробовать добавить эмодзи", "इमोजी जोड़कर देखें",
-        "ลองเพิ่มอีโมจิ", "Experimentar um emoji", "Probar con un emoji",
-        "Probar con un emoji", "试着添加表情符号", "試著加入表情符號",
-        "試試加入表情符號",
+    # TP-0364
+    "onboarding_next": [
+        "Next", "次へ", "Weiter", "Suivant",
+        "Berikutnya", "Tiếp", "İleri", "Далее",
+        "आगे", "ถัดไป", "Avançar", "Siguiente",
+        "Siguiente", "下一步", "下一步", "下一步",
     ],
-    # TP-0360
-    "onboarding_choose_emoji": [
-        "Choose an emoji to add to the sample calendar.", "絵文字を選んで、サンプルカレンダーに残してみましょう。", "Wähle ein Emoji und trage es in den Beispielkalender ein.",
-        "Choisissez un émoji à ajouter au calendrier d’exemple.", "Pilih emoji untuk ditambahkan ke kalender contoh.", "Chọn một emoji để thêm vào lịch mẫu.",
-        "Bir emoji seçip örnek takvime ekle.", "Выберите эмодзи, чтобы добавить его в календарь с примерами.", "कोई इमोजी चुनें और उसे उदाहरण कैलेंडर में जोड़ें।",
-        "เลือกอีโมจิเพื่อเพิ่มลงในปฏิทินตัวอย่าง", "Escolha um emoji e adicione ao calendário de exemplo.", "Elige un emoji para añadirlo al calendario de ejemplo.",
-        "Elige un emoji para agregarlo al calendario de ejemplo.", "选一个表情符号，加到示例日历里。", "選一個表情符號，加到範例日曆裡。",
-        "選一個表情符號，加到示例日曆。",
-    ],
-    # TP-0361
-    "onboarding_emoji_saved": [
-        "Added to the sample calendar.", "サンプルカレンダーに追加しました。", "Im Beispielkalender eingetragen.",
-        "Ajouté au calendrier d’exemple.", "Ditambahkan ke kalender contoh.", "Đã thêm vào lịch mẫu.",
-        "Örnek takvime eklendi.", "Добавлено в календарь с примерами.", "उदाहरण कैलेंडर में जोड़ दिया गया।",
-        "เพิ่มในปฏิทินตัวอย่างแล้ว", "Adicionado ao calendário de exemplo.", "Se ha añadido al calendario de ejemplo.",
-        "Se agregó al calendario de ejemplo.", "已添加到示例日历。", "已加入範例日曆。",
-        "已加到示例日曆。",
+    # TP-0365
+    "onboarding_keep_exploring": [
+        "Keep exploring", "もう少し見てみる", "Weiter erkunden", "Continuer à explorer",
+        "Terus menjelajah", "Tiếp tục khám phá", "Keşfetmeye devam et", "Продолжить знакомство",
+        "और देखें", "สำรวจต่อ", "Continuar explorando", "Seguir explorando",
+        "Seguir explorando", "继续浏览", "繼續瀏覽", "繼續瀏覽",
     ],
 }
 APP["terms_b4"] = APP["privacy_b5"]

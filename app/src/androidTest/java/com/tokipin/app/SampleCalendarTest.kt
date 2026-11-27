@@ -48,24 +48,7 @@ class SampleCalendarTest {
 
     private fun waitFor(tag: String) = compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty() }
 
-    private fun tapDay(date: LocalDate) {
-        val day = "day_$date"
-        compose.onNodeWithTag("sampleGrid").performScrollToNode(hasTestTag(day))
-        compose.onNodeWithTag(day).performClick()
-    }
-
-    @Test fun guidedPracticeOnFirstOfMonthIsIsolatedAndRequiresAChoiceToSave() {
-        launch("onboardingStart")
-        tapDay(today.withDayOfMonth(15))
-        compose.onNodeWithText(AppLocale.resources(app).getString(R.string.sample_pottery)).assertIsDisplayed()
-        compose.onNodeWithTag("samplePractice").performClick()
-        compose.onNodeWithTag("sampleSave").assertIsNotEnabled()
-        compose.onNodeWithTag("sampleChip_✨").performClick()
-        compose.onNodeWithText(AppLocale.resources(app).getString(R.string.onboarding_save_guide)).assertIsDisplayed()
-        compose.onNodeWithTag("sampleSave").performClick()
-        compose.onNodeWithTag("sampleReceipt").assertIsDisplayed()
-        compose.onNodeWithTag("day_$today").assertIsDisplayed().assert(hasContentDescription("✨", substring = true))
-        compose.onNodeWithTag("sampleGuide").assertDoesNotExist()
+    private fun checkPersonalUntouched() {
         assertFalse(JournalStore(app).hasLaunchedBefore)
         assertFalse(UsageSharing(app).hasChoice)
         assertFalse(File(root, "records.json").exists())
@@ -73,25 +56,36 @@ class SampleCalendarTest {
         scenario!!.onActivity {
             assertTrue(it.vm.journal.isEmpty)
             assertNull(it.vm.draft)
-            assertFalse(JournalStore.exportJson(it.vm.journal).contains("✨"))
         }
-        scenario!!.close()
-        launch("onboardingStart")
-        compose.onNodeWithTag("sampleGrid").performScrollToNode(hasTestTag("day_$today"))
-        compose.onNodeWithTag("day_$today").assert(!hasContentDescription("✨", substring = true))
     }
 
-    @Test fun canDismissHintsBrowseAnotherMonthAndStartFromUnfinishedPractice() {
-        launch("onboardingStart")
-        compose.onNodeWithTag("sampleDismiss").performScrollTo().performClick()
-        compose.onNodeWithTag("samplePrevious").performClick()
-        tapDay(LocalDate.of(2026, 2, 7))
-        compose.onNodeWithTag("sampleNext").performClick()
-        compose.onNodeWithTag("samplePractice").performClick()
-        compose.onNodeWithTag("sampleGuide").assertDoesNotExist()
-        compose.onNodeWithTag("sampleBack").performClick()
-        compose.onNodeWithTag("samplePractice").performClick()
-        compose.onNodeWithTag("sampleChip_☕").performClick()
+    @Test fun nextAloneRunsTheRealEditorAndAllEightBrowseActionsBeforeConsent() {
+        launch("sampleNext")
+        val res = AppLocale.resources(app)
+        fun next(message: Int) {
+            val text = res.getString(message)
+            compose.waitUntil(10_000) { compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("sampleNext").performClick()
+        }
+        next(R.string.onboarding_emoji_tool)
+        compose.onNodeWithContentDescription("Enter an emoji").assertIsFocused()
+        next(R.string.editor_emoji_prompt)
+        next(R.string.onboarding_save_guide)
+        next(R.string.onboarding_day_swipe)
+        next(R.string.onboarding_day_zoom)
+        next(R.string.onboarding_records_swipe)
+        lateinit var railMonth: java.time.YearMonth
+        scenario!!.onActivity { railMonth = it.vm.sample!!.recordedMonth }
+        next(R.string.onboarding_records_zoom)
+        scenario!!.onActivity { assertEquals(railMonth, it.vm.sample!!.visibleMonth) }
+        next(R.string.onboarding_month_scroll)
+        next(R.string.onboarding_month_zoom)
+        next(R.string.onboarding_year_open)
+        next(R.string.onboarding_open_day)
+        waitFor("onboardingStart")
+        compose.onNodeWithText(res.getString(R.string.onboarding_invitation)).assertIsDisplayed()
+        compose.onNodeWithTag("usageInvitation").assertDoesNotExist()
+        checkPersonalUntouched()
         compose.onNodeWithTag("onboardingStart").performClick()
         if (BuildConfig.USAGE_SHARING_AVAILABLE) {
             waitFor("usageLater")
@@ -99,15 +93,137 @@ class SampleCalendarTest {
         }
         scenario!!.onActivity {
             assertEquals(Screen.Editor, it.vm.screen)
+            assertNull(it.vm.sample)
             assertTrue(it.vm.journal.isEmpty)
             assertTrue(it.vm.draft!!.items.isEmpty())
             assertEquals(today, it.vm.draft!!.localDate)
         }
-        assertTrue(JournalStore(app).hasLaunchedBefore)
-        scenario!!.close()
-        launch("level_RECORDS")
-        compose.onNodeWithTag("onboardingStart").assertDoesNotExist()
-        compose.onNodeWithTag("usageInvitation").assertDoesNotExist()
+    }
+
+    @Test fun typedTextSurvivesNextAndFreeBrowsingCanReplayOrExit() {
+        launch("sampleNext")
+        val res = AppLocale.resources(app)
+        compose.onNodeWithContentDescription("Enter a word").performTextInput("personal-looking practice")
+        compose.onNodeWithTag("sampleNext").performClick()
+        waitFor("level_DAILY")
+        compose.waitForIdle()
+        compose.onNodeWithTag("dayBody").performTouchInput {
+            swipe(start = androidx.compose.ui.geometry.Offset(width * .72f, height * .3f),
+                end = androidx.compose.ui.geometry.Offset(width * .22f, height * .3f), durationMillis = 500)
+        }
+        val zoomTip = res.getString(R.string.onboarding_day_zoom)
+        compose.waitUntil(8_000) { compose.onAllNodes(hasText(zoomTip)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(zoomTip).assertIsDisplayed()
+        compose.onNodeWithTag("sampleDismiss").performClick()
+        compose.onNodeWithTag("sampleExplore").performClick()
+        compose.onNodeWithTag("sampleNext").assertDoesNotExist()
+        compose.onNodeWithTag("sampleEarlyStart").performClick()
+        compose.onNodeWithTag("sampleSheetClose").performClick()
+        compose.onNodeWithTag("sampleReplay").performClick()
+        compose.onNodeWithText(res.getString(R.string.onboarding_day_swipe)).assertIsDisplayed()
+        scenario!!.onActivity {
+            val sample = it.vm.sample!!
+            assertEquals("personal-looking practice", sample.journal.itemsOn(today).last().value)
+            assertEquals(1, sample.journal.itemsOn(today).count { e -> e.value == "personal-looking practice" })
+            assertFalse(it.vm.journal.days.values.flatten().any { e -> e.value.contains("practice") })
+        }
+        checkPersonalUntouched()
+    }
+
+    @Test fun directPinchesAndCalendarDragAdvanceTheirOwnCues() {
+        launch("sampleNext")
+        val res = AppLocale.resources(app)
+        fun waitGuide(message: Int) {
+            val label = res.getString(message)
+            compose.waitUntil(8_000) { compose.onAllNodes(hasText(label)).fetchSemanticsNodes().isNotEmpty() }
+        }
+        fun pinch(level: String, inward: Boolean) {
+            compose.onNodeWithTag("level_$level").performTouchInput {
+                val near = minOf(width, height) * .06f
+                val far = near * 3f
+                val (from, to) = if (inward) far to near else near to far
+                val spreadFrom = androidx.compose.ui.geometry.Offset(from, from)
+                val spreadTo = androidx.compose.ui.geometry.Offset(to, to)
+                pinch(center - spreadFrom, center - spreadTo, center + spreadFrom, center + spreadTo, 300)
+            }
+        }
+        repeat(3) { compose.onNodeWithTag("sampleNext").performClick() }
+        waitGuide(R.string.onboarding_day_swipe)
+        compose.onNodeWithTag("sampleNext").performClick()
+        waitGuide(R.string.onboarding_day_zoom)
+        pinch("DAILY", inward = true)
+        waitGuide(R.string.onboarding_records_swipe)
+        lateinit var previousMonth: java.time.YearMonth
+        scenario!!.onActivity { previousMonth = it.vm.sample!!.recordedMonth.minusMonths(1) }
+        compose.onNodeWithTag("rail_$previousMonth").performClick()
+        waitGuide(R.string.onboarding_records_zoom)
+        pinch("RECORDS", inward = true)
+        waitGuide(R.string.onboarding_month_scroll)
+        compose.onNodeWithTag("calendarList").performTouchInput { swipeDown(startY = height * .2f, endY = height * .7f, durationMillis = 400) }
+        waitGuide(R.string.onboarding_month_zoom)
+        pinch("MONTH", inward = true)
+        waitGuide(R.string.onboarding_year_open)
+        pinch("YEAR", inward = false)
+        waitGuide(R.string.onboarding_open_day)
+        checkPersonalUntouched()
+    }
+
+    @Test fun openingASearchResultDuringTheTourShowsTheDailyGuideForThatResult() {
+        launch("sampleNext")
+        lateinit var word: String
+        scenario!!.onActivity {
+            val sample = it.vm.sample!!
+            sample.leaveEditor()
+            sample.changeLevel(com.tokipin.app.rules.Level.MONTH)
+            word = sample.journal.days.values.asSequence().flatten().first { e -> e.kind == com.tokipin.app.data.EntryKind.WORD }.value
+            sample.openSearch()
+        }
+        compose.onNodeWithTag("searchField").performTextInput(word)
+        val result = hasText(word) and hasClickAction() and hasAnyAncestor(hasTestTag("searchResults"))
+        compose.waitUntil(10_000) { compose.onAllNodes(result).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodes(result)[0].performClick()
+        waitFor("level_DAILY")
+        compose.onNodeWithText(AppLocale.resources(app).getString(R.string.onboarding_day_swipe)).assertIsDisplayed()
+        compose.onNodeWithTag("sampleNext").performClick()
+        compose.onNodeWithText(AppLocale.resources(app).getString(R.string.onboarding_day_zoom)).assertIsDisplayed()
+        checkPersonalUntouched()
+    }
+
+    @Test fun koreanImeCompositionInEmojiModeDoesNotAdvanceToSaveUntilCommitted() {
+        launch("sampleNext")
+        compose.onNodeWithTag("sampleNext").performClick()
+        compose.onNodeWithContentDescription("Enter an emoji").assertIsFocused()
+        scenario!!.onActivity {
+            val input = requireNotNull(it.currentFocus?.onCreateInputConnection(android.view.inputmethod.EditorInfo()))
+            input.setComposingText("✨ㅎ", 1)
+        }
+        val res = AppLocale.resources(app)
+        compose.onNodeWithText(res.getString(R.string.editor_emoji_prompt)).assertIsDisplayed()
+        compose.onNodeWithTag("sampleNext").performClick()
+        compose.onNodeWithText(res.getString(R.string.onboarding_save_guide)).assertIsDisplayed()
+        compose.onNodeWithTag("sampleNext").performClick()
+        waitFor("level_DAILY")
+        scenario!!.onActivity {
+            assertEquals("✨", it.vm.sample!!.journal.itemsOn(today).last().value)
+        }
+        checkPersonalUntouched()
+    }
+
+    @Test fun chosenTimeIsAddedOnceAndNextThenSavesTheCurrentNativeDraft() {
+        launch("sampleNext")
+        val res = AppLocale.resources(app)
+        compose.onNodeWithContentDescription(res.getString(R.string.kind_time)).performClick()
+        scenario!!.onActivity { it.vm.sample!!.updateRaw("17:35") }
+        compose.onNodeWithTag("sampleNext").performClick()
+        compose.onNodeWithText(res.getString(R.string.onboarding_save_guide)).assertIsDisplayed()
+        compose.onNodeWithTag("sampleNext").performClick()
+        waitFor("level_DAILY")
+        scenario!!.onActivity {
+            val sample = it.vm.sample!!
+            assertEquals(sample.tour!!.starter + sample.journal.itemsOn(today).last(), sample.journal.itemsOn(today))
+            assertEquals("17:35", sample.journal.itemsOn(today).last().value)
+        }
+        checkPersonalUntouched()
     }
 
     @Test fun restoredJournalBypassesSampleEvenWithoutLaunchFlag() {

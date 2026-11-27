@@ -64,7 +64,7 @@ fun SettingsSheet(vm: AppViewModel) {
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) vm.export(uri)
     }
-    val canExport = !vm.journal.isEmpty
+    val canExport = vm.tour == null && !vm.journal.isEmpty
     ModalBottomSheet(
         onDismissRequest = vm::closeSettings,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -121,8 +121,8 @@ fun SettingsSheet(vm: AppViewModel) {
                     TkIcon(R.drawable.ic_chevron_right, size = 18.dp)
                 }
             }
-            if (com.tokipin.app.data.SampleData.AVAILABLE) {
-                // Debug builds only (src/debug); release builds have no sample data and no rows.
+            if (vm.tour == null && com.tokipin.app.data.SampleData.AVAILABLE) {
+                // Debug builds only (src/debug); release builds omit these seed replacement controls.
                 Text(stringResource(R.string.debug_section), style = TkType.body.copy(fontSize = 15.sp), modifier = Modifier.padding(top = 4.dp))
                 Group {
                     LinkRow(stringResource(R.string.debug_samples)) { vm.replaceWithSamples(); vm.closeSettings() }
