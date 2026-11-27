@@ -104,7 +104,14 @@ class SampleCalendarTest {
         launch("sampleNext")
         val res = AppLocale.resources(app)
         compose.onNodeWithContentDescription("Enter a word").performTextInput("personal-looking practice")
+        // Some system keyboards reopen a word as a composing suggestion. Next finishes that
+        // composition first; an already committed value is ready for the checkmark immediately.
         compose.onNodeWithTag("sampleNext").performClick()
+        val save = res.getString(R.string.onboarding_save_guide)
+        compose.waitUntil(8_000) {
+            compose.onAllNodes(hasTestTag("level_DAILY") or hasText(save)).fetchSemanticsNodes().isNotEmpty()
+        }
+        if (compose.onAllNodes(hasText(save)).fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithTag("sampleNext").performClick()
         waitFor("level_DAILY")
         compose.waitForIdle()
         compose.onNodeWithTag("dayBody").performTouchInput {
@@ -198,8 +205,15 @@ class SampleCalendarTest {
             input.setComposingText("✨ㅎ", 1)
         }
         val res = AppLocale.resources(app)
-        compose.onNodeWithText(res.getString(R.string.editor_emoji_prompt)).assertIsDisplayed()
-        compose.onNodeWithTag("sampleNext").performClick()
+        compose.waitUntil(8_000) {
+            var hasInput = false
+            scenario!!.onActivity { hasInput = it.vm.sample!!.draft!!.raw.contains("✨") }
+            hasInput
+        }
+        // Gboard can commit and filter the supplied composition before the UI thread renders
+        // another frame. Both paths must lead to the same single, valid emoji.
+        val inputHelp = res.getString(R.string.editor_emoji_prompt)
+        if (compose.onAllNodes(hasText(inputHelp)).fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithTag("sampleNext").performClick()
         compose.onNodeWithText(res.getString(R.string.onboarding_save_guide)).assertIsDisplayed()
         compose.onNodeWithTag("sampleNext").performClick()
         waitFor("level_DAILY")

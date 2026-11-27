@@ -110,6 +110,7 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
     val listState = rememberLazyListState()
     val selection = vm.selection
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val haptics = LocalHaptics.current
     val focus = remember { FocusRequester() }
     var revealedId by remember { mutableStateOf<String?>(null) }
@@ -163,9 +164,12 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
         heightDp - with(LocalDensity.current) { imeHeight.toDp().value } < 470f
     fun nextGuideAction() {
         if (selection != null) vm.endSelection()
-        if (field.composition != null || (draft.kind == EntryKind.EMOJI && EmojiRules.filter(field.text) != field.text)) {
+        if (field.composition != null || tour?.composing == true || (draft.kind == EntryKind.EMOJI && EmojiRules.filter(field.text) != field.text)) {
             // Explicitly finish the IME composition before using the committed value as a guide action.
             val committed = if (draft.kind == EntryKind.EMOJI) EmojiRules.filter(field.text) else field.text
+            allowFocus = false
+            focusManager.clearFocus(force = true)
+            keyboard?.hide()
             field = TextFieldValue(committed, TextRange(committed.length))
             tour?.composing = false
             vm.updateRaw(committed)
@@ -178,7 +182,7 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
     LaunchedEffect(tour, imeHeight > 0, draft.kind) {
         if (tour != null && imeHeight > 0 && selection == null && draft.kind != EntryKind.TIME) listState.scrollToItem(editingIndex)
     }
-    LaunchedEffect(draft.kind, draft.editId, selection == null, vm.usagePromptOpen) {
+    LaunchedEffect(allowFocus, draft.kind, draft.editId, selection == null, vm.usagePromptOpen) {
         if (vm.usagePromptOpen) return@LaunchedEffect
         if (draft.editId != null) allowFocus = true
         if (allowFocus && selection == null && draft.kind != EntryKind.TIME) {
@@ -214,7 +218,7 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
                     .fillMaxWidth()
                     .testTag("editorList")
                     .onGloballyPositioned { listBounds[0] = it.boundsInWindow() },
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 24.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = if (compactTour) 2.dp else 24.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(draft.items, key = { it.id }) { item ->
@@ -319,7 +323,21 @@ private fun EditorHeader(vm: AppViewModel, hasItems: Boolean, compactTour: Boole
     val dateLabel = com.tokipin.app.rules.DateHeaders.editor(draft.localDate)
     val spoken = DateWords.spoken(draft.localDate)
     val changeDate = stringResource(R.string.cd_change_date)
-    CenteredTitleBar(
+    @Composable fun EditorActions() {
+        if (hasItems) RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_select_items), vm::beginSelection)
+        RoundIconButton(R.drawable.ic_check, stringResource(R.string.cd_save_record), vm::saveDraft,
+            Modifier.tourTarget(vm.tour?.let { it.guided && it.editorCue(draft) == R.string.onboarding_save_guide } == true))
+    }
+    if (compactTour) {
+        // Leave space for the actual composing line above a tall IME on a short screen.
+        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp).testTag("editorTopBar"), verticalAlignment = Alignment.CenterVertically) {
+            RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor)
+            RoundIconButton(R.drawable.ic_view_month, "$spoken, $changeDate", { picking = true }, Modifier.testTag("editorDate"))
+            Spacer(Modifier.weight(1f))
+            EditorActions()
+            SampleControls(vm, inline = true, onNext = nextAction)
+        }
+    } else CenteredTitleBar(
         modifier = Modifier.testTag("editorTopBar"),
         edge = 12.dp,
         leading = { RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor) },
@@ -341,10 +359,7 @@ private fun EditorHeader(vm: AppViewModel, hasItems: Boolean, compactTour: Boole
         },
         trailing = {
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (hasItems) RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_select_items), vm::beginSelection)
-                RoundIconButton(R.drawable.ic_check, stringResource(R.string.cd_save_record), vm::saveDraft,
-                    Modifier.tourTarget(vm.tour?.let { it.guided && it.editorCue(draft) == R.string.onboarding_save_guide } == true))
-                if (compactTour) SampleControls(vm, inline = true, onNext = nextAction)
+                EditorActions()
             }
         },
     )
