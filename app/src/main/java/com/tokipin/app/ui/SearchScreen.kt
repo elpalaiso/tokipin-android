@@ -61,30 +61,54 @@ data class SearchHit(val date: LocalDate, val entry: Entry)
  * Words, emoji, places, times and dates are searchable (Figma 03 · 검색 대상). Typing a kind's name
  * ("장소", "Place") lists every item of that kind. Newest dates first, entered order within a day.
  */
-fun search(journal: Journal, query: String, kindNames: Map<EntryKind, String>): List<SearchHit> =
-    SearchIndex(journal).find(query, kindNames)
+fun search(
+    journal: Journal,
+    query: String,
+    kindNames: Map<EntryKind, String>,
+    locale: java.util.Locale = com.tokipin.app.AppLocale.format,
+    shown: (Entry) -> String = { it.value },
+): List<SearchHit> = SearchIndex(journal, locale, shown).find(query, kindNames)
 
 /**
- * Searchable text of every saved day, prepared once per journal (date text and lower-cased values)
- * so each keystroke only compares strings, off the main thread.
+ * Searchable text of every saved day, prepared once per journal, language and time format: the
+ * stored values, what the screen shows (a time as "6:45 PM"), and the date both as stored (ISO) and
+ * as written in the app ("2026.11.25(Wed)"), so whatever is on screen can be typed back. Text is
+ * folded with the app language's case rules (Turkish İ/ı kept apart) and one kind of space, then compared off the main thread.
  */
-class SearchIndex(journal: Journal) {
-    private class Day(val date: LocalDate, val dateText: String, val iso: String, val entries: List<Entry>, val lowered: List<String>)
+class SearchIndex(journal: Journal, private val locale: java.util.Locale, shown: (Entry) -> String) {
+    private class Day(val date: LocalDate, val dateText: String, val entries: List<Entry>, val texts: List<String>)
+
+    /**
+     * Comparable form: the language's own lower case (Turkish İ→i, I→ı, so kir and kır stay
+     * different), a stray combining dot dropped (İ lower-cased outside Turkish), and every kind of
+     * space — the narrow no-break space formatters put in "6:45 PM", no-break spaces — made one
+     * ordinary space, so a time typed on a keyboard finds the time shown on screen.
+     */
+    fun fold(text: String): String = text.lowercase(locale).replace("\u0307", "").replace(SPACES, " ")
+
+    private companion object {
+        val SPACES = Regex("[\\s\\u00A0\\u2007\\u202F\\u2000-\\u200A\\u3000]+")
+    }
 
     private val days: List<Day> = journal.dates.map { date ->
         val entries = journal.itemsOn(date)
-        Day(date, searchableDate(date), date.toString(), entries, entries.map { it.value.lowercase() })
+        Day(
+            date,
+            fold(searchableDate(date) + " " + date.fullLabel(locale) + " " + date.toString()),
+            entries,
+            entries.map { e -> fold(if (e.kind == EntryKind.TIME) e.value + " " + shown(e) else e.value) },
+        )
     }
 
     fun find(query: String, kindNames: Map<EntryKind, String>): List<SearchHit> {
-        val q = query.trim().lowercase()
+        val q = fold(query.trim())
         if (q.isEmpty()) return emptyList()
-        val kinds = kindNames.filterValues { it.lowercase() == q }.keys
+        val kinds = kindNames.filterValues { fold(it) == q }.keys
         val hits = ArrayList<SearchHit>()
         for (day in days) {
-            val dateMatches = day.dateText.contains(q) || day.iso.contains(q)
+            val dateMatches = day.dateText.contains(q)
             day.entries.forEachIndexed { i, entry ->
-                if (dateMatches || entry.kind in kinds || day.lowered[i].contains(q)) hits += SearchHit(day.date, entry)
+                if (dateMatches || entry.kind in kinds || day.texts[i].contains(q)) hits += SearchHit(day.date, entry)
             }
         }
         return hits
@@ -101,8 +125,11 @@ fun SearchScreen(vm: AppViewModel) {
     // built once per journal, and an older query's result is dropped when a newer one arrives.
     val journal = vm.journal
     val query = vm.searchQuery
-    var index by remember(journal) { mutableStateOf<SearchIndex?>(null) }
-    LaunchedEffect(journal) { index = withContext(Dispatchers.Default) { SearchIndex(journal) } }
+    // Rebuilt when the journal, the app language or the time format changes.
+    val locale = com.tokipin.app.AppLocale.format
+    val timeDisplay = LocalTimeDisplay.current
+    var index by remember(journal, locale, timeDisplay) { mutableStateOf<SearchIndex?>(null) }
+    LaunchedEffect(journal, locale, timeDisplay) { index = withContext(Dispatchers.Default) { SearchIndex(journal, locale, timeDisplay::text) } }
     var hits by remember { mutableStateOf(emptyList<SearchHit>()) }
     var hitsFor by remember { mutableStateOf("") }
     LaunchedEffect(index, query) {

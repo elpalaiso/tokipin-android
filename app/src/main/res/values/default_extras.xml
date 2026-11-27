@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings that are not translated: the brand, number-only formats, and development-only
+     rows (debug_*, Figma handoff 메모 1), which stay Korean in every language. -->
+<resources>
+    <string name="app_name" translatable="false">Tokipin</string>
+    <string name="more_count" translatable="false">+%1$d</string>
+    <string name="month_number" translatable="false">%1$d</string>
+    <string name="debug_section" translatable="false">개발용 테스트 데이터</string>
+    <string name="debug_samples" translatable="false">예시 기록 넣기</string>
+    <string name="debug_range_samples" translatable="false">달력 범위 예시 넣기</string>
+    <string name="debug_range_body" translatable="false">2026.11.26 기준의 빈 달과 빈 해를 확인해요. 이 기기의 기존 기록과 초안을 교체해요.</string>
+    <string name="debug_range_replace" translatable="false">교체</string>
+    <string name="debug_range_done" translatable="false">달력 범위 예시를 넣었어요.</string>
+    <string name="debug_range_failed" translatable="false">달력 범위 예시를 불러오지 못했어요.</string>
+    <string name="debug_large_samples" translatable="false">대용량 예시 넣기 (10년)</string>
+    <string name="debug_large_body" translatable="false">2016.11.27부터 2026.11.26까지 홈페이지 예시 규칙으로 만든 10년치(3,064일, 9,906조각)로 속도를 확인해요. 이 기기의 기존 기록과 초안을 교체해요.</string>
+    <string name="debug_large_done" translatable="false">대용량 예시를 넣었어요.</string>
+    <string name="debug_clear" translatable="false">모든 기록 지우기</string>
+    <string name="debug_samples_done" translatable="false">예시 기록을 넣었어요.</string>
+    <string name="debug_cleared" translatable="false">모든 기록을 지웠어요.</string>
+</resources>

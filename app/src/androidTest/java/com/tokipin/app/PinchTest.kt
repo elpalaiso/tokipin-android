@@ -44,6 +44,7 @@ class PinchTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(records)
         context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit().putBoolean("launched", true).commit()
+        TestLocale.set("ko")
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(5_000) { level("RECORDS").exists() }
     }
@@ -81,6 +82,9 @@ class PinchTest {
         return node.fetchSemanticsNode().boundsInRoot.center
     }
 
+    /** The date as TalkBack reads it (cells and cards start with it). */
+    private fun sp(date: String) = com.tokipin.app.ui.DateWords.spoken(java.time.LocalDate.parse(date))
+
     private fun screenCenter(): Offset = compose.onRoot().fetchSemanticsNode().boundsInRoot.center
 
     @Test fun pinchWalksAllFourLevelsAroundTheDateBetweenTheFingers() {
@@ -93,12 +97,12 @@ class PinchTest {
         // In over September in the year view → the September month calendar.
         pinchAt(centerOf("2026년 9월, 기록한 날"), zoomIn = true)
         compose.waitUntil(3_000) { level("MONTH").exists() }
-        compose.onNode(hasContentDescription("2026.09.06", substring = true)).assertIsDisplayed()
+        compose.onNode(hasContentDescription(sp("2026-09-06"), substring = true)).assertIsDisplayed()
 
         // In over 6 Sep → recorded days, then in over its card → that day.
-        pinchAt(centerOf("2026.09.06"), zoomIn = true)
+        pinchAt(centerOf(sp("2026-09-06")), zoomIn = true)
         compose.waitUntil(3_000) { level("RECORDS").exists() }
-        pinchAt(centerOf("2026.09.06"), zoomIn = true)
+        pinchAt(centerOf(sp("2026-09-06")), zoomIn = true)
         compose.waitUntil(3_000) { level("DAILY").exists() }
         compose.onNodeWithText("서점").assertIsDisplayed()
 
@@ -119,9 +123,9 @@ class PinchTest {
     @Test fun pinchInOnMonthCellOpensThatDayInRecordedDays() {
         pinchAt(screenCenter(), zoomIn = false)
         compose.waitUntil(3_000) { level("MONTH").exists() }
-        pinchAt(centerOf("2026.11.18"), zoomIn = true)
+        pinchAt(centerOf(sp("2026-11-18")), zoomIn = true)
         compose.waitUntil(3_000) { level("RECORDS").exists() }
-        pinchAt(centerOf("2026.11.18"), zoomIn = true)
+        pinchAt(centerOf(sp("2026-11-18")), zoomIn = true)
         compose.waitUntil(3_000) { level("DAILY").exists() }
         compose.onNodeWithText("한강").assertIsDisplayed()
     }

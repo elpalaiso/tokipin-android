@@ -33,7 +33,8 @@ data class Undo(val message: String, val action: () -> Unit)
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val store = JournalStore(application)
-    private val res = application.resources
+    // Messages use the app language (AppLocale), not the device language the Application starts with.
+    private val res get() = com.tokipin.app.AppLocale.resources(getApplication())
 
     var screen by mutableStateOf(Screen.Loading); private set
     /** True only while a slow read is still running, so fast launches never flash a skeleton. */
@@ -273,7 +274,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         selection = null
         persistDraft()
         val message = if (ids.size == 1) res.getString(R.string.editor_item_deleted)
-        else res.getString(R.string.editor_items_deleted, ids.size)
+        else res.getQuantityString(R.plurals.editor_items_deleted, ids.size, ids.size)
         offerUndo(message) {
             // Only the deleted fragments come back; later edits and reorders stay.
             val current = draft ?: return@offerUndo
@@ -570,7 +571,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val before = journal.itemsOn(date)
         if (before.isEmpty()) return
         persistJournal(journal.withDay(date, emptyList())) {
-            offerUndo(res.getString(R.string.day_deleted, before.size)) {
+            offerUndo(res.getQuantityString(R.plurals.day_deleted, before.size, before.size)) {
                 persistJournal(journal.withDay(date, before))
             }
         }

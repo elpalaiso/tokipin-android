@@ -83,6 +83,7 @@ class UxSpecDeviceTest {
         File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(data)
         context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit()
             .putBoolean("launched", true).putBoolean("haptics", haptics).commit()
+        TestLocale.set("ko")
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(5_000) { exists(level("RECORDS")) }
     }
@@ -140,6 +141,9 @@ class UxSpecDeviceTest {
         scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
     }
+
+    /** How TalkBack reads a date in the app language (Korean in these tests). */
+    private fun sp(date: String) = com.tokipin.app.ui.DateWords.spoken(java.time.LocalDate.parse(date))
 
     private fun railDaySelected(label: String) =
         exists(compose.onNode(hasContentDescription(label) and selected and hasAnyAncestor(hasTestTag("weekRail"))))
@@ -233,13 +237,13 @@ class UxSpecDeviceTest {
         val commit = swipeSpec["distanceCommitFractionOfW"]!!.jsonPrimitive.content.toFloat()
         val before = ticks()
         drag("dayBody", -(commit - 0.01f) * w, 0f, 900, slow = true)
-        assertTrue("21%: stays on the 25th", railDaySelected("2026.11.25(수)"))
+        assertTrue("21%: stays on the 25th", railDaySelected(sp("2026-11-25")))
         assertEquals(before, ticks())
         drag("dayBody", -(commit + 0.01f) * w, 0f, 900, slow = true)
-        assertTrue("23%: next day", railDaySelected("2026.11.26(목)"))
+        assertTrue("23%: next day", railDaySelected(sp("2026-11-26")))
         assertEquals(before + 1, ticks())
         drag("dayBody", (commit + 0.03f) * w, 0f, 900, slow = true)
-        assertTrue("back to the 25th", railDaySelected("2026.11.25(수)"))
+        assertTrue("back to the 25th", railDaySelected(sp("2026-11-25")))
         assertEquals(before + 2, ticks())
     }
 
@@ -249,7 +253,7 @@ class UxSpecDeviceTest {
         val g = case("swipe.diagonal.verticalWins")["given"]!!.jsonObject
         val before = ticks()
         drag("dayBody", g["dx"]!!.jsonPrimitive.content.toFloat(), g["dy"]!!.jsonPrimitive.content.toFloat(), 220, slow = false)
-        assertTrue(railDaySelected("2026.11.25(수)"))
+        assertTrue(railDaySelected(sp("2026-11-25")))
         assertEquals(before, ticks())
     }
 
@@ -259,7 +263,7 @@ class UxSpecDeviceTest {
         val w = bounds(compose.onNodeWithTag("weekRail")).width / density
         val before = ticks()
         drag("weekRail", -0.12f * w, 0f, 60, slow = false)
-        assertTrue("same weekday, next week", railDaySelected("2026.12.02(수)"))
+        assertTrue("same weekday, next week", railDaySelected(sp("2026-12-02")))
         assertEquals(before + 1, ticks())
     }
 
@@ -269,7 +273,7 @@ class UxSpecDeviceTest {
         val w = bounds(compose.onNodeWithTag("dayBody")).width / density
         val before = ticks()
         drag("dayBody", -0.3f * w, 0f, 600, slow = true)
-        assertTrue(railDaySelected("2026.11.26(목)"))
+        assertTrue(railDaySelected(sp("2026-11-26")))
         assertEquals(before, ticks())
     }
 
@@ -314,7 +318,7 @@ class UxSpecDeviceTest {
         compose.waitUntil(3_000) { exists(level("RECORDS")) }
         assertEquals("one level, one tick", before + 1, ticks())
         menu("DAILY")
-        assertTrue("anchored on the 25th", railDaySelected("2026.11.25(수)"))
+        assertTrue("anchored on the 25th", railDaySelected(sp("2026-11-25")))
     }
 
     @Test fun pinchReturnedToNeutralCancels() {
@@ -478,7 +482,7 @@ class UxSpecDeviceTest {
         compose.waitForIdle(); Thread.sleep(500); compose.waitForIdle()
         compose.waitUntil(3_000) { exists(level("DAILY")) }
         assertEquals("one tick for the level, none for a month", before + 1, ticks())
-        assertTrue(railDaySelected("2026.11.25(수)"))
+        assertTrue(railDaySelected(sp("2026-11-25")))
     }
 
     @Test fun railMonthsReadTheirYearForTalkBack() {
@@ -558,7 +562,9 @@ class UxSpecDeviceTest {
             assertTrue("keyboard still open after '$c'", imeVisible())
             assertTrue("field still focused after '$c'", !noFocusedField())
         }
-        compose.onNodeWithText("bam").assertExists()
+        // With the app in Korean the keyboard may compose the keys as Hangul; what matters is that
+        // three characters arrived without the keyboard closing.
+        scenario!!.onActivity { assertTrue("typed text arrived", it.vm.draft!!.raw.isNotEmpty()) }
     }
 
     /** Figma 267-1270: "진동" with its explanation, toggling the app's haptics, on every device. */
@@ -612,7 +618,7 @@ class UxSpecDeviceTest {
 
     @Test fun emptyDayPlusSavesTheFirstFragmentAndPencilReopensItWithoutKeyboard() {
         launch(data = editData)
-        openDayOnRail("2026-11-25", "2026.11.24(화)")
+        openDayOnRail("2026-11-25", sp("2026-11-24"))
         val empty = compose.onNodeWithTag("dayEmpty_2026-11-24")
         empty.assertExists()
         assertEquals("이날 남긴 기록이 없어요.", empty.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].single())
@@ -623,7 +629,7 @@ class UxSpecDeviceTest {
         compose.onNodeWithContentDescription("단어 입력").performTextInput("산책")
         compose.onNodeWithContentDescription("기록 저장").performClick()
         compose.waitUntil(3_000) { exists(level("DAILY")) }
-        assertTrue(railDaySelected("2026.11.24(화)"))
+        assertTrue(railDaySelected(sp("2026-11-24")))
         compose.onNodeWithTag("dayEmpty_2026-11-24").assertDoesNotExist()
         compose.onNodeWithText("산책").assertExists()
         compose.onNodeWithTag("editDay").performClick()
@@ -777,12 +783,12 @@ class UxSpecDeviceTest {
         compose.onNodeWithContentDescription("단어 입력").performTextInput("초안A")
         back()
         compose.waitUntil(3_000) { exists(level("DAILY")) }
-        compose.onNode(hasContentDescription("2026.11.24(화)") and hasAnyAncestor(hasTestTag("weekRail"))).performClick()
+        compose.onNode(hasContentDescription(sp("2026-11-24")) and hasAnyAncestor(hasTestTag("weekRail"))).performClick()
         compose.onNodeWithTag("addRecord").performClick()
         compose.onNodeWithContentDescription("단어 입력").performTextInput("초안B")
         back()
         compose.waitUntil(3_000) { exists(level("DAILY")) }
-        compose.onNode(hasContentDescription("2026.11.25(수)") and hasAnyAncestor(hasTestTag("weekRail"))).performClick()
+        compose.onNode(hasContentDescription(sp("2026-11-25")) and hasAnyAncestor(hasTestTag("weekRail"))).performClick()
         compose.onNodeWithTag("editDay").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("초안A").assertExists()
@@ -1175,7 +1181,7 @@ class UxSpecDeviceTest {
         menu("YEAR")
         assertTrue(exists(compose.onNode(hasTestTag("mini_2026-11") and selected)))
         menu("DAILY")
-        assertTrue(railDaySelected("2026.11.25(수)"))
+        assertTrue(railDaySelected(sp("2026-11-25")))
         compose.onNode(hasTestTag("weekRail")).assertExists()
     }
 

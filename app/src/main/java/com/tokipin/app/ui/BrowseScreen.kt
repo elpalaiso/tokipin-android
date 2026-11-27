@@ -71,6 +71,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -106,7 +107,7 @@ import java.time.temporal.TemporalAdjusters
 private fun firstDayOfWeek(): DayOfWeek = AppLocale.firstDayOfWeek
 private fun LocalDate.weekStart(): LocalDate = with(TemporalAdjusters.previousOrSame(firstDayOfWeek()))
 private fun weekdays(): List<DayOfWeek> = (0L until 7L).map { firstDayOfWeek().plus(it) }
-private fun DayOfWeek.short(): String = getDisplayName(DateTextStyle.NARROW, AppLocale.current)
+private fun DayOfWeek.short(): String = getDisplayName(DateTextStyle.NARROW, AppLocale.format)
 
 /** Month cells keep a 96dp minimum (same as iOS 96pt) and grow with larger text. */
 private val MONTH_CELL_MIN = 96.dp
@@ -214,15 +215,20 @@ fun BrowseScreen(vm: AppViewModel) {
         ) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(date.fullLabel(), style = TkType.title, modifier = Modifier.semantics { heading() })
+                // Deletes every fragment of this day at once; TalkBack hears the date with it, so it is
+                // never confused with deleting one fragment in the editor.
+                val deleteText = pluralStringResource(R.plurals.delete_day, count, count)
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(14.dp)).background(Tk.DangerSoft)
                         .clickable(role = Role.Button) { vm.deleteDay(date); dayMenuFor = null }
+                        .semantics(mergeDescendants = true) { contentDescription = DateWords.spoken(date) + ", " + deleteText }
+                        .testTag("deleteDay")
                         .padding(horizontal = 18.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TkIcon(R.drawable.ic_trash, tint = Tk.DangerText, size = 18.dp)
                     Spacer(Modifier.width(10.dp))
-                    Text(stringResource(R.string.delete_day, count), style = TkType.body.copy(color = Tk.DangerText))
+                    Text(deleteText, style = TkType.body.copy(color = Tk.DangerText))
                 }
                 Box(
                     Modifier.fillMaxWidth().heightIn(min = 52.dp).glass(RoundedCornerShape(14.dp))
@@ -255,9 +261,9 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
         Level.YEAR -> com.tokipin.app.rules.DateHeaders.year(vm.visibleMonth.year)
     }
     val spoken = when (vm.level) {
-        Level.DAILY -> stringResource(R.string.cd_year_month, vm.selectedDate.year, vm.selectedDate.monthValue)
-        Level.RECORDS -> stringResource(R.string.cd_year, vm.recordedMonth.year)
-        Level.MONTH -> stringResource(R.string.cd_year, vm.visibleMonth.year)
+        Level.DAILY -> DateWords.yearMonth(YearMonth.from(vm.selectedDate))
+        Level.RECORDS -> DateWords.year(vm.recordedMonth.year)
+        Level.MONTH -> DateWords.year(vm.visibleMonth.year)
         Level.YEAR -> ""
     }
     val upName = vm.upTarget?.let { stringResource(it.viewName()) }
@@ -475,7 +481,7 @@ private fun WeekRow(start: LocalDate, date: LocalDate, onSelect: (LocalDate) -> 
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         (0L until 7L).map { start.plusDays(it) }.forEach { day ->
             val active = day == date
-            val label = day.fullLabel()
+            val label = DateWords.spoken(day)
             Column(
                 Modifier
                     .weight(1f)
@@ -544,7 +550,7 @@ private fun RecordsView(vm: AppViewModel, onLongPress: (LocalDate) -> Unit) {
     val haptics = LocalHaptics.current
     var dragFraction by remember { mutableStateOf(0f) }
     val view = androidx.compose.ui.platform.LocalView.current
-    val emptyText = stringResource(R.string.month_empty_cd, vm.recordedMonth.monthValue)
+    val emptyText = stringResource(R.string.month_empty_cd, DateWords.month(vm.recordedMonth))
     LaunchedEffect(vm.recordedMonth) {
         // Only the settled month is announced; months passed while dragging or cancelled are not.
         val empty = vm.journal.datesIn(vm.recordedMonth).isEmpty()
@@ -637,7 +643,7 @@ private fun MonthRail(vm: AppViewModel, list: List<YearMonth>, dragFraction: Flo
             items(count) { i ->
                 val month = monthAt(i)
                 val current = month == vm.recordedMonth
-                val name = stringResource(R.string.cd_year_month, month.year, month.monthValue)
+                val name = DateWords.yearMonth(month)
                 Box(
                     Modifier
                         .width(slot)
@@ -692,7 +698,7 @@ private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDat
     if (dates.isEmpty()) {
         // Empty month: the same rabbit card inside this month's page, so it slides with the page
         // and comes back with it on cancel. No words on screen; TalkBack hears it once on settling.
-        EmptyStateArea(stringResource(R.string.month_empty_cd, month.monthValue), tag = "monthEmpty")
+        EmptyStateArea(stringResource(R.string.month_empty_cd, DateWords.month(month)), tag = "monthEmpty")
         return
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -878,7 +884,7 @@ private fun DayCard(
             .border(if (selected) 1.dp else 0.8.dp, if (selected) Tk.Secondary.copy(alpha = 0.7f) else Tk.CardBorder, BENTO_SHAPE)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics(mergeDescendants = true) {
-                contentDescription = date.fullLabel() + ", " + layout.lines.flatten().mapNotNull { it.entry }.joinToString(", ") { time.text(it) }
+                contentDescription = DateWords.spoken(date) + ", " + layout.lines.flatten().mapNotNull { it.entry }.joinToString(", ") { time.text(it) }
             }
             .padding(
                 start = (com.tokipin.app.rules.Bento.PAD_LEADING + extra).dp,
@@ -960,7 +966,7 @@ private fun MonthView(vm: AppViewModel) {
                     is com.tokipin.app.rules.MonthRow.Gap -> GapRow(
                         tag = "gap_${r.from}",
                         label = "%04d.%02d – %04d.%02d".format(r.from.year, r.from.monthValue, r.to.year, r.to.monthValue),
-                        description = stringResource(R.string.cd_gap_months, r.from.year, r.from.monthValue, r.to.year, r.to.monthValue, r.months),
+                        description = pluralStringResource(R.plurals.cd_gap_months, r.months, DateWords.yearMonth(r.from), DateWords.yearMonth(r.to), r.months),
                         expanded = r.expanded,
                         onToggle = { vm.toggleMonthGap(r.from) },
                     )
@@ -1004,7 +1010,7 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
     val lead = CalendarRules.firstDayColumn(month, firstDayOfWeek())
     val cells = lead + month.lengthOfMonth()
     val weeks = (cells + 6) / 7
-    val monthDescription = stringResource(R.string.cd_month, month.monthValue)
+    val monthDescription = DateWords.yearMonth(month)
     Column(Modifier.testTag("month_$month")) {
         // The month number sits outside the frame, above the column of the 1st.
         Row(Modifier.fillMaxWidth().height(MONTH_TITLE).padding(horizontal = 4.dp), verticalAlignment = Alignment.Bottom) {
@@ -1016,7 +1022,7 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
                             style = TkType.title.copy(fontSize = 20.sp),
                             modifier = Modifier
                                 .testTag("monthLabel_$month")
-                                .semantics { contentDescription = "${month.year} $monthDescription"; heading() },
+                                .semantics { contentDescription = monthDescription; heading() },
                         )
                     }
                 }
@@ -1060,7 +1066,7 @@ private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, to
             .clickable(role = Role.Button, onClick = onClick)
             // Built only when semantics are read (TalkBack, tests), not for every cell on every scroll.
             .semantics(mergeDescendants = true) {
-                contentDescription = date.fullLabel() + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { time.text(it) }
+                contentDescription = DateWords.spoken(date) + if (items.isEmpty()) "" else ", " + items.joinToString(", ") { time.text(it) }
                 this.selected = selected
             }
             .padding(vertical = 6.dp, horizontal = 2.dp),
@@ -1122,7 +1128,8 @@ private fun YearView(vm: AppViewModel) {
                 is com.tokipin.app.rules.YearRow.Gap -> GapRow(
                     tag = "yearGap_${r.from}",
                     label = if (r.from == r.to) "${r.from}" else "${r.from} – ${r.to}",
-                    description = if (r.from == r.to) stringResource(R.string.cd_gap_year, r.from) else stringResource(R.string.cd_gap_years, r.from, r.to, r.to - r.from + 1),
+                    description = if (r.from == r.to) stringResource(R.string.cd_gap_year, DateWords.year(r.from))
+                    else pluralStringResource(R.plurals.cd_gap_years, r.to - r.from + 1, DateWords.year(r.from), DateWords.year(r.to), r.to - r.from + 1),
                     expanded = r.expanded,
                     onToggle = { vm.toggleYearGap(r.from) },
                 )
@@ -1131,7 +1138,7 @@ private fun YearView(vm: AppViewModel) {
                     // The year title scrolls together with its twelve months; a dot says the year has records.
                     Column(Modifier.padding(top = 12.dp, bottom = 12.dp).testTag("year_$year")) {
                         val hasRecords = year in recordedYears
-                        val yearDescription = stringResource(R.string.cd_year, year) + if (hasRecords) ", " + stringResource(R.string.cd_has_records) else ""
+                        val yearDescription = DateWords.year(year) + if (hasRecords) ", " + stringResource(R.string.cd_has_records) else ""
                         Row(
                             Modifier.padding(start = 4.dp, bottom = 8.dp).semantics(mergeDescendants = true) { contentDescription = yearDescription; heading() },
                             verticalAlignment = Alignment.CenterVertically,
@@ -1179,9 +1186,9 @@ private fun MiniMonth(month: YearMonth, journal: com.tokipin.app.data.Journal, s
     val lead = CalendarRules.firstDayColumn(month, firstDayOfWeek())
     val recorded = journal.dateSet
     val count = journal.datesIn(month).size
-    val description = if (!enabled) stringResource(R.string.cd_out_of_range, month.monthValue)
-    else stringResource(R.string.cd_year_month, month.year, month.monthValue) +
-        (if (count > 0) ", " + stringResource(R.string.cd_recorded_days, count) else "")
+    val description = if (!enabled) stringResource(R.string.cd_out_of_range, DateWords.month(month))
+    else DateWords.yearMonth(month) +
+        (if (count > 0) ", " + pluralStringResource(R.plurals.cd_recorded_days, count, count) else "")
     val shape = RoundedCornerShape(12.dp)
     Column(
         modifier
