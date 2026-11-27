@@ -103,7 +103,7 @@ fun EntryKind.textStyle(): TextStyle = when (this) {
 fun EntryKind.editorStyle(large: Boolean): TextStyle = if (large) textStyle() else TkType.title
 
 @Composable
-fun EditorScreen(vm: AppViewModel) {
+fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
     val draft = vm.draft ?: return
     val selection = vm.selection
     val keyboard = LocalSoftwareKeyboardController.current
@@ -151,7 +151,8 @@ fun EditorScreen(vm: AppViewModel) {
 
     // "+" opens with the keyboard; the pencil opens with it closed until a fragment or tool is tapped.
     var allowFocus by remember { mutableStateOf(vm.editorAutoFocus) }
-    LaunchedEffect(draft.kind, draft.editId, selection == null) {
+    LaunchedEffect(draft.kind, draft.editId, selection == null, vm.usagePromptOpen) {
+        if (vm.usagePromptOpen) return@LaunchedEffect
         if (draft.editId != null) allowFocus = true
         if (allowFocus && selection == null && draft.kind != EntryKind.TIME) {
             // The tool's own field is laid out on the next frame; focus it then.
@@ -163,6 +164,7 @@ fun EditorScreen(vm: AppViewModel) {
     TkBackground {
         Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding().navigationBarsPadding().imePadding()) {
             if (selection != null) SelectionHeader(vm, selection) else EditorHeader(vm, draft.items.isNotEmpty())
+            if (showUsageHint) UsageLaterHint()
 
             val listState = rememberLazyListState()
             val edge = with(LocalDensity.current) { 64.dp.toPx() }

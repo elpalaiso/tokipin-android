@@ -84,6 +84,7 @@ class UxSpecDeviceTest {
         context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit()
             .putBoolean("launched", true).putBoolean("haptics", haptics).commit()
         TestLocale.set("ko")
+        UsageSharing(context).markPresented() // Existing installation with optional sharing off.
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(5_000) { exists(level("RECORDS")) }
     }

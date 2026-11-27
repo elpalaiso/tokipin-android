@@ -75,30 +75,18 @@ fun SettingsSheet(vm: AppViewModel) {
             FeedbackPage(onBack = { feedbackOpen = false })
             return@ModalBottomSheet
         }
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.settings), style = TkType.title, modifier = Modifier.weight(1f).semantics { heading() })
                 RoundIconButton(R.drawable.ic_close, stringResource(R.string.cd_close), vm::closeSettings, glass = false, background = Tk.SheetRow)
             }
             Group {
-                // Figma 267-1270: "진동" with a one-line explanation, shown on every device (as on iOS).
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 62.dp)
-                        .toggleable(value = vm.hapticsEnabled, role = Role.Switch) { vm.setHaptics(it) }
-                        .testTag("hapticsRow")
-                        .padding(horizontal = 16.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_haptics), style = TkType.body)
-                        Text(stringResource(R.string.settings_haptics_body), style = TkType.small.copy(fontSize = 13.sp, lineHeight = 18.sp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Switch(
-                        checked = vm.hapticsEnabled,
-                        onCheckedChange = null,
-                        colors = SwitchDefaults.colors(checkedTrackColor = Tk.Focus, checkedThumbColor = Tk.Surface),
-                    )
+                SettingsSwitch(stringResource(R.string.settings_haptics), stringResource(R.string.settings_haptics_body),
+                    vm.hapticsEnabled, "hapticsRow", vm::setHaptics)
+                if (vm.usageAvailable) {
+                    HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
+                    SettingsSwitch(stringResource(R.string.usage_label), stringResource(R.string.usage_body),
+                        vm.usageEnabled, "usageRow", vm::chooseUsageSharing)
                 }
                 HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
                 Row(
@@ -296,6 +284,23 @@ private fun Group(content: @Composable () -> Unit) {
 }
 
 @Composable
+private fun SettingsSwitch(label: String, description: String, checked: Boolean, tag: String, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 62.dp).toggleable(checked, role = Role.Switch, onValueChange = onChange)
+            .testTag(tag).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = TkType.body)
+            Text(description, style = TkType.small.copy(fontSize = 13.sp, lineHeight = 19.sp))
+        }
+        Spacer(Modifier.width(8.dp))
+        Switch(checked = checked, onCheckedChange = null,
+            colors = SwitchDefaults.colors(checkedTrackColor = Tk.Focus, checkedThumbColor = Tk.Surface))
+    }
+}
+
+@Composable
 private fun LinkRow(text: String, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp),
@@ -315,6 +320,7 @@ fun PolicyScreen(policy: Policy, onBack: () -> Unit) {
             listOf(
                 R.string.privacy_h1 to R.string.privacy_b1, R.string.privacy_h2 to R.string.privacy_b2,
                 R.string.privacy_h3 to R.string.privacy_b3, R.string.privacy_h4 to R.string.privacy_b4,
+                R.string.privacy_usage_title to R.string.privacy_usage_body,
                 R.string.privacy_h5 to R.string.privacy_b5,
             ),
         )

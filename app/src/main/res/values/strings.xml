@@ -61,6 +61,14 @@
     <string name="terms_h3">Changing devices or clearing app data</string>
     <string name="terms_b3">Tokipin doesn’t sync notes through an account. Before changing devices or clearing the app’s data, export the notes you want to keep as a JSON file in Settings.</string>
     <string name="terms_h4">Operator details and questions about the app</string>
+    <string name="usage_label">Share app usage statistics</string>
+    <string name="usage_prompt">Want to help make Tokipin better?</string>
+    <string name="usage_body">Usage statistics, like how often the app is opened and notes are saved, help us see what could work better and improve features. We don’t send the contents of your notes or your search terms.</string>
+    <string name="usage_share">Count me in</string>
+    <string name="usage_later">Not now</string>
+    <string name="privacy_usage_body">If you opt in, Google Analytics processes app opens, note saves, an app installation identifier, and device information. We don’t send the contents or dates of your notes, or your search terms. You can turn sharing off at any time in Settings.</string>
+    <string name="privacy_usage_title">Share app usage statistics</string>
+    <string name="usage_later_hint">You can turn on “Share app usage statistics” anytime in Settings.</string>
     <string name="cd_tool_word">Enter a word</string>
     <string name="cd_tool_emoji">Enter an emoji</string>
     <string name="cd_tool_place">Enter a place</string>

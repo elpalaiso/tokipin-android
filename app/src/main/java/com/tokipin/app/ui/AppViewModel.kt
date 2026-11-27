@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tokipin.app.R
+import com.tokipin.app.UsageSharing
 import com.tokipin.app.data.Draft
 import com.tokipin.app.data.Entry
 import com.tokipin.app.data.EntryKind
@@ -31,8 +32,22 @@ enum class Policy { PRIVACY, TERMS }
 
 data class Undo(val message: String, val action: () -> Unit)
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
+class AppViewModel internal constructor(application: Application, private val usage: UsageSharing) : AndroidViewModel(application) {
+    constructor(application: Application) : this(application, UsageSharing(application))
+
     private val store = JournalStore(application)
+    val usageAvailable get() = usage.available
+    var usagePromptOpen by mutableStateOf(usage.available && !usage.hasChoice); private set
+    var usageEnabled by mutableStateOf(usage.enabled); private set
+    private var savingDraft = false
+
+    fun usagePromptPresented() = usage.markPresented()
+
+    fun chooseUsageSharing(value: Boolean) {
+        usage.setEnabled(value)
+        usageEnabled = usage.enabled
+        usagePromptOpen = false
+    }
     // Messages use the app language (AppLocale), not the device language the Application starts with.
     private val res get() = com.tokipin.app.AppLocale.resources(getApplication())
 
@@ -285,21 +300,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** ✓: commits the pending value, saves the whole day, and returns to its card. */
     fun saveDraft() {
-        if (!commitRaw()) return
+        if (savingDraft || !commitRaw()) return
         val d = draft ?: return
         if (!d.changed) {
             if (d.items.isEmpty()) { editorMessage = res.getString(R.string.editor_need_one); return }
             closeEditor(d.localDate, keepDraft = false, saved = true)
             return
         }
+        val before = journal.itemsOn(d.localDate)
+        // Removing entries alone is a deletion. Undoing edits back to their original values is a no-op.
+        val retained = d.items.mapTo(HashSet()) { it.id }
+        val countSave = usageEnabled && d.items.isNotEmpty() && before.filter { it.id in retained } != d.items
         val next = journal.withDay(d.localDate, d.items)
+        savingDraft = true
         viewModelScope.launch {
             val result = runCatching { store.saveJournal(next) }
+            savingDraft = false
             if (result.isFailure) {
                 saveFailed = true
                 return@launch
             }
             journal = next
+            if (countSave) usage.recordSaved()
             closeEditor(d.localDate, keepDraft = false, saved = true)
         }
     }

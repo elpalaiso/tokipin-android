@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.security.MessageDigest
 
@@ -5,6 +6,31 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+val firebaseConfig = layout.projectDirectory.file("google-services.json").asFile
+val hasUsageConfig = firebaseConfig.isFile
+if (hasUsageConfig) {
+    val config = JsonSlurper().parse(firebaseConfig) as Map<*, *>
+    val project = config["project_info"] as? Map<*, *>
+    val clients = config["client"] as? List<*>
+    val hasAndroidApp = clients.orEmpty().filterIsInstance<Map<*, *>>().any { client ->
+        val info = client["client_info"] as? Map<*, *>
+        (info?.get("android_client_info") as? Map<*, *>)?.get("package_name") == "com.tokipin.app"
+    }
+    check(project?.get("project_id") == "tokipin-app" && hasAndroidApp) {
+        "app/google-services.json must be the com.tokipin.app Android config from Firebase project tokipin-app."
+    }
+    apply(plugin = "com.google.gms.google-services")
+}
+
+// A source checkout may run debug builds offline. A release must target the real project.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    doFirst {
+        check(hasUsageConfig) {
+            "Download google-services.json for com.tokipin.app from Firebase project tokipin-app into app/ before building a release."
+        }
+    }
 }
 
 android {
@@ -18,6 +44,7 @@ android {
     defaultConfig {
         // Confirmed by the owner (2026-11-26). It cannot change after the first Play Console upload.
         applicationId = "com.tokipin.app"
+        buildConfigField("boolean", "USAGE_SHARING_AVAILABLE", hasUsageConfig.toString())
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -53,6 +80,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {
@@ -124,6 +152,8 @@ kotlin {
 }
 
 dependencies {
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)

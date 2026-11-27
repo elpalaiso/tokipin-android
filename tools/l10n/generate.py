@@ -38,6 +38,10 @@ WEB = {  # resource id -> (domain, TP number)
     "privacy_b3": ("site", 182), "privacy_h4": ("site", 183), "privacy_b4": ("site", 184), "privacy_h5": ("site", 185),
     "terms_lead": ("site", 188), "terms_h1": ("site", 189), "terms_b1": ("site", 190), "terms_h2": ("site", 191),
     "terms_b2": ("site", 192), "terms_h3": ("site", 193), "terms_b3": ("site", 194), "terms_h4": ("site", 195),
+    "usage_label": ("demo", 348), "usage_prompt": ("demo", 349), "usage_body": ("demo", 350),
+    "usage_share": ("demo", 351), "usage_later": ("demo", 352),
+    "privacy_usage_body": ("site", 353), "privacy_usage_title": ("site", 354),
+    "usage_later_hint": ("demo", 356),
     # TP-0198 is split per tool on Android so each uses the web's own phrase (TP-0108…0111).
     "cd_tool_word": ("demo", 108), "cd_tool_emoji": ("demo", 109), "cd_tool_place": ("demo", 110), "cd_tool_time": ("demo", 111),
 }

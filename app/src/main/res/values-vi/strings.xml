@@ -61,6 +61,14 @@
     <string name="terms_h3">Khi đổi thiết bị hoặc xóa dữ liệu ứng dụng</string>
     <string name="terms_b3">Tokipin không đồng bộ ghi chú qua tài khoản. Trước khi đổi thiết bị hoặc xóa dữ liệu ứng dụng, hãy xuất những ghi chú muốn giữ thành tệp JSON trong phần cài đặt.</string>
     <string name="terms_h4">Đơn vị vận hành và liên hệ về việc sử dụng</string>
+    <string name="usage_label">Chia sẻ số liệu sử dụng ứng dụng</string>
+    <string name="usage_prompt">Bạn muốn cùng chúng tôi cải thiện Tokipin không?</string>
+    <string name="usage_body">Các thống kê sử dụng như số lần mở ứng dụng và lưu ghi chú giúp chúng tôi nhận ra những điểm bất tiện và cải thiện các tính năng. Chúng tôi không gửi nội dung ghi chú hay từ khóa tìm kiếm của bạn.</string>
+    <string name="usage_share">Tham gia</string>
+    <string name="usage_later">Để sau</string>
+    <string name="privacy_usage_body">Nếu bạn đồng ý, Google Analytics sẽ xử lý các sự kiện mở ứng dụng và lưu ghi chú, mã nhận dạng bản cài đặt ứng dụng và thông tin thiết bị. Chúng tôi không gửi nội dung, ngày của ghi chú hay từ khóa tìm kiếm. Bạn có thể tắt chia sẻ bất cứ lúc nào trong phần Cài đặt.</string>
+    <string name="privacy_usage_title">Chia sẻ số liệu sử dụng ứng dụng</string>
+    <string name="usage_later_hint">Bạn có thể bật “Chia sẻ số liệu sử dụng ứng dụng” bất cứ lúc nào trong phần Cài đặt.</string>
     <string name="cd_tool_word">Nhập từ</string>
     <string name="cd_tool_emoji">Nhập emoji</string>
     <string name="cd_tool_place">Nhập địa điểm</string>
