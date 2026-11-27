@@ -69,10 +69,25 @@
     <string name="privacy_usage_body">Nếu bạn đồng ý, Google Analytics sẽ xử lý các sự kiện mở ứng dụng và lưu ghi chú, mã nhận dạng bản cài đặt ứng dụng và thông tin thiết bị. Chúng tôi không gửi nội dung, ngày của ghi chú hay từ khóa tìm kiếm. Bạn có thể tắt chia sẻ bất cứ lúc nào trong phần Cài đặt.</string>
     <string name="privacy_usage_title">Chia sẻ số liệu sử dụng ứng dụng</string>
     <string name="usage_later_hint">Bạn có thể bật “Chia sẻ số liệu sử dụng ứng dụng” bất cứ lúc nào trong phần Cài đặt.</string>
+    <string name="onboarding_open_day">Chạm vào một ngày để xem ghi chú hôm đó.</string>
+    <string name="onboarding_dismiss_guide">Đóng hướng dẫn xem ghi chú</string>
+    <string name="onboarding_save_guide">Chạm vào dấu tích để lưu ghi chú.</string>
     <string name="cd_tool_word">Nhập từ</string>
     <string name="cd_tool_emoji">Nhập emoji</string>
     <string name="cd_tool_place">Nhập địa điểm</string>
     <string name="cd_tool_time">Nhập giờ</string>
+    <string name="sample_pottery">Làm gốm</string>
+    <string name="sample_studio">Xưởng vẽ</string>
+    <string name="sample_walk">Đi dạo</string>
+    <string name="sample_park">Công viên</string>
+    <string name="sample_coffee">Cà phê sữa đá</string>
+    <string name="sample_cafe">Quán cà phê đầu ngõ</string>
+    <string name="sample_reading">Đọc sách</string>
+    <string name="sample_library">Thư viện</string>
+    <string name="sample_cycling">Đạp xe</string>
+    <string name="sample_trail">Lối đi bộ</string>
+    <string name="sample_cooking">Nấu ăn</string>
+    <string name="sample_kitchen">Gian bếp</string>
     <string name="load_failed_title">Không tải được ghi chú</string>
     <string name="load_failed_body">Không đọc được ghi chú đã lưu trên thiết bị này.\nVui lòng thử lại sau giây lát.</string>
     <string name="cd_back_to">Quay lại chế độ %1$s</string>
@@ -138,5 +153,10 @@
     <string name="search_results">Kết quả tìm kiếm</string>
     <string name="privacy_b5">Thông tin về đơn vị vận hành, cách liên hệ và ngày có hiệu lực sẽ được công bố khi ứng dụng chính thức ra mắt.</string>
     <string name="cd_delete_item">Xóa %1$s</string>
+    <string name="onboarding_sample_calendar">Lịch mẫu</string>
+    <string name="onboarding_start_journal">Bắt đầu ghi nhật ký</string>
+    <string name="onboarding_practice_emoji">Thử thêm emoji</string>
+    <string name="onboarding_choose_emoji">Chọn một emoji để thêm vào lịch mẫu.</string>
+    <string name="onboarding_emoji_saved">Đã thêm vào lịch mẫu.</string>
     <string name="terms_b4">Thông tin về đơn vị vận hành, cách liên hệ và ngày có hiệu lực sẽ được công bố khi ứng dụng chính thức ra mắt.</string>
 </resources>

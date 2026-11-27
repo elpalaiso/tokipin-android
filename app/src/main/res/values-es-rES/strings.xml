@@ -69,10 +69,25 @@
     <string name="privacy_usage_body">Si aceptas, Google Analytics procesa las aperturas de la app, las veces que guardas notas, un identificador de la instalación y datos del dispositivo. No enviamos el contenido ni las fechas de tus notas, ni tus términos de búsqueda. Puedes desactivar esta opción en cualquier momento en Ajustes.</string>
     <string name="privacy_usage_title">Compartir estadísticas de uso de la app</string>
     <string name="usage_later_hint">En Ajustes puedes activar «Compartir estadísticas de uso de la app» cuando quieras.</string>
+    <string name="onboarding_open_day">Toca una fecha para ver las notas de ese día.</string>
+    <string name="onboarding_dismiss_guide">Cerrar la guía</string>
+    <string name="onboarding_save_guide">Toca el botón de confirmación (✓) para guardar la nota.</string>
     <string name="cd_tool_word">Escribir una palabra</string>
     <string name="cd_tool_emoji">Escribir un emoji</string>
     <string name="cd_tool_place">Escribir un lugar</string>
     <string name="cd_tool_time">Introducir una hora</string>
+    <string name="sample_pottery">Cerámica</string>
+    <string name="sample_studio">Taller</string>
+    <string name="sample_walk">Paseo</string>
+    <string name="sample_park">Parque del barrio</string>
+    <string name="sample_coffee">Café con leche</string>
+    <string name="sample_cafe">Café de la plaza</string>
+    <string name="sample_reading">Un rato de lectura</string>
+    <string name="sample_library">Biblioteca del barrio</string>
+    <string name="sample_cycling">Paseo en bici</string>
+    <string name="sample_trail">Sendero</string>
+    <string name="sample_cooking">Entre fogones</string>
+    <string name="sample_kitchen">Cocina</string>
     <string name="load_failed_title">No se han podido cargar las notas</string>
     <string name="load_failed_body">No se pueden leer las notas guardadas en este dispositivo.\nVuelve a intentarlo en un momento.</string>
     <string name="cd_back_to">Volver a la vista «%1$s»</string>
@@ -152,5 +167,10 @@
     <string name="search_results">Resultados</string>
     <string name="privacy_b5">Cuando lancemos la app, publicaremos los datos del responsable, el contacto y la fecha de entrada en vigor.</string>
     <string name="cd_delete_item">Eliminar %1$s</string>
+    <string name="onboarding_sample_calendar">Calendario de ejemplo</string>
+    <string name="onboarding_start_journal">Empezar mi diario</string>
+    <string name="onboarding_practice_emoji">Probar con un emoji</string>
+    <string name="onboarding_choose_emoji">Elige un emoji para añadirlo al calendario de ejemplo.</string>
+    <string name="onboarding_emoji_saved">Se ha añadido al calendario de ejemplo.</string>
     <string name="terms_b4">Cuando lancemos la app, publicaremos los datos del responsable, el contacto y la fecha de entrada en vigor.</string>
 </resources>

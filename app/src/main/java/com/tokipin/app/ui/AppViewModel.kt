@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 
-enum class Screen { Loading, LoadFailed, Editor, Browse, Search }
+enum class Screen { Loading, LoadFailed, Sample, Editor, Browse, Search }
 
 
 enum class Policy { PRIVACY, TERMS }
@@ -37,7 +37,7 @@ class AppViewModel internal constructor(application: Application, private val us
 
     private val store = JournalStore(application)
     val usageAvailable get() = usage.available
-    var usagePromptOpen by mutableStateOf(usage.available && !usage.hasChoice); private set
+    var usagePromptOpen by mutableStateOf(false); private set
     var usageEnabled by mutableStateOf(usage.enabled); private set
     private var savingDraft = false
 
@@ -56,6 +56,8 @@ class AppViewModel internal constructor(application: Application, private val us
     var showSkeleton by mutableStateOf(false); private set
     var journal by mutableStateOf(Journal()); private set
     var draft by mutableStateOf<Draft?>(null); private set
+
+    internal var sample by mutableStateOf<SampleCalendar?>(null); private set
 
     // Browse
     var level by mutableStateOf(Level.RECORDS); private set
@@ -114,18 +116,33 @@ class AppViewModel internal constructor(application: Application, private val us
             keptDrafts = drafts.drafts.filter { it.hasContent }.associateBy { it.date }
             draft = drafts.active?.let { keptDrafts[it] }
             val firstLaunch = !store.hasLaunchedBefore
+            if (firstLaunch && journal.isEmpty && drafts.drafts.isEmpty() && !usage.hasChoice) {
+                sample = SampleCalendar(com.tokipin.app.rules.AppClock.today())
+                screen = Screen.Sample
+                return@launch
+            }
             store.hasLaunchedBefore = true
+            usagePromptOpen = usage.available && !usage.hasChoice
             selectedDate = journal.recordedDates().firstOrNull() ?: com.tokipin.app.rules.AppClock.today()
             recordedMonth = listedMonth(YearMonth.from(selectedDate))
             when {
                 draft?.hasContent == true -> screen = Screen.Editor
-                firstLaunch && journal.isEmpty -> {
+                firstLaunch && journal.isEmpty && keptDrafts.isEmpty() -> {
                     draft = Draft(date = com.tokipin.app.rules.AppClock.today().toString())
                     screen = Screen.Editor
                 }
                 else -> screen = Screen.Browse
             }
         }
+    }
+
+    internal fun startPersonalJournal() {
+        if (screen != Screen.Sample) return
+        store.hasLaunchedBefore = true
+        sample = null
+        usagePromptOpen = usage.available && !usage.hasChoice
+        draft = Draft(date = com.tokipin.app.rules.AppClock.today().toString())
+        screen = Screen.Editor
     }
 
     // region Editor

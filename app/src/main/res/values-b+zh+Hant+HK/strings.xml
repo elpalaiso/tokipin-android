@@ -69,10 +69,25 @@
     <string name="privacy_usage_body">如你同意，Google Analytics 會處理開啟應用程式和儲存記錄的事件、應用程式安裝識別碼及裝置資料。我們不會傳送記錄內容、記錄日期或搜尋字詞。你可以隨時在設定中關閉分享。</string>
     <string name="privacy_usage_title">分享應用程式使用統計</string>
     <string name="usage_later_hint">你可以隨時在設定中開啟「分享應用程式使用統計」。</string>
+    <string name="onboarding_open_day">點選日期，看看當天的記錄。</string>
+    <string name="onboarding_dismiss_guide">關閉瀏覽指引</string>
+    <string name="onboarding_save_guide">點選剔號儲存記錄。</string>
     <string name="cd_tool_word">輸入字詞</string>
     <string name="cd_tool_emoji">輸入表情符號</string>
     <string name="cd_tool_place">輸入地點</string>
     <string name="cd_tool_time">輸入時間</string>
+    <string name="sample_pottery">陶藝</string>
+    <string name="sample_studio">工作室</string>
+    <string name="sample_walk">散步</string>
+    <string name="sample_park">海濱公園</string>
+    <string name="sample_coffee">齋啡</string>
+    <string name="sample_cafe">茶餐廳</string>
+    <string name="sample_reading">睇書</string>
+    <string name="sample_library">公共圖書館</string>
+    <string name="sample_cycling">踩單車</string>
+    <string name="sample_trail">郊遊徑</string>
+    <string name="sample_cooking">煮飯</string>
+    <string name="sample_kitchen">廚房</string>
     <string name="load_failed_title">無法載入記錄</string>
     <string name="load_failed_body">無法讀取儲存在此裝置上的記錄。\n請稍後再試。</string>
     <string name="cd_back_to">返回%1$s</string>
@@ -138,5 +153,10 @@
     <string name="search_results">搜尋結果</string>
     <string name="privacy_b5">應用程式正式推出時，我們會公布營運者資料、聯絡方法及生效日期。</string>
     <string name="cd_delete_item">刪除%1$s</string>
+    <string name="onboarding_sample_calendar">示例日曆</string>
+    <string name="onboarding_start_journal">開始我的記錄</string>
+    <string name="onboarding_practice_emoji">試試加入表情符號</string>
+    <string name="onboarding_choose_emoji">選一個表情符號，加到示例日曆。</string>
+    <string name="onboarding_emoji_saved">已加到示例日曆。</string>
     <string name="terms_b4">應用程式正式推出時，我們會公布營運者資料、聯絡方法及生效日期。</string>
 </resources>

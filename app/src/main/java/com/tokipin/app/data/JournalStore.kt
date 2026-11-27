@@ -81,10 +81,13 @@ class JournalStore(context: Context) {
         get() = prefs.getBoolean(KEY_HAPTICS, true)
         set(value) = prefs.edit().putBoolean(KEY_HAPTICS, value).apply()
 
-    /** The first launch opens straight into a word; every later launch opens the home. */
+    /** Set once personal mode starts. Existing installations already have this marker. */
     var hasLaunchedBefore: Boolean
         get() = prefs.getBoolean(KEY_LAUNCHED, false)
-        set(value) = prefs.edit().putBoolean(KEY_LAUNCHED, value).apply()
+        set(value) {
+            // Persist the transition before showing personal input or consent, also across an immediate process death.
+            if (value != hasLaunchedBefore) prefs.edit().putBoolean(KEY_LAUNCHED, value).commit()
+        }
 
     suspend fun export(journal: Journal, out: OutputStream) = withContext(Dispatchers.IO) {
         out.use { it.write(exportJson(journal).encodeToByteArray()) }

@@ -69,10 +69,25 @@
     <string name="privacy_usage_body">If you opt in, Google Analytics processes app opens, note saves, an app installation identifier, and device information. We don’t send the contents or dates of your notes, or your search terms. You can turn sharing off at any time in Settings.</string>
     <string name="privacy_usage_title">Share app usage statistics</string>
     <string name="usage_later_hint">You can turn on “Share app usage statistics” anytime in Settings.</string>
+    <string name="onboarding_open_day">Tap a date to read that day’s note.</string>
+    <string name="onboarding_dismiss_guide">Dismiss the guide</string>
+    <string name="onboarding_save_guide">Tap the checkmark to save your note.</string>
     <string name="cd_tool_word">Enter a word</string>
     <string name="cd_tool_emoji">Enter an emoji</string>
     <string name="cd_tool_place">Enter a place</string>
     <string name="cd_tool_time">Enter a time</string>
+    <string name="sample_pottery">Pottery class</string>
+    <string name="sample_studio">Art studio</string>
+    <string name="sample_walk">Walk</string>
+    <string name="sample_park">Neighborhood park</string>
+    <string name="sample_coffee">Fresh coffee</string>
+    <string name="sample_cafe">Corner café</string>
+    <string name="sample_reading">Reading</string>
+    <string name="sample_library">Library</string>
+    <string name="sample_cycling">Bike ride</string>
+    <string name="sample_trail">Park loop</string>
+    <string name="sample_cooking">Cooking</string>
+    <string name="sample_kitchen">Kitchen</string>
     <string name="load_failed_title">Couldn’t load your notes</string>
     <string name="load_failed_body">The notes saved on this device can’t be read.\nPlease try again in a moment.</string>
     <string name="cd_back_to">Back to %1$s</string>
@@ -145,5 +160,10 @@
     <string name="search_results">Search results</string>
     <string name="privacy_b5">We’ll publish the operator’s name, contact details and the effective date at launch.</string>
     <string name="cd_delete_item">Delete %1$s</string>
+    <string name="onboarding_sample_calendar">Sample calendar</string>
+    <string name="onboarding_start_journal">Start my journal</string>
+    <string name="onboarding_practice_emoji">Try adding an emoji</string>
+    <string name="onboarding_choose_emoji">Choose an emoji to add to the sample calendar.</string>
+    <string name="onboarding_emoji_saved">Added to the sample calendar.</string>
     <string name="terms_b4">We’ll publish the operator’s name, contact details and the effective date at launch.</string>
 </resources>

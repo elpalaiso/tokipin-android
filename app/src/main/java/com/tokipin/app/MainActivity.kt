@@ -32,6 +32,7 @@ import com.tokipin.app.ui.LoadingSkeleton
 import com.tokipin.app.ui.LocalHaptics
 import com.tokipin.app.ui.PolicyScreen
 import com.tokipin.app.ui.Screen
+import com.tokipin.app.ui.SampleCalendarScreen
 import com.tokipin.app.ui.SearchScreen
 import com.tokipin.app.ui.UsageSharingSheet
 import com.tokipin.app.ui.SettingsSheet
@@ -60,7 +61,7 @@ class MainActivity : ComponentActivity() {
         }.getOrDefault(false)
 
         // Debug and benchmark builds only: `--es tokipin.seed large` starts from with the
-        // ten-year sample, so performance checks start from the same data. Release has no samples.
+        // ten-year sample, so performance checks start from the same data. Release omits this debug seed override.
         if (savedInstanceState == null && com.tokipin.app.data.SampleData.AVAILABLE &&
             intent?.getStringExtra("tokipin.seed") == "large"
         ) vm.seedRequest = "large"
@@ -113,6 +114,7 @@ class MainActivity : ComponentActivity() {
                         when (screen) {
                             Screen.Loading -> if (vm.showSkeleton) LoadingSkeleton() else TkBackground {}
                             Screen.LoadFailed -> LoadFailedScreen(onRetry = vm::load)
+                            Screen.Sample -> vm.sample?.let { SampleCalendarScreen(it, vm::startPersonalJournal) }
                             Screen.Editor -> EditorScreen(vm, showUsageHint)
                             Screen.Browse -> BrowseScreen(vm, showUsageHint)
                             Screen.Search -> SearchScreen(vm)

@@ -134,4 +134,24 @@
     <string name="usage_later_hint">설정에서 ‘앱 사용 통계 공유’를 언제든 켤 수 있어요.</string>
     <string name="privacy_usage_body">선택한 경우 Google Analytics가 앱 실행·저장 이벤트, 앱 설치 식별자와 기기 정보를 처리해요. 기록 내용·기록 날짜·검색어는 보내지 않아요. 설정에서 언제든지 끌 수 있어요.</string>
     <string name="privacy_usage_title">앱 사용 통계 공유</string>
+    <string name="onboarding_sample_calendar">예시 달력</string>
+    <string name="onboarding_start_journal">내 기록 시작</string>
+    <string name="onboarding_practice_emoji">예시 이모지 남기기</string>
+    <string name="onboarding_choose_emoji">이모지를 골라 예시 달력에 남겨 보세요.</string>
+    <string name="onboarding_emoji_saved">예시 달력에 표시했어요.</string>
+    <string name="onboarding_open_day">날짜를 눌러 그날의 기록을 열어 보세요.</string>
+    <string name="onboarding_dismiss_guide">탐색 안내 닫기</string>
+    <string name="onboarding_save_guide">체크 표시를 눌러 저장해요.</string>
+    <string name="sample_pottery">도예</string>
+    <string name="sample_studio">작업실</string>
+    <string name="sample_walk">산책</string>
+    <string name="sample_park">공원</string>
+    <string name="sample_coffee">커피</string>
+    <string name="sample_cafe">카페</string>
+    <string name="sample_reading">독서</string>
+    <string name="sample_library">도서관</string>
+    <string name="sample_cycling">자전거 타기</string>
+    <string name="sample_trail">산책로</string>
+    <string name="sample_cooking">요리</string>
+    <string name="sample_kitchen">부엌</string>
 </resources>

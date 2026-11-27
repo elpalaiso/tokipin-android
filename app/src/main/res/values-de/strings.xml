@@ -69,10 +69,25 @@
     <string name="privacy_usage_body">Wenn du zustimmst, verarbeitet Google Analytics Daten zu App-Starts und zum Speichern von Notizen sowie eine Kennung der App-Installation und Geräteinformationen. Die Inhalte und Datumsangaben deiner Notizen sowie deine Suchbegriffe werden nicht gesendet. Du kannst das Teilen jederzeit in den Einstellungen deaktivieren.</string>
     <string name="privacy_usage_title">App-Nutzungsstatistiken teilen</string>
     <string name="usage_later_hint">In den Einstellungen kannst du „App-Nutzungsstatistiken teilen“ jederzeit aktivieren.</string>
+    <string name="onboarding_open_day">Tippe auf ein Datum, um die Notiz zu lesen.</string>
+    <string name="onboarding_dismiss_guide">Anleitung schließen</string>
+    <string name="onboarding_save_guide">Tippe auf das Häkchen, um deine Notiz zu speichern.</string>
     <string name="cd_tool_word">Wort eingeben</string>
     <string name="cd_tool_emoji">Emoji eingeben</string>
     <string name="cd_tool_place">Ort eingeben</string>
     <string name="cd_tool_time">Uhrzeit eingeben</string>
+    <string name="sample_pottery">Töpferkurs</string>
+    <string name="sample_studio">Atelier</string>
+    <string name="sample_walk">Spaziergang</string>
+    <string name="sample_park">Stadtpark</string>
+    <string name="sample_coffee">Filterkaffee</string>
+    <string name="sample_cafe">Café um die Ecke</string>
+    <string name="sample_reading">Ein paar Seiten</string>
+    <string name="sample_library">Stadtbücherei</string>
+    <string name="sample_cycling">Radtour</string>
+    <string name="sample_trail">Spazierweg</string>
+    <string name="sample_cooking">Am Herd</string>
+    <string name="sample_kitchen">Küche</string>
     <string name="load_failed_title">Notizen konnten nicht geladen werden</string>
     <string name="load_failed_body">Die auf diesem Gerät gespeicherten Notizen können nicht gelesen werden.\nBitte versuche es gleich noch einmal.</string>
     <string name="cd_back_to">Zurück zur Ansicht „%1$s“</string>
@@ -145,5 +160,10 @@
     <string name="search_results">Suchergebnisse</string>
     <string name="privacy_b5">Wer die App betreibt, wie du uns erreichst und ab wann diese Bestimmungen gelten, geben wir zum Start bekannt.</string>
     <string name="cd_delete_item">%1$s löschen</string>
+    <string name="onboarding_sample_calendar">Beispielkalender</string>
+    <string name="onboarding_start_journal">Mein Tagebuch starten</string>
+    <string name="onboarding_practice_emoji">Emoji ausprobieren</string>
+    <string name="onboarding_choose_emoji">Wähle ein Emoji und trage es in den Beispielkalender ein.</string>
+    <string name="onboarding_emoji_saved">Im Beispielkalender eingetragen.</string>
     <string name="terms_b4">Wer die App betreibt, wie du uns erreichst und ab wann diese Bestimmungen gelten, geben wir zum Start bekannt.</string>
 </resources>

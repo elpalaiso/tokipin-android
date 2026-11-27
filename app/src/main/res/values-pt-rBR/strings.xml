@@ -69,10 +69,25 @@
     <string name="privacy_usage_body">Se você aceitar, o Google Analytics processará as aberturas do app, os eventos de salvamento de anotações, um identificador da instalação do app e informações do dispositivo. Não enviamos o conteúdo ou as datas das anotações, nem os termos de busca. Você pode desativar o compartilhamento a qualquer momento nas configurações.</string>
     <string name="privacy_usage_title">Compartilhar estatísticas de uso do app</string>
     <string name="usage_later_hint">Você pode ativar “Compartilhar estatísticas de uso do app” a qualquer momento nas Configurações.</string>
+    <string name="onboarding_open_day">Toque em uma data para ver as anotações daquele dia.</string>
+    <string name="onboarding_dismiss_guide">Fechar o guia</string>
+    <string name="onboarding_save_guide">Toque no botão de confirmação (✓) para salvar a anotação.</string>
     <string name="cd_tool_word">Digitar uma palavra</string>
     <string name="cd_tool_emoji">Inserir um emoji</string>
     <string name="cd_tool_place">Digitar um lugar</string>
     <string name="cd_tool_time">Inserir um horário</string>
+    <string name="sample_pottery">Cerâmica</string>
+    <string name="sample_studio">Ateliê</string>
+    <string name="sample_walk">Caminhada</string>
+    <string name="sample_park">Praça do bairro</string>
+    <string name="sample_coffee">Café coado</string>
+    <string name="sample_cafe">Café da esquina</string>
+    <string name="sample_reading">Leitura</string>
+    <string name="sample_library">Biblioteca do bairro</string>
+    <string name="sample_cycling">Pedalada</string>
+    <string name="sample_trail">Trilha</string>
+    <string name="sample_cooking">Comida caseira</string>
+    <string name="sample_kitchen">Cozinha</string>
     <string name="load_failed_title">Não foi possível carregar as anotações</string>
     <string name="load_failed_body">Não é possível ler as anotações salvas neste aparelho.\nTente novamente daqui a pouco.</string>
     <string name="cd_back_to">Voltar para a visualização “%1$s”</string>
@@ -152,5 +167,10 @@
     <string name="search_results">Resultados da busca</string>
     <string name="privacy_b5">No lançamento oficial, vamos divulgar os dados do responsável, o contato e a data de entrada em vigor.</string>
     <string name="cd_delete_item">Excluir %1$s</string>
+    <string name="onboarding_sample_calendar">Calendário de exemplo</string>
+    <string name="onboarding_start_journal">Começar meu diário</string>
+    <string name="onboarding_practice_emoji">Experimentar um emoji</string>
+    <string name="onboarding_choose_emoji">Escolha um emoji e adicione ao calendário de exemplo.</string>
+    <string name="onboarding_emoji_saved">Adicionado ao calendário de exemplo.</string>
     <string name="terms_b4">No lançamento oficial, vamos divulgar os dados do responsável, o contato e a data de entrada em vigor.</string>
 </resources>

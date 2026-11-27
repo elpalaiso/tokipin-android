@@ -69,10 +69,25 @@
     <string name="privacy_usage_body">Если вы согласитесь, Google Analytics будет обрабатывать сведения об открытии приложения и сохранении записей, идентификатор установки приложения и данные об устройстве. Мы не передаём содержимое и даты записей или поисковые запросы. Отключить передачу статистики можно в любой момент в настройках.</string>
     <string name="privacy_usage_title">Делиться статистикой использования приложения</string>
     <string name="usage_later_hint">В настройках можно в любой момент включить «Делиться статистикой использования приложения».</string>
+    <string name="onboarding_open_day">Нажмите на дату, чтобы открыть записи за этот день.</string>
+    <string name="onboarding_dismiss_guide">Закрыть подсказки</string>
+    <string name="onboarding_save_guide">Нажмите на галочку, чтобы сохранить запись.</string>
     <string name="cd_tool_word">Ввести слово</string>
     <string name="cd_tool_emoji">Ввести эмодзи</string>
     <string name="cd_tool_place">Ввести место</string>
     <string name="cd_tool_time">Ввести время</string>
+    <string name="sample_pottery">Гончарный круг</string>
+    <string name="sample_studio">Мастерская</string>
+    <string name="sample_walk">Прогулка</string>
+    <string name="sample_park">Сквер</string>
+    <string name="sample_coffee">Утренний кофе</string>
+    <string name="sample_cafe">Кофейня на углу</string>
+    <string name="sample_reading">За книгой</string>
+    <string name="sample_library">Районная библиотека</string>
+    <string name="sample_cycling">Велопрогулка</string>
+    <string name="sample_trail">Тропа</string>
+    <string name="sample_cooking">Готовка</string>
+    <string name="sample_kitchen">Кухня</string>
     <string name="load_failed_title">Не удалось загрузить записи</string>
     <string name="load_failed_body">Не удаётся прочитать записи, сохранённые на этом устройстве.\nПопробуйте ещё раз чуть позже.</string>
     <string name="cd_back_to">Назад к разделу «%1$s»</string>
@@ -159,5 +174,10 @@
     <string name="search_results">Результаты поиска</string>
     <string name="privacy_b5">При запуске приложения мы укажем сведения об операторе, контакты и дату вступления документа в силу.</string>
     <string name="cd_delete_item">Удалить: %1$s</string>
+    <string name="onboarding_sample_calendar">Календарь с примерами</string>
+    <string name="onboarding_start_journal">Начать свой дневник</string>
+    <string name="onboarding_practice_emoji">Попробовать добавить эмодзи</string>
+    <string name="onboarding_choose_emoji">Выберите эмодзи, чтобы добавить его в календарь с примерами.</string>
+    <string name="onboarding_emoji_saved">Добавлено в календарь с примерами.</string>
     <string name="terms_b4">При запуске приложения мы укажем сведения об операторе, контакты и дату вступления документа в силу.</string>
 </resources>

@@ -511,7 +511,7 @@ private fun WeekRow(start: LocalDate, date: LocalDate, onSelect: (LocalDate) -> 
 
 /** Reading only: editing goes through the pencil at the bottom (no per-fragment ⋯ any more). */
 @Composable
-private fun DailyItem(entry: Entry, highlighted: Boolean) {
+internal fun DailyItem(entry: Entry, highlighted: Boolean) {
     // Figma 5-2105: every fragment has the same weight, the first one included: one row each, an
     // icon only for place and time, a divider under each.
     val text = entry.shown()
@@ -1052,15 +1052,23 @@ private fun MonthBlock(month: YearMonth, vm: AppViewModel, onOpenDay: (LocalDate
 }
 
 @Composable
-private fun MonthCell(date: LocalDate, items: List<Entry>, selected: Boolean, today: Boolean, onClick: () -> Unit) {
+internal fun MonthCell(
+    date: LocalDate,
+    items: List<Entry>,
+    selected: Boolean,
+    today: Boolean,
+    modifier: Modifier = Modifier,
+    minHeight: androidx.compose.ui.unit.Dp = MONTH_CELL_MIN,
+    onClick: () -> Unit,
+) {
     val time = LocalTimeDisplay.current
     val (shown, more) = CalendarRules.preview(items)
     Column(
-        Modifier
+        modifier
             .pinchTarget(date)
             .testTag("day_$date")
             .fillMaxWidth()
-            .heightIn(min = MONTH_CELL_MIN)
+            .heightIn(min = minHeight)
             .padding(2.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) Color(0xFF4A5C6B) else Color.Transparent)

@@ -69,10 +69,25 @@
     <string name="privacy_usage_body">अगर आप सहमति देते हैं, तो Google Analytics ऐप खुलने और नोट सहेजे जाने की जानकारी, ऐप इंस्टॉलेशन की पहचान और डिवाइस की जानकारी प्रोसेस करता है। हम आपके नोट की सामग्री, उनकी तारीखें या खोज शब्द नहीं भेजते। आप सेटिंग्स में जाकर इसे कभी भी बंद कर सकते हैं।</string>
     <string name="privacy_usage_title">ऐप के इस्तेमाल के आँकड़े शेयर करें</string>
     <string name="usage_later_hint">आप सेटिंग्स में जाकर “ऐप के इस्तेमाल के आँकड़े शेयर करें” कभी भी चालू कर सकते हैं।</string>
+    <string name="onboarding_open_day">उस दिन के नोट खोलने के लिए तारीख टैप करें।</string>
+    <string name="onboarding_dismiss_guide">नोट देखने की गाइड बंद करें</string>
+    <string name="onboarding_save_guide">नोट सहेजने के लिए सही के निशान पर टैप करें।</string>
     <string name="cd_tool_word">शब्द दर्ज करें</string>
     <string name="cd_tool_emoji">इमोजी दर्ज करें</string>
     <string name="cd_tool_place">जगह दर्ज करें</string>
     <string name="cd_tool_time">समय दर्ज करें</string>
+    <string name="sample_pottery">मिट्टी के बर्तन बनाना</string>
+    <string name="sample_studio">स्टूडियो</string>
+    <string name="sample_walk">सैर</string>
+    <string name="sample_park">मोहल्ले का पार्क</string>
+    <string name="sample_coffee">फ़िल्टर कॉफ़ी</string>
+    <string name="sample_cafe">पड़ोस का कैफ़े</string>
+    <string name="sample_reading">किताब के कुछ पन्ने</string>
+    <string name="sample_library">पुस्तकालय</string>
+    <string name="sample_cycling">साइकिल की सैर</string>
+    <string name="sample_trail">पगडंडी</string>
+    <string name="sample_cooking">खाना बनाना</string>
+    <string name="sample_kitchen">रसोई</string>
     <string name="load_failed_title">नोट लोड नहीं हो सके</string>
     <string name="load_failed_body">इस डिवाइस पर सहेजे गए नोट पढ़े नहीं जा सके।\nथोड़ी देर बाद फिर से कोशिश करें।</string>
     <string name="cd_back_to">इस दृश्य पर लौटें: %1$s</string>
@@ -145,5 +160,10 @@
     <string name="search_results">खोज के नतीजे</string>
     <string name="privacy_b5">ऐप के आधिकारिक लॉन्च पर हम संचालक का विवरण, संपर्क की जानकारी और इस दस्तावेज़ के लागू होने की तारीख बताएँगे।</string>
     <string name="cd_delete_item">%1$s मिटाएँ</string>
+    <string name="onboarding_sample_calendar">उदाहरण कैलेंडर</string>
+    <string name="onboarding_start_journal">मेरी डायरी शुरू करें</string>
+    <string name="onboarding_practice_emoji">इमोजी जोड़कर देखें</string>
+    <string name="onboarding_choose_emoji">कोई इमोजी चुनें और उसे उदाहरण कैलेंडर में जोड़ें।</string>
+    <string name="onboarding_emoji_saved">उदाहरण कैलेंडर में जोड़ दिया गया।</string>
     <string name="terms_b4">ऐप के आधिकारिक लॉन्च पर हम संचालक का विवरण, संपर्क की जानकारी और इस दस्तावेज़ के लागू होने की तारीख बताएँगे।</string>
 </resources>

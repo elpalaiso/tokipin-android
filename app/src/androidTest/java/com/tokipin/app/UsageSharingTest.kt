@@ -49,6 +49,9 @@ class UsageSharingTest {
     @Test fun launchOffersOnceBeforeKeyboardAndSettingsStartsOff() {
         assumeTrue(BuildConfig.USAGE_SHARING_AVAILABLE)
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("onboardingStart")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("usageInvitation").assertDoesNotExist()
+        compose.onNodeWithTag("onboardingStart").performClick()
         compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("usageInvitation")).fetchSemanticsNodes().isNotEmpty() }
         val resources = AppLocale.resources(app)
         compose.onNodeWithText(resources.getString(R.string.usage_prompt)).assertIsDisplayed()
@@ -106,6 +109,19 @@ class UsageSharingTest {
         }
         lateinit var vm: AppViewModel
         main { vm = AppViewModel(app, UsageSharing(app, sink, available = true)) }
+        compose.waitUntil(8_000) { vm.screen == Screen.Sample }
+        main {
+            assertFalse(vm.usagePromptOpen)
+            vm.sample!!.run {
+                openDay(featured(month))
+                startPractice()
+                select("✨")
+                savePractice()
+            }
+            assertEquals(0, saves)
+            assertTrue(changes.isEmpty())
+            vm.startPersonalJournal()
+        }
         compose.waitUntil(8_000) { vm.screen == Screen.Editor }
         main {
             assertTrue(vm.usagePromptOpen)
