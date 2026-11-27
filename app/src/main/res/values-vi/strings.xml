@@ -42,8 +42,8 @@
     <string name="cd_close_search">Đóng tìm kiếm</string>
     <string name="privacy_policy">Chính sách quyền riêng tư</string>
     <string name="terms">Điều khoản sử dụng</string>
-    <string name="policy_draft_badge">Bản dự thảo trước khi phát hành · Ứng dụng iOS và Android</string>
-    <string name="privacy_lead">Tokipin là ứng dụng ghi chú cho iOS và Android, không cần đăng ký. Ghi chú và bản nháp của bạn được lưu trong bộ nhớ dành riêng cho ứng dụng trên thiết bị.</string>
+    <string name="policy_revision">Dự thảo sửa đổi · ngày 27 tháng 11 năm 2026</string>
+    <string name="privacy_lead">Stepzu, có trụ sở tại Hàn Quốc, vận hành ứng dụng Tokipin và bản trải nghiệm trên web. Nhật ký cá nhân được lưu trên thiết bị của bạn. Chính sách này giải thích cách chúng tôi xử lý số liệu sử dụng mà bạn chọn chia sẻ và email bạn gửi cho chúng tôi.</string>
     <string name="privacy_h1">Tokipin lưu những thông tin gì?</string>
     <string name="privacy_b1">Ứng dụng lưu các từ, biểu tượng cảm xúc, địa điểm và thời gian bạn nhập, cùng ngày ghi chú và thứ tự các mục. Những thông tin này và bản nháp giúp bạn viết tiếp khi ngoại tuyến, tìm và chỉnh sửa ghi chú theo ngày.</string>
     <string name="privacy_h2">Tokipin có truy cập vị trí hay lịch của tôi không?</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">Tệp đã xuất và bản sao lưu thiết bị</string>
     <string name="privacy_b4">Trong phần cài đặt, bạn có thể xuất ghi chú đã lưu thành tệp JSON. Tệp vẫn còn sau khi bạn xóa ghi chú trong ứng dụng, nên hãy quản lý tệp tại nơi bạn đã lưu. Tokipin không đồng bộ qua tài khoản. Việc ghi chú có được sao lưu và khôi phục cùng thiết bị hay không phụ thuộc vào hệ điều hành và cài đặt sao lưu của ứng dụng.</string>
     <string name="privacy_h5">Đơn vị vận hành và liên hệ về quyền riêng tư</string>
-    <string name="terms_lead">Các điều khoản này áp dụng khi bạn tạo và xem ghi chú cá nhân trong ứng dụng Tokipin dành cho iOS và Android.</string>
+    <string name="terms_lead">Các điều khoản này áp dụng cho ứng dụng Tokipin trên iOS và Android cùng bản trải nghiệm trên web do Stepzu, có trụ sở tại Hàn Quốc, cung cấp.</string>
     <string name="terms_h1">Cách dùng ứng dụng</string>
     <string name="terms_b1">Không cần đăng ký, bạn vẫn có thể ghi lại từ, biểu tượng cảm xúc, địa điểm và thời gian theo thứ tự tùy thích. Hãy xem lại theo năm, tháng, những ngày có ghi chú hoặc từng ngày. Bạn cũng có thể tìm kiếm, chỉnh sửa và xóa ghi chú.</string>
     <string name="terms_h2">Quyền đối với ghi chú</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">Các thống kê sử dụng như số lần mở ứng dụng và lưu ghi chú giúp chúng tôi nhận ra những điểm bất tiện và cải thiện các tính năng. Chúng tôi không gửi nội dung ghi chú hay từ khóa tìm kiếm của bạn.</string>
     <string name="usage_share">Tham gia</string>
     <string name="usage_later">Để sau</string>
-    <string name="privacy_usage_body">Nếu bạn đồng ý, Google Analytics sẽ xử lý các sự kiện mở ứng dụng và lưu ghi chú, mã nhận dạng bản cài đặt ứng dụng và thông tin thiết bị. Chúng tôi không gửi nội dung, ngày của ghi chú hay từ khóa tìm kiếm. Bạn có thể tắt chia sẻ bất cứ lúc nào trong phần Cài đặt.</string>
+    <string name="privacy_usage_body">Nếu bạn bật chia sẻ, chúng tôi dùng Google Analytics for Firebase do Google LLC (Hoa Kỳ) cung cấp để tìm hiểu cách mọi người dùng ứng dụng và cải thiện tính năng. Qua kết nối được mã hóa, ứng dụng gửi cho Google thông tin về lượt mở, thời gian sử dụng, việc lưu mục nhật ký, cùng với mã định danh của bản cài đặt, phiên bản ứng dụng, thông tin thiết bị và hệ điều hành. Ứng dụng không gửi nội dung hay ngày của các mục nhật ký, bản nháp hoặc từ khóa tìm kiếm.</string>
     <string name="privacy_usage_title">Chia sẻ số liệu sử dụng ứng dụng</string>
+    <string name="privacy_b5">Để yêu cầu truy cập, chỉnh sửa hoặc xóa thông tin cá nhân mà Stepzu lưu giữ, hoặc yêu cầu ngừng xử lý, vui lòng gửi email đến địa chỉ liên hệ về quyền riêng tư bên dưới. Với các mục nhật ký chỉ được lưu trên thiết bị, bạn có thể xem, chỉnh sửa và xóa ngay trong ứng dụng.</string>
+    <string name="terms_b4">Nếu có câu hỏi về cách dùng Tokipin hoặc các điều khoản này, vui lòng gửi email cho Stepzu.</string>
+    <string name="privacy_usage_choice">Tính năng chia sẻ số liệu sử dụng ứng dụng mặc định ở trạng thái tắt. Khi rời lịch mẫu để bắt đầu nhật ký của riêng mình, bạn có thể chọn bật tính năng này. Nếu từ chối, bạn vẫn dùng được đầy đủ các chức năng ghi nhật ký và có thể thay đổi lựa chọn bất cứ lúc nào trong phần Cài đặt.</string>
+    <string name="privacy_usage_transfer">Google dùng địa chỉ IP để xác định vị trí gần đúng rồi loại bỏ địa chỉ này trước khi ghi vào nhật ký hệ thống. Số liệu đi qua một trung tâm thu thập ở gần bạn và có thể được xử lý trên máy chủ ở nước ngoài. Khi bạn tắt chia sẻ, ứng dụng ngừng thu thập số liệu mới. Dữ liệu sự kiện được lưu trong 2 tháng. Dữ liệu liên kết với mã định danh người dùng được lưu trong 14 tháng kể từ hoạt động gần nhất. Các thời hạn này không áp dụng cho báo cáo tổng hợp tiêu chuẩn.</string>
+    <string name="privacy_google_info">Cách Google xử lý dữ liệu</string>
+    <string name="privacy_google_retention">Thời hạn lưu giữ dữ liệu của Google Analytics</string>
+    <string name="privacy_google_contact">Liên hệ với Google về quyền riêng tư</string>
+    <string name="privacy_web_title">Bản trải nghiệm trên web và cài đặt ngôn ngữ</string>
+    <string name="privacy_web_body">Bản trải nghiệm trên web không gửi mục nhật ký, bản nháp hay từ khóa tìm kiếm đến máy chủ. Khi bạn tải lại trang, nội dung đã nhập sẽ bị xóa và các cài đặt của bản trải nghiệm sẽ trở về mặc định. Trình duyệt chỉ lưu ngôn ngữ do chính bạn chọn. Xóa dữ liệu trang web sẽ xóa lựa chọn này. Công tắc chia sẻ số liệu chỉ dùng để minh họa. Khi bạn tải trang, máy chủ xử lý địa chỉ IP của bạn và đường dẫn của tệp được yêu cầu.</string>
+    <string name="privacy_support_title">Email hỗ trợ và thời hạn lưu giữ</string>
+    <string name="privacy_support_body">Khi bạn gửi email, Stepzu dùng địa chỉ email, nội dung thư và các tệp bạn đính kèm để trả lời và theo dõi yêu cầu. Chúng tôi xóa email và tệp đính kèm trong vòng 30 ngày sau khi giải quyết xong yêu cầu. Nếu pháp luật yêu cầu lưu giữ lâu hơn, chúng tôi sẽ xóa khi hết thời hạn đó.</string>
+    <string name="terms_practice_title">Lịch mẫu và nhật ký cá nhân</string>
+    <string name="terms_practice_body">Bạn có thể khám phá lịch mẫu và thử thêm mục nhật ký trong ứng dụng. Khi bạn bắt đầu nhật ký của riêng mình, một lịch trống sẽ mở ra. Các mục đã nhập thử sẽ không được chuyển sang. Tải lại bản trải nghiệm trên web sẽ xóa các mục bạn đã thêm ở đó. Để giữ lại, hãy xuất tệp JSON từ phần Cài đặt trước khi tải lại trang.</string>
     <string name="usage_later_hint">Bạn có thể bật “Chia sẻ số liệu sử dụng ứng dụng” bất cứ lúc nào trong phần Cài đặt.</string>
     <string name="onboarding_day_swipe">Vuốt ngang để xem ngày trước hoặc ngày sau.</string>
     <string name="onboarding_day_zoom">Chụm hai ngón tay để xem những ngày có ghi chú.</string>
@@ -157,12 +170,10 @@
     <string name="cd_collapse">Thu gọn</string>
     <string name="cd_clear_search">Xóa từ khóa tìm kiếm</string>
     <string name="search_results">Kết quả tìm kiếm</string>
-    <string name="privacy_b5">Thông tin về đơn vị vận hành, cách liên hệ và ngày có hiệu lực sẽ được công bố khi ứng dụng chính thức ra mắt.</string>
     <string name="cd_delete_item">Xóa %1$s</string>
     <string name="onboarding_start">Bắt đầu</string>
     <string name="onboarding_invitation">Bạn đã sẵn sàng viết nhật ký của riêng mình chưa?</string>
     <string name="onboarding_next">Tiếp</string>
     <string name="onboarding_keep_exploring">Tiếp tục khám phá</string>
     <string name="debug_replay_onboarding">Trải nghiệm lại phần hướng dẫn ban đầu</string>
-    <string name="terms_b4">Thông tin về đơn vị vận hành, cách liên hệ và ngày có hiệu lực sẽ được công bố khi ứng dụng chính thức ra mắt.</string>
 </resources>

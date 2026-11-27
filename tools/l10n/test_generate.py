@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Reordering the web dictionaries must not change any generated resource (review on PR #1)."""
+"""Check bundled policies and the determinism of Android resource generation."""
 import json, os, random, shutil, subprocess, sys, tempfile
+
+from generate import FOLDER, string_texts
 
 here = os.path.dirname(os.path.abspath(__file__))
 locales = sys.argv[1]
@@ -19,6 +21,19 @@ def snapshot():
                 out[d] = open(p, encoding="utf-8").read()
     return out
 
+
+# Compare the shipped legal text before generation can repair a stale resource.
+# The English policy must be in Android's unqualified fallback folder.
+korean = string_texts(res, "values-ko")
+policy_keys = {rid: key for rid, key in korean.items() if rid == "terms" or rid.startswith(("privacy_", "terms_", "policy_"))}
+for tag, folder in {**FOLDER, "ko": "values-ko", "en": "values"}.items():
+    with open(os.path.join(locales, "site", f"{tag}.json"), encoding="utf-8") as site:
+        approved = json.load(site)
+    bundled = string_texts(res, folder)
+    for rid, key in policy_keys.items():
+        if key not in approved or bundled.get(rid) != approved[key]:
+            raise SystemExit(f"{tag}: bundled {rid} differs from the web policy")
+print(f"ok: {len(policy_keys)} policy strings match the web in every locale and the English fallback")
 
 subprocess.run([sys.executable, os.path.join(here, "generate.py"), locales], check=True)
 before = snapshot()

@@ -34,6 +34,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
@@ -316,24 +319,9 @@ private fun LinkRow(text: String, onClick: () -> Unit) {
 @Composable
 fun PolicyScreen(policy: Policy, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
-    val (title, lead, sections) = when (policy) {
-        Policy.PRIVACY -> Triple(
-            R.string.privacy_policy, R.string.privacy_lead,
-            listOf(
-                R.string.privacy_h1 to R.string.privacy_b1, R.string.privacy_h2 to R.string.privacy_b2,
-                R.string.privacy_h3 to R.string.privacy_b3, R.string.privacy_h4 to R.string.privacy_b4,
-                R.string.privacy_usage_title to R.string.privacy_usage_body,
-                R.string.privacy_h5 to R.string.privacy_b5,
-            ),
-        )
-        Policy.TERMS -> Triple(
-            R.string.terms, R.string.terms_lead,
-            listOf(
-                R.string.terms_h1 to R.string.terms_b1, R.string.terms_h2 to R.string.terms_b2,
-                R.string.terms_h3 to R.string.terms_b3, R.string.terms_h4 to R.string.terms_b4,
-            ),
-        )
-    }
+    val privacy = policy == Policy.PRIVACY
+    val title = if (privacy) R.string.privacy_policy else R.string.terms
+    val lead = if (privacy) R.string.privacy_lead else R.string.terms_lead
     TkBackground {
         Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -346,15 +334,60 @@ fun PolicyScreen(policy: Policy, onBack: () -> Unit) {
                 Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding().padding(horizontal = 24.dp, vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(stringResource(R.string.policy_draft_badge), style = TkType.small.copy(color = Tk.Focus))
+                Text(stringResource(R.string.policy_revision), style = TkType.small.copy(color = Tk.Focus))
                 Text(stringResource(lead), style = TkType.body.copy(fontSize = 17.sp, lineHeight = 27.sp))
-                sections.forEach { (h, b) ->
-                    Spacer(Modifier.height(6.dp))
-                    Text(stringResource(h), style = TkType.body.copy(fontSize = 17.sp), modifier = Modifier.semantics { heading() })
-                    Text(stringResource(b), style = TkType.label.copy(fontSize = 15.sp, lineHeight = 24.sp, color = Tk.Secondary))
+                if (privacy) {
+                    PolicySection(R.string.privacy_h1, R.string.privacy_b1)
+                    PolicySection(R.string.privacy_h2, R.string.privacy_b2)
+                    PolicySection(R.string.privacy_h3, R.string.privacy_b3)
+                    PolicySection(R.string.privacy_usage_title, R.string.privacy_usage_choice, R.string.privacy_usage_body, R.string.privacy_usage_transfer)
+                    PolicyLink(stringResource(R.string.privacy_google_info), "https://policies.google.com/technologies/partner-sites")
+                    PolicyLink(stringResource(R.string.privacy_google_retention), "https://support.google.com/analytics/answer/7667196")
+                    PolicyLink(stringResource(R.string.privacy_google_contact), "https://support.google.com/policies/contact/general_privacy_form")
+                    PolicySection(R.string.privacy_h4, R.string.privacy_b4)
+                    PolicySection(R.string.privacy_web_title, R.string.privacy_web_body)
+                    PolicySection(R.string.privacy_support_title, R.string.privacy_support_body)
+                    PolicySection(R.string.privacy_h5, R.string.privacy_b5)
+                } else {
+                    PolicySection(R.string.terms_h1, R.string.terms_b1)
+                    PolicySection(R.string.terms_practice_title, R.string.terms_practice_body)
+                    PolicySection(R.string.terms_h2, R.string.terms_b2)
+                    PolicySection(R.string.terms_h3, R.string.terms_b3)
+                    PolicySection(R.string.terms_h4, R.string.terms_b4)
                 }
+                val address = stringResource(R.string.support_contact)
+                PolicyLink(address, "mailto:$address")
                 Spacer(Modifier.height(24.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun PolicySection(headingId: Int, vararg paragraphIds: Int) {
+    Spacer(Modifier.height(6.dp))
+    Text(stringResource(headingId), style = TkType.body.copy(fontSize = 17.sp), modifier = Modifier.semantics { heading() })
+    paragraphIds.forEach { id ->
+        Text(stringResource(id), style = TkType.label.copy(fontSize = 15.sp, lineHeight = 24.sp, color = Tk.Secondary))
+    }
+}
+
+@Composable
+private fun PolicyLink(label: String, url: String) {
+    val uriHandler = LocalUriHandler.current
+    var showAddress by rememberSaveable(url) { mutableStateOf(false) }
+    TextButton(onClick = {
+        try {
+            uriHandler.openUri(url)
+        } catch (_: IllegalArgumentException) {
+            showAddress = true
+        }
+    }) {
+        Text(label, style = TkType.label.copy(color = Tk.Focus, textDecoration = TextDecoration.Underline))
+    }
+    if (showAddress) {
+        SelectionContainer {
+            Text(url.removePrefix("mailto:"), style = TkType.small)
         }
     }
 }

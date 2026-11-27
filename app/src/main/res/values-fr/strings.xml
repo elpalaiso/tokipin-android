@@ -42,8 +42,8 @@
     <string name="cd_close_search">Fermer la recherche</string>
     <string name="privacy_policy">Politique de confidentialité</string>
     <string name="terms">Conditions d’utilisation</string>
-    <string name="policy_draft_badge">Version provisoire avant lancement · Applications iOS et Android</string>
-    <string name="privacy_lead">Tokipin est une application de prise de notes pour iOS et Android. Vous pouvez l’utiliser sans créer de compte. Vos notes et vos brouillons restent dans l’espace de stockage de l’application sur votre appareil.</string>
+    <string name="policy_revision">Projet révisé · 27 novembre 2026</string>
+    <string name="privacy_lead">Stepzu, établi en République de Corée, exploite les apps Tokipin et la démo web. Votre journal personnel reste sur votre appareil. Cette politique explique comment nous traitons les statistiques d’utilisation que vous choisissez de partager et les e-mails que vous nous envoyez.</string>
     <string name="privacy_h1">Quelles informations l’application conserve-t-elle ?</string>
     <string name="privacy_b1">L’application conserve les mots, émojis, lieux et heures que vous saisissez, ainsi que la date des notes et l’ordre des éléments. Ces informations et vos brouillons vous permettent de continuer à écrire hors ligne, de retrouver vos notes par date et de les modifier.</string>
     <string name="privacy_h2">L’application accède-t-elle à ma position ou à mon calendrier ?</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">Fichiers exportés et sauvegardes de l’appareil</string>
     <string name="privacy_b4">Dans les réglages, vous pouvez exporter vos notes dans un fichier JSON. Si vous supprimez des notes dans l’application, le fichier exporté reste à l’endroit où vous l’avez enregistré. Vous pouvez le gérer à cet emplacement. Tokipin ne synchronise pas les notes via un compte. La sauvegarde et la restauration de vos notes dépendent du système d’exploitation et des réglages de sauvegarde de l’application.</string>
     <string name="privacy_h5">Éditeur et questions sur la confidentialité</string>
-    <string name="terms_lead">Ces conditions s’appliquent à la création et à la consultation de notes personnelles dans l’application Tokipin pour iOS et Android.</string>
+    <string name="terms_lead">Ces conditions s’appliquent aux apps Tokipin pour iOS et Android et à la démo web proposées par Stepzu, établi en République de Corée.</string>
     <string name="terms_h1">Utilisation de l’application</string>
     <string name="terms_b1">Sans créer de compte, vous pouvez ajouter des mots, des émojis, des lieux et des heures dans l’ordre de votre choix. Parcourez le calendrier par jour, par mois ou par année, ou affichez uniquement les jours avec des notes. Vous pouvez aussi rechercher, modifier ou supprimer vos notes.</string>
     <string name="terms_h2">Droits sur vos notes</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">Les statistiques d’utilisation, par exemple le nombre d’ouvertures de l’app et de notes enregistrées, nous aident à repérer ce qui pose problème et à améliorer les fonctionnalités. Nous ne transmettons ni le contenu de vos notes ni vos termes de recherche.</string>
     <string name="usage_share">Je participe</string>
     <string name="usage_later">Pas maintenant</string>
-    <string name="privacy_usage_body">Si vous acceptez, Google Analytics traite les ouvertures de l’app, les enregistrements de notes, un identifiant de l’installation et des informations sur l’appareil. Le contenu et les dates de vos notes ainsi que vos termes de recherche ne sont pas transmis. Vous pouvez désactiver le partage à tout moment dans les réglages.</string>
+    <string name="privacy_usage_body">Si vous activez le partage, nous utilisons Google Analytics for Firebase, un service de Google LLC (États-Unis), pour comprendre comment l’app est utilisée et améliorer ses fonctionnalités. Par une connexion chiffrée, l’app transmet à Google des informations sur ses ouvertures, la durée d’utilisation et les enregistrements de notes, ainsi qu’un identifiant d’installation, la version de l’app et des informations sur l’appareil et le système d’exploitation. Le contenu et les dates de vos notes, vos brouillons et vos termes de recherche ne sont pas transmis.</string>
     <string name="privacy_usage_title">Partager les statistiques d’utilisation de l’app</string>
+    <string name="privacy_b5">Pour demander l’accès à vos données personnelles détenues par Stepzu, leur rectification, leur suppression ou l’arrêt de leur traitement, écrivez à l’adresse indiquée ci-dessous. Les notes conservées uniquement sur votre appareil peuvent être consultées, modifiées et supprimées dans l’app.</string>
+    <string name="terms_b4">Écrivez à Stepzu si vous avez une question sur l’utilisation de Tokipin ou sur ces conditions.</string>
+    <string name="privacy_usage_choice">Le partage des statistiques d’utilisation est désactivé par défaut. Vous pouvez l’activer lorsque vous quittez le calendrier d’exemple pour commencer votre propre journal. Si vous refusez, toutes les fonctions du journal restent disponibles. Vous pouvez changer d’avis à tout moment dans les réglages.</string>
+    <string name="privacy_usage_transfer">Google utilise votre adresse IP pour déterminer votre position approximative, puis la supprime avant de la consigner. Les statistiques transitent par un centre de collecte proche et peuvent être traitées sur des serveurs à l’étranger. Désactiver le partage met fin à la collecte. Les données d’événements sont conservées deux mois. Les données associées à l’identifiant utilisateur sont conservées 14 mois après la dernière activité. Ces durées ne s’appliquent pas aux rapports agrégés standards.</string>
+    <string name="privacy_google_info">Comment Google traite les données</string>
+    <string name="privacy_google_retention">Conservation des données dans Google Analytics</string>
+    <string name="privacy_google_contact">Contacter Google au sujet de la confidentialité</string>
+    <string name="privacy_web_title">Démo web et réglages de langue</string>
+    <string name="privacy_web_body">La démo web n’envoie pas vos notes, vos brouillons ni vos termes de recherche à un serveur. Actualiser la page efface vos saisies et réinitialise les réglages de la démo. Seule la langue que vous choisissez est enregistrée dans votre navigateur. Vous pouvez effacer ce choix en supprimant les données du site. Le bouton de partage des statistiques sert à la démonstration. Lorsque vous chargez une page, le serveur traite votre adresse IP et le chemin du fichier demandé.</string>
+    <string name="privacy_support_title">E-mails d’assistance et durée de conservation</string>
+    <string name="privacy_support_body">Lorsque vous nous écrivez, Stepzu utilise votre adresse e-mail, votre message et les fichiers que vous y joignez pour vous répondre et assurer le suivi de votre demande. Nous supprimons le message et ses pièces jointes dans les 30 jours suivant la clôture de votre demande. Si la loi impose une conservation plus longue, nous les supprimons à l’issue de ce délai.</string>
+    <string name="terms_practice_title">Calendrier d’exemple et journal personnel</string>
+    <string name="terms_practice_body">Dans l’app, vous pouvez explorer le calendrier d’exemple et vous entraîner à ajouter des notes. Lorsque vous commencez votre propre journal, un calendrier vide s’ouvre. Les notes d’essai n’y sont pas transférées. Actualiser la démo web efface les notes que vous y avez ajoutées. Pour les conserver, exportez-les au format JSON dans les réglages avant d’actualiser la page.</string>
     <string name="usage_later_hint">Vous pouvez activer « Partager les statistiques d’utilisation de l’app » à tout moment dans les réglages.</string>
     <string name="onboarding_day_swipe">Balayez à gauche ou à droite pour changer de jour.</string>
     <string name="onboarding_day_zoom">Rapprochez deux doigts pour voir les jours avec des notes.</string>
@@ -171,12 +184,10 @@
     <string name="cd_collapse">Replier</string>
     <string name="cd_clear_search">Effacer la recherche</string>
     <string name="search_results">Résultats</string>
-    <string name="privacy_b5">Nous publierons le nom de l’éditeur, ses coordonnées et la date d’entrée en vigueur lors du lancement.</string>
     <string name="cd_delete_item">Supprimer %1$s</string>
     <string name="onboarding_start">Commencer</string>
     <string name="onboarding_invitation">Et si vous commenciez votre propre journal ?</string>
     <string name="onboarding_next">Suivant</string>
     <string name="onboarding_keep_exploring">Continuer à explorer</string>
     <string name="debug_replay_onboarding">Revoir le parcours de découverte</string>
-    <string name="terms_b4">Nous publierons le nom de l’éditeur, ses coordonnées et la date d’entrée en vigueur lors du lancement.</string>
 </resources>

@@ -42,8 +42,8 @@
     <string name="cd_close_search">検索を閉じる</string>
     <string name="privacy_policy">プライバシーポリシー</string>
     <string name="terms">利用規約</string>
-    <string name="policy_draft_badge">公開前の草案（iOS・Androidアプリ対象）</string>
-    <string name="privacy_lead">Tokipinは、会員登録なしで使えるiOS・Android向けの記録アプリです。記録や書きかけの下書きは、お使いの端末のアプリ専用領域に保存します。</string>
+    <string name="policy_revision">改定案 · 2026年11月27日</string>
+    <string name="privacy_lead">Tokipinのアプリとウェブ体験版は、韓国のStepzuが運営しています。ご自身の日記は端末に保存されます。この方針では、任意で共有いただいた利用統計と、お問い合わせメールの取り扱いについて説明します。</string>
     <string name="privacy_h1">どのような情報を保存しますか？</string>
     <string name="privacy_b1">入力したことば、絵文字、場所、時刻に加え、記録の日付と入力順を保存します。これらの情報と下書きは、オフラインで続きを書いたり、日付から記録を探して編集したりするために使います。</string>
     <string name="privacy_h2">位置情報やカレンダーにアクセスしますか？</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">書き出したファイルと端末のバックアップ</string>
     <string name="privacy_b4">設定から、保存済みの記録を JSON ファイルに書き出せます。アプリ内の記録を削除しても、書き出したファイルは残るため、保存先で管理してください。Tokipin にアカウントを通じた同期機能はありません。端末のバックアップや復元に記録が含まれるかどうかは、OS とアプリのバックアップ設定によって異なります。</string>
     <string name="privacy_h5">運営者情報とプライバシーに関するお問い合わせ</string>
-    <string name="terms_lead">この規約は、iOS・Android版のTokipinで個人の記録を作成・閲覧するときに適用されます。</string>
+    <string name="terms_lead">本規約は、韓国のStepzuが提供するTokipinのiOS・Androidアプリおよびウェブ体験版に適用されます。</string>
     <string name="terms_h1">アプリの利用</string>
     <string name="terms_b1">会員登録なしで、ことば、絵文字、場所、時刻を好きな順に残せます。記録は年別、月別、記録のある日、日別の各表示で見返せます。検索や編集、削除もできます。</string>
     <string name="terms_h2">記録に関する権利</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">アプリを開いた回数や記録を保存した回数などの利用統計を参考に、使いにくいところを見直し、機能を改善します。記録の内容や検索した言葉は送信しません。</string>
     <string name="usage_share">協力する</string>
     <string name="usage_later">今はしない</string>
-    <string name="privacy_usage_body">共有をオンにすると、Google Analytics がアプリの起動と記録の保存に関するイベント、アプリのインストール識別子、端末情報を処理します。記録の内容や日付、検索語は送りません。共有は設定でいつでもオフにできます。</string>
+    <string name="privacy_usage_body">共有をオンにすると、アプリの利用状況を把握し、機能を改善するために、米国のGoogle LLCが提供するGoogle Analytics for Firebaseを使用します。アプリの起動、利用時間、記録を保存したかどうか、アプリのインストール識別子、バージョン、端末とOSの情報が、暗号化された接続でGoogleに送信されます。記録の内容や日付、下書き、検索語は送信しません。</string>
     <string name="privacy_usage_title">アプリの使用統計を共有</string>
+    <string name="privacy_b5">Stepzuが保有する個人情報の開示・訂正・削除、または利用停止をご希望の場合は、下記のプライバシー窓口にメールでご連絡ください。端末にのみ保存されている記録は、アプリで直接確認・編集・削除できます。</string>
+    <string name="terms_b4">Tokipinの使い方や本規約についてご質問がある場合は、Stepzuまでメールでご連絡ください。</string>
+    <string name="privacy_usage_choice">利用統計の共有は初期設定でオフになっています。サンプルカレンダーの体験を終え、自分の日記を始めるときに、共有するかどうか選べます。共有しなくても記録に関するすべての機能を使えます。設定からいつでも変更できます。</string>
+    <string name="privacy_usage_transfer">GoogleはIPアドレスからおおよその地域を特定した後、ログに保存する前にそのアドレスを破棄します。統計データは最寄りの収集センターを経由し、国外のサーバーで処理される場合があります。共有をオフにすると、以後の収集は停止します。イベントデータの保持期間は2か月、利用者の識別子に関連付けられたデータは最後の利用から14か月です。これらの期間は標準の集計レポートには適用されません。</string>
+    <string name="privacy_google_info">Googleによるデータの取り扱い</string>
+    <string name="privacy_google_retention">Google Analyticsのデータ保持期間</string>
+    <string name="privacy_google_contact">プライバシーについてGoogleに問い合わせる</string>
+    <string name="privacy_web_title">ウェブ体験版と言語設定</string>
+    <string name="privacy_web_body">ウェブ体験版で入力した記録や下書き、検索語はサーバーに送信されません。ページを再読み込みすると、入力内容が消去され、体験版の設定も初期化されます。ブラウザに保存されるのはご自身で選択した言語だけで、サイトデータを消去すると削除されます。体験版の利用統計共有スイッチは操作を試すためのものです。ページの読み込み時には、サーバーがIPアドレスとリクエストされたファイルのパスを処理します。</string>
+    <string name="privacy_support_title">お問い合わせメールの取り扱いと保存期間</string>
+    <string name="privacy_support_body">お問い合わせの際、Stepzuは返信とその後の対応のため、送信元のメールアドレス、本文、ご自身で添付したファイルを使用します。対応が完了してから30日以内に、メールと添付ファイルを削除します。法令によりさらに長く保存する必要がある場合は、その期間が過ぎてから削除します。</string>
+    <string name="terms_practice_title">サンプルカレンダーと自分の日記</string>
+    <string name="terms_practice_body">アプリではサンプルカレンダーを自由に見たり、記録の追加を試したりできます。自分の日記を始めると空のカレンダーが開き、練習中の記録は引き継がれません。ウェブ体験版で追加した記録は再読み込みすると消去されます。残しておきたい場合は、先に設定からJSONファイルに書き出してください。</string>
     <string name="usage_later_hint">「設定」の「アプリの使用統計を共有」は、いつでもオンにできます。</string>
     <string name="onboarding_day_swipe">左右にスワイプして、前後の日へ。</string>
     <string name="onboarding_day_zoom">2本の指を近づけると、記録のある日が並びます。</string>
@@ -157,12 +170,10 @@
     <string name="cd_collapse">折りたたむ</string>
     <string name="cd_clear_search">検索語を消去</string>
     <string name="search_results">検索結果</string>
-    <string name="privacy_b5">運営者情報、お問い合わせ先、適用開始日は、アプリの正式リリース時にお知らせします。</string>
     <string name="cd_delete_item">%1$sを削除</string>
     <string name="onboarding_start">始める</string>
     <string name="onboarding_invitation">そろそろ、自分だけの記録を重ねてみませんか？</string>
     <string name="onboarding_next">次へ</string>
     <string name="onboarding_keep_exploring">もう少し見てみる</string>
     <string name="debug_replay_onboarding">オンボーディングをもう一度体験</string>
-    <string name="terms_b4">運営者情報、お問い合わせ先、適用開始日は、アプリの正式リリース時にお知らせします。</string>
 </resources>

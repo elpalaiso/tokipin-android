@@ -42,8 +42,8 @@
     <string name="cd_close_search">Fechar a busca</string>
     <string name="privacy_policy">Política de privacidade</string>
     <string name="terms">Termos de uso</string>
-    <string name="policy_draft_badge">Versão preliminar · Apps para iOS e Android</string>
-    <string name="privacy_lead">O Tokipin é um app de anotações para iOS e Android. Você pode usá-lo sem criar uma conta. Suas anotações e seus rascunhos ficam armazenados no app, no seu dispositivo.</string>
+    <string name="policy_revision">Versão preliminar revisada · 27 de novembro de 2026</string>
+    <string name="privacy_lead">A Stepzu, com sede na República da Coreia, é responsável pelos apps Tokipin e pela demonstração na web. Suas anotações pessoais ficam no seu dispositivo. Esta política explica como tratamos as estatísticas de uso que você optar por compartilhar e os e-mails que nos enviar.</string>
     <string name="privacy_h1">Quais informações são armazenadas?</string>
     <string name="privacy_b1">O app guarda as palavras, os emojis, os lugares e os horários que você adiciona, além da data da anotação e da ordem dos itens. Com essas informações e os rascunhos, você pode continuar escrevendo sem internet, encontrar suas anotações por data e editá-las.</string>
     <string name="privacy_h2">O Tokipin acessa minha localização ou meu calendário?</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">Arquivos exportados e backups do dispositivo</string>
     <string name="privacy_b4">Nas configurações, você pode exportar suas anotações para um arquivo JSON. Ele fica onde você o salvou, mesmo que você apague as anotações do app. Você pode gerenciar o arquivo nesse local. O Tokipin não sincroniza as anotações por meio de uma conta. A inclusão das anotações nos backups e na restauração do dispositivo depende do sistema operacional e das configurações de backup do app.</string>
     <string name="privacy_h5">Responsável pelo app e contato sobre privacidade</string>
-    <string name="terms_lead">Estes termos se aplicam à criação e à consulta de anotações pessoais no app Tokipin para iOS e Android.</string>
+    <string name="terms_lead">Estes termos se aplicam aos apps Tokipin para iOS e Android e à demonstração na web oferecidos pela Stepzu, com sede na República da Coreia.</string>
     <string name="terms_h1">Uso do app</string>
     <string name="terms_b1">Sem criar uma conta, você pode guardar palavras, emojis, lugares e horários na ordem que quiser. Veja um dia, os dias com anotações, um mês ou o ano inteiro. Você também pode buscar, editar e excluir suas anotações.</string>
     <string name="terms_h2">Direitos sobre suas anotações</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">Estatísticas de uso, como o número de vezes que o app é aberto e que as notas são salvas, nos ajudam a identificar dificuldades e melhorar os recursos. Não enviamos o conteúdo das suas notas nem seus termos de busca.</string>
     <string name="usage_share">Quero participar</string>
     <string name="usage_later">Agora não</string>
-    <string name="privacy_usage_body">Se você aceitar, o Google Analytics processará as aberturas do app, os eventos de salvamento de anotações, um identificador da instalação do app e informações do dispositivo. Não enviamos o conteúdo ou as datas das anotações, nem os termos de busca. Você pode desativar o compartilhamento a qualquer momento nas configurações.</string>
+    <string name="privacy_usage_body">Se você ativar o compartilhamento, usaremos o Google Analytics for Firebase, da Google LLC (Estados Unidos), para entender como o app é usado e melhorar suas funções. Por uma conexão criptografada, o app envia ao Google dados sobre as vezes que você abre o app, o tempo de uso e se você salvou uma anotação, além do identificador da instalação, da versão do app e de informações sobre o dispositivo e o sistema operacional. O conteúdo e as datas das anotações, os rascunhos e os termos de busca não são enviados.</string>
     <string name="privacy_usage_title">Compartilhar estatísticas de uso do app</string>
+    <string name="privacy_b5">Para pedir acesso, correção ou exclusão dos seus dados pessoais mantidos pela Stepzu, ou solicitar que deixemos de tratá-los, escreva para o endereço de contato abaixo. Você pode consultar, editar e excluir no app as anotações armazenadas apenas no seu dispositivo.</string>
+    <string name="terms_b4">Se você tiver dúvidas sobre o uso do Tokipin ou sobre estes termos, envie um e-mail à Stepzu.</string>
+    <string name="privacy_usage_choice">O compartilhamento de estatísticas de uso vem desativado. Você pode escolher se quer ativá-lo ao sair do calendário de exemplo e começar seu próprio diário. Se preferir não compartilhar, todas as funções do diário continuam disponíveis. Você pode mudar de ideia a qualquer momento nas configurações.</string>
+    <string name="privacy_usage_transfer">O Google usa seu endereço IP para determinar sua localização aproximada e o descarta antes de registrá-lo. As estatísticas passam por um centro de coleta próximo e podem ser processadas em servidores de outros países. Desativar o compartilhamento interrompe a coleta a partir desse momento. Os dados de eventos são mantidos por 2 meses, e os dados vinculados ao identificador de usuário, por 14 meses após a última atividade. Esses prazos não se aplicam aos relatórios agregados padrão.</string>
+    <string name="privacy_google_info">Como o Google trata os dados</string>
+    <string name="privacy_google_retention">Retenção de dados no Google Analytics</string>
+    <string name="privacy_google_contact">Falar com o Google sobre privacidade</string>
+    <string name="privacy_web_title">Demonstração na web e configurações de idioma</string>
+    <string name="privacy_web_body">A demonstração na web não envia suas anotações, rascunhos ou buscas a um servidor. Recarregar a página apaga o que você escreveu e restaura as configurações da demonstração. O navegador guarda apenas o idioma que você escolhe. Limpar os dados do site apaga essa preferência. A opção de compartilhar estatísticas serve apenas para demonstrar como ela funciona. Ao carregar uma página, o servidor processa seu endereço IP e o caminho do arquivo solicitado.</string>
+    <string name="privacy_support_title">E-mails de suporte e prazo de retenção</string>
+    <string name="privacy_support_body">Quando você envia um e-mail à Stepzu, usamos seu endereço de e-mail, a mensagem e os arquivos que você anexar para responder e acompanhar a solicitação. Excluímos o e-mail e os anexos em até 30 dias após a resolução da solicitação. Se a lei exigir que sejam mantidos por mais tempo, eles serão excluídos ao fim desse prazo.</string>
+    <string name="terms_practice_title">Calendário de exemplo e diário pessoal</string>
+    <string name="terms_practice_body">No app, você pode explorar o calendário de exemplo e praticar a criação de anotações. Ao começar seu próprio diário, você encontra um calendário vazio. As anotações de prática não são transferidas para ele. Recarregar a demonstração na web apaga as anotações feitas nela. Para guardá-las, exporte-as antes para um arquivo JSON nas configurações.</string>
     <string name="usage_later_hint">Você pode ativar “Compartilhar estatísticas de uso do app” a qualquer momento nas Configurações.</string>
     <string name="onboarding_day_swipe">Deslize o dedo para os lados para mudar de dia.</string>
     <string name="onboarding_day_zoom">Junte dois dedos na tela para ver os dias com anotações.</string>
@@ -171,12 +184,10 @@
     <string name="cd_collapse">Recolher</string>
     <string name="cd_clear_search">Limpar busca</string>
     <string name="search_results">Resultados da busca</string>
-    <string name="privacy_b5">No lançamento oficial, vamos divulgar os dados do responsável, o contato e a data de entrada em vigor.</string>
     <string name="cd_delete_item">Excluir %1$s</string>
     <string name="onboarding_start">Começar</string>
     <string name="onboarding_invitation">Que tal começar seu próprio diário agora?</string>
     <string name="onboarding_next">Avançar</string>
     <string name="onboarding_keep_exploring">Continuar explorando</string>
     <string name="debug_replay_onboarding">Refazer a introdução</string>
-    <string name="terms_b4">No lançamento oficial, vamos divulgar os dados do responsável, o contato e a data de entrada em vigor.</string>
 </resources>

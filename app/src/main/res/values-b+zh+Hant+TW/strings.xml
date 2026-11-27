@@ -42,8 +42,8 @@
     <string name="cd_close_search">關閉搜尋</string>
     <string name="privacy_policy">隱私權政策</string>
     <string name="terms">使用條款</string>
-    <string name="policy_draft_badge">上架前草案 · 適用於 iOS 與 Android App</string>
-    <string name="privacy_lead">Tokipin 是一款不必註冊就能使用的 iOS 與 Android 紀錄 App。紀錄與草稿都儲存在裝置上這個 App 的專用空間。</string>
+    <string name="policy_revision">修訂草案 · 2026年11月27日</string>
+    <string name="privacy_lead">Tokipin App 和網頁體驗版由位於韓國的 Stepzu 營運。你的個人日誌儲存在自己的裝置上。本政策說明我們如何處理你選擇分享的使用統計資料，以及你寄給我們的電子郵件。</string>
     <string name="privacy_h1">會儲存哪些資訊？</string>
     <string name="privacy_b1">App 會儲存你輸入的詞語、表情符號、地點、時間，以及紀錄日期和各項內容的順序。這些資訊與草稿可讓你離線繼續記錄，也能依日期尋找和編輯紀錄。</string>
     <string name="privacy_h2">會存取我的位置或行事曆嗎？</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">匯出的檔案與裝置備份</string>
     <string name="privacy_b4">你可以在設定中將已儲存的紀錄匯出成 JSON 檔案。在 App 中刪除紀錄後，匯出的檔案仍會保留，請到儲存的位置自行管理。Tokipin 不提供帳號同步功能。裝置備份與還原是否包含紀錄，取決於作業系統與 App 的備份設定。</string>
     <string name="privacy_h5">營運者資訊與隱私權聯絡窗口</string>
-    <string name="terms_lead">本條款適用於在 iOS 或 Android 版 Tokipin App 中建立與瀏覽個人紀錄。</string>
+    <string name="terms_lead">本條款適用於位於韓國的 Stepzu 提供的 Tokipin iOS 和 Android App，以及網頁體驗版。</string>
     <string name="terms_h1">使用 App</string>
     <string name="terms_b1">不必註冊，就能依喜歡的順序留下詞語、表情符號、地點與時間。你可以依年、月、有紀錄的日子或單日瀏覽，也能搜尋、編輯及刪除紀錄。</string>
     <string name="terms_h2">紀錄的權利歸屬</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">我們會參考開啟 App 和儲存紀錄的次數等使用統計，了解哪些地方用起來不方便，藉此改善功能。我們不會傳送你的紀錄內容或搜尋字詞。</string>
     <string name="usage_share">我願意</string>
     <string name="usage_later">暫時不要</string>
-    <string name="privacy_usage_body">如果你同意，Google Analytics 會處理開啟 App 和儲存紀錄的事件、App 安裝識別碼及裝置資訊。我們不會傳送紀錄內容、紀錄日期或搜尋字詞。你可以隨時在設定中關閉分享。</string>
+    <string name="privacy_usage_body">如果開啟分享，我們會使用美國 Google LLC 提供的 Google Analytics for Firebase，瞭解 App 的使用情形並改進功能。App 會透過加密連線將啟動次數、使用時間、是否儲存紀錄等使用資訊，以及 App 安裝識別碼、App 版本、裝置和作業系統資訊傳送給 Google。紀錄內容與日期、草稿及搜尋字詞都不會傳送。</string>
     <string name="privacy_usage_title">分享 App 使用統計</string>
+    <string name="privacy_b5">如需查閱、更正或刪除 Stepzu 持有的個人資料，或要求停止處理，請寄信至下方的隱私聯絡信箱。只儲存在自己裝置上的紀錄，可以直接在 App 中查看、修改和刪除。</string>
+    <string name="terms_b4">如果對 Tokipin 的使用方式或本條款有疑問，請寄信給 Stepzu。</string>
+    <string name="privacy_usage_choice">App 預設關閉使用統計分享。結束範例日曆體驗、開始寫自己的日誌時，你可以選擇是否開啟。即使不分享，你仍可使用所有記錄功能，也可以隨時在設定中變更選擇。</string>
+    <string name="privacy_usage_transfer">Google 會透過你的 IP 位址判斷大致位置，隨即捨棄該位址，不會將它寫入記錄檔。統計資料會經由鄰近的資料收集中心傳送，可能在境外伺服器上處理。關閉分享後即停止收集新資料。事件資料保留 2 個月，與使用者識別碼相關聯的資料則自最後一次活動起保留 14 個月。這些期限不適用於標準彙總報表。</string>
+    <string name="privacy_google_info">Google 如何處理資料</string>
+    <string name="privacy_google_retention">Google Analytics 資料保留期限</string>
+    <string name="privacy_google_contact">向 Google 洽詢隱私權問題</string>
+    <string name="privacy_web_title">網頁體驗版與語言設定</string>
+    <string name="privacy_web_body">網頁體驗版不會將紀錄、草稿或搜尋字詞傳送至伺服器。重新整理頁面後，體驗時輸入的內容會清除，體驗設定也會重設。瀏覽器只會儲存你手動選擇的語言，清除網站資料即可刪除這項設定。體驗版中的使用統計開關僅供示範。載入網頁時，伺服器會處理你的 IP 位址與要求讀取的檔案路徑。</string>
+    <string name="privacy_support_title">聯絡信件與保留期限</string>
+    <string name="privacy_support_body">當你來信時，Stepzu 會使用你的電子郵件地址、信件內容及你主動附上的檔案來回覆與追蹤問題。我們會在問題處理完畢後 30 天內刪除信件及附件。如果法令規定須保留更久，我們會在法定期限屆滿後刪除。</string>
+    <string name="terms_practice_title">範例日曆與個人日誌</string>
+    <string name="terms_practice_body">你可以在 App 中瀏覽範例日曆，練習新增紀錄。開始寫自己的日誌時，會開啟一個空白日曆，練習紀錄不會轉入。重新整理網頁體驗版會清除你在其中新增的紀錄。如需保留，請先在設定中將紀錄匯出為 JSON 檔案。</string>
     <string name="usage_later_hint">你可以隨時在設定中開啟「分享 App 使用統計」。</string>
     <string name="onboarding_day_swipe">左右滑動，看看前一天或後一天。</string>
     <string name="onboarding_day_zoom">兩指靠攏，就能看到有紀錄的日子。</string>
@@ -157,12 +170,10 @@
     <string name="cd_collapse">收合</string>
     <string name="cd_clear_search">清除搜尋字詞</string>
     <string name="search_results">搜尋結果</string>
-    <string name="privacy_b5">App 正式上架時，我們會公布營運者資訊、聯絡方式與生效日期。</string>
     <string name="cd_delete_item">刪除%1$s</string>
     <string name="onboarding_start">開始</string>
     <string name="onboarding_invitation">現在開始慢慢寫下自己的紀錄，好嗎？</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_keep_exploring">繼續瀏覽</string>
     <string name="debug_replay_onboarding">重新體驗新手導覽</string>
-    <string name="terms_b4">App 正式上架時，我們會公布營運者資訊、聯絡方式與生效日期。</string>
 </resources>

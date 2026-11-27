@@ -42,8 +42,8 @@
     <string name="cd_close_search">Suche schließen</string>
     <string name="privacy_policy">Datenschutzerklärung</string>
     <string name="terms">Nutzungsbedingungen</string>
-    <string name="policy_draft_badge">Entwurf vor dem Start · App für iOS und Android</string>
-    <string name="privacy_lead">Tokipin ist eine Notiz-App für iOS und Android. Du kannst sie ohne Konto nutzen. Deine Notizen und Entwürfe liegen im Speicher der App auf deinem Gerät.</string>
+    <string name="policy_revision">Überarbeiteter Entwurf · 27. November 2026</string>
+    <string name="privacy_lead">Stepzu mit Sitz in der Republik Korea betreibt die Tokipin-Apps und die Web-Demo. Dein persönliches Tagebuch bleibt auf deinem Gerät. Hier erfährst du, wie wir mit freiwillig geteilten Nutzungsstatistiken und deinen E-Mails an uns umgehen.</string>
     <string name="privacy_h1">Welche Informationen werden gespeichert?</string>
     <string name="privacy_b1">Tokipin speichert deine Wörter, Emojis, Orte und Uhrzeiten, das Datum jeder Notiz und die Reihenfolge ihrer Elemente. So kannst du offline weiterschreiben, einen Entwurf fortsetzen und deine Notizen nach Datum finden und bearbeiten.</string>
     <string name="privacy_h2">Greift Tokipin auf meinen Standort oder Kalender zu?</string>
@@ -53,7 +53,7 @@
     <string name="privacy_h4">Exportierte Dateien und Gerätesicherungen</string>
     <string name="privacy_b4">In den Einstellungen kannst du deine Notizen als JSON-Datei exportieren. Auch wenn du die Notizen in der App löschst, bleibt die Datei am gewählten Speicherort. Dort kannst du sie selbst verwalten. Tokipin synchronisiert deine Notizen nicht über ein Konto. Ob sie bei einer Gerätesicherung gesichert und später wiederhergestellt werden, hängt vom Betriebssystem und den Sicherungseinstellungen der App ab.</string>
     <string name="privacy_h5">Betreiber und Datenschutzanfragen</string>
-    <string name="terms_lead">Diese Bedingungen gelten, wenn du in der Tokipin-App für iOS und Android persönliche Notizen erstellst und ansiehst.</string>
+    <string name="terms_lead">Diese Bedingungen gelten für die Tokipin-Apps für iOS und Android sowie für die Web-Demo von Stepzu mit Sitz in der Republik Korea.</string>
     <string name="terms_h1">Nutzung der App</string>
     <string name="terms_b1">Du kannst ohne Konto Wörter, Emojis, Orte und Uhrzeiten in beliebiger Reihenfolge festhalten. Blättere durch Tage, Monate oder Jahre oder lass dir nur die Tage mit Notizen anzeigen. Du kannst deine Notizen auch suchen, bearbeiten und löschen.</string>
     <string name="terms_h2">Rechte an deinen Notizen</string>
@@ -66,8 +66,21 @@
     <string name="usage_body">Nutzungsstatistiken zeigen uns zum Beispiel, wie oft die App geöffnet wird und Notizen gespeichert werden. So können wir nachsehen, wo es hakt, und Funktionen verbessern. Die Inhalte deiner Notizen und deine Suchbegriffe senden wir nicht.</string>
     <string name="usage_share">Ich bin dabei</string>
     <string name="usage_later">Jetzt nicht</string>
-    <string name="privacy_usage_body">Wenn du zustimmst, verarbeitet Google Analytics Daten zu App-Starts und zum Speichern von Notizen sowie eine Kennung der App-Installation und Geräteinformationen. Die Inhalte und Datumsangaben deiner Notizen sowie deine Suchbegriffe werden nicht gesendet. Du kannst das Teilen jederzeit in den Einstellungen deaktivieren.</string>
+    <string name="privacy_usage_body">Wenn du das Teilen einschaltest, nutzen wir Google Analytics for Firebase von Google LLC (USA), um die Nutzung der App zu verstehen und ihre Funktionen zu verbessern. Die App übermittelt über eine verschlüsselte Verbindung Daten zu App-Starts, Nutzungsdauer und Speichervorgängen an Google. Dabei werden auch eine Kennung der App-Installation, die App-Version sowie Angaben zum Gerät und zum Betriebssystem übertragen. Inhalte und Datumsangaben deiner Notizen, Entwürfe und Suchbegriffe werden nicht gesendet.</string>
     <string name="privacy_usage_title">App-Nutzungsstatistiken teilen</string>
+    <string name="privacy_b5">Wenn du Auskunft über deine bei Stepzu gespeicherten personenbezogenen Daten erhalten, sie berichtigen oder löschen lassen oder ihre weitere Verarbeitung stoppen möchtest, schreibe an die unten genannte Datenschutzadresse. Notizen, die nur auf deinem Gerät gespeichert sind, kannst du in der App ansehen, bearbeiten und löschen.</string>
+    <string name="terms_b4">Schreibe Stepzu eine E-Mail, wenn du Fragen zur Nutzung von Tokipin oder zu diesen Bedingungen hast.</string>
+    <string name="privacy_usage_choice">Das Teilen von Nutzungsstatistiken ist standardmäßig ausgeschaltet. Wenn du den Beispielkalender verlässt und dein eigenes Tagebuch beginnst, kannst du es einschalten. Auch wenn du ablehnst, stehen dir alle Tagebuchfunktionen zur Verfügung. Du kannst deine Wahl jederzeit in den Einstellungen ändern.</string>
+    <string name="privacy_usage_transfer">Google leitet aus deiner IP-Adresse einen ungefähren Standort ab und verwirft die Adresse, bevor sie protokolliert wird. Die Statistiken werden über ein nahe gelegenes Erfassungszentrum übertragen und können auf Servern im Ausland verarbeitet werden. Wenn du das Teilen ausschaltest, endet die weitere Erfassung. Ereignisdaten werden zwei Monate lang gespeichert, mit der Nutzerkennung verknüpfte Daten 14 Monate ab der letzten Aktivität. Diese Fristen gelten nicht für aggregierte Standardberichte.</string>
+    <string name="privacy_google_info">So verarbeitet Google Daten</string>
+    <string name="privacy_google_retention">Datenaufbewahrung in Google Analytics</string>
+    <string name="privacy_google_contact">Google zum Datenschutz kontaktieren</string>
+    <string name="privacy_web_title">Web-Demo und Spracheinstellungen</string>
+    <string name="privacy_web_body">Die Web-Demo sendet keine Notizen, Entwürfe oder Suchbegriffe an einen Server. Wenn du die Seite neu lädst, werden deine Eingaben gelöscht und die Einstellungen der Demo zurückgesetzt. Nur die von dir ausgewählte Sprache bleibt in deinem Browser gespeichert. Du kannst sie entfernen, indem du die Websitedaten löschst. Der Schalter für Nutzungsstatistiken dient der Vorführung. Beim Laden einer Seite verarbeitet der Server deine IP-Adresse und den Pfad der angeforderten Datei.</string>
+    <string name="privacy_support_title">Support-E-Mails und Aufbewahrungsdauer</string>
+    <string name="privacy_support_body">Wenn du uns schreibst, verwendet Stepzu deine E-Mail-Adresse, deine Nachricht und die von dir angehängten Dateien, um deine Anfrage zu beantworten und Rückfragen zu klären. Wir löschen die E-Mail und die Anhänge innerhalb von 30 Tagen nach Abschluss der Bearbeitung. Müssen wir sie aus gesetzlichen Gründen länger aufbewahren, löschen wir sie nach Ablauf dieser Frist.</string>
+    <string name="terms_practice_title">Beispielkalender und persönliches Tagebuch</string>
+    <string name="terms_practice_body">In der App kannst du den Beispielkalender erkunden und ausprobieren, wie du Notizen erstellst. Wenn du dein eigenes Tagebuch beginnst, öffnet sich ein leerer Kalender. Deine Übungseinträge werden nicht übernommen. Wenn du die Web-Demo neu lädst, werden die dort erstellten Notizen gelöscht. Möchtest du sie behalten, exportiere sie vorher in den Einstellungen als JSON-Datei.</string>
     <string name="usage_later_hint">In den Einstellungen kannst du „App-Nutzungsstatistiken teilen“ jederzeit aktivieren.</string>
     <string name="onboarding_day_swipe">Wische nach links oder rechts, um den Tag zu wechseln.</string>
     <string name="onboarding_day_zoom">Zieh zwei Finger zusammen. So siehst du alle Tage mit Notizen.</string>
@@ -164,12 +177,10 @@
     <string name="cd_collapse">Einklappen</string>
     <string name="cd_clear_search">Suchbegriff löschen</string>
     <string name="search_results">Suchergebnisse</string>
-    <string name="privacy_b5">Wer die App betreibt, wie du uns erreichst und ab wann diese Bestimmungen gelten, geben wir zum Start bekannt.</string>
     <string name="cd_delete_item">%1$s löschen</string>
     <string name="onboarding_start">Starten</string>
     <string name="onboarding_invitation">Möchtest du jetzt mit deinem eigenen Tagebuch beginnen?</string>
     <string name="onboarding_next">Weiter</string>
     <string name="onboarding_keep_exploring">Weiter erkunden</string>
     <string name="debug_replay_onboarding">Einführung erneut durchlaufen</string>
-    <string name="terms_b4">Wer die App betreibt, wie du uns erreichst und ab wann diese Bestimmungen gelten, geben wir zum Start bekannt.</string>
 </resources>

@@ -31,7 +31,7 @@ With an emulator or device connected, `./gradlew :app:connectedDebugAndroidTest`
 - **Search**: words, emoji, places, times, kind names ("장소") and dates ("11.25"), newest first. Opening a result highlights the item; "검색 결과" returns to the list.
 - **Settings** (last entry of the view menu): vibration, optional usage statistics, JSON export (system file picker), storage note, privacy policy and terms.
 - **Haptics**: one `SEGMENT_TICK` (API 34+, `CLOCK_TICK` before) when the day or level settles; off when the setting is off.
-- **Language**: Korean only for now. Every string is in `res/values/strings.xml` and dates use `YYYY.MM.DD(요일)` / cards `DD / 요일` from the app locale, so devices in other languages still get a fully Korean app. To add a language: translate `strings.xml` into `values-<lang>/`, add the code to `AppLocale.supported` and `res/xml/locales_config.xml`.
+- **Language**: The app and its offline policy pages use the first supported language in the user’s preferences. English is the default in `res/values`; the other 16 languages, including Korean, have their own resources. To refresh translations from the web checkout, run `python3 tools/l10n/generate.py ../tokipin/locales`.
 
 ## Calendar range
 
