@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The 17 app languages (same list as AppLocale.supported and the web). Korean is the source. -->
+<!-- The 17 app languages (same list as AppLocale.supported and the web). English is the fallback. -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="ko" />
     <locale android:name="en" />

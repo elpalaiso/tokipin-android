@@ -2,7 +2,7 @@
 """
 Writes app/src/main/res/values*/strings.xml for the 16 translated locales. English goes to the
 default values/ folder, so any language outside the 17 falls back to English (as on the web);
-Korean, the source, lives in values-ko/.
+The Korean strings in values-ko/ supply the dictionary keys. Policy translations follow the English web copy.
 
 - Rows marked 그대로 in the Figma handoff (node 311-3097) are copied from the web dictionaries at
   the matching web checkout (elpalaiso/tokipin, locales/demo and locales/site). The web
@@ -76,7 +76,7 @@ WEB = {  # resource id -> (domain, TP number)
     "cd_tool_word": ("demo", 108), "cd_tool_emoji": ("demo", 109), "cd_tool_place": ("demo", 110), "cd_tool_time": ("demo", 111),
 }
 
-FOLDER = {  # English is the default (fallback) folder; Korean, the source, is values-ko
+FOLDER = {  # English is the default (fallback) folder; Korean lives in values-ko
     "en": "values", "ja": "values-ja", "de": "values-de", "fr": "values-fr", "id": "values-in", "vi": "values-vi",
     "tr": "values-tr", "ru": "values-ru", "hi": "values-hi", "th": "values-th", "pt-BR": "values-pt-rBR",
     "es-ES": "values-es-rES", "es-419": "values-b+es+419", "zh-Hans": "values-b+zh+Hans",
@@ -98,9 +98,9 @@ def source_names(res: str):
     return [n for n in names if not n.startswith("debug_") or n in APP]
 
 
-def source_texts(res: str):
-    """Korean text of each plain string in values-ko, unescaped like the web keys."""
-    text = open(os.path.join(res, "values-ko", "strings.xml"), encoding="utf-8").read()
+def string_texts(res: str, folder: str):
+    """Plain string resources, unescaped to the text used in web dictionaries."""
+    text = open(os.path.join(res, folder, "strings.xml"), encoding="utf-8").read()
     out = {}
     for name, value in re.findall(r'<string name="([^"]+)"[^>]*>(.*?)</string>', text, re.S):
         out[name] = value.replace("\\n", "\n").replace("\\'", "'").replace('\\"', '"').replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
@@ -116,7 +116,7 @@ def main(locales: str, res: str):
     for rid, values in APP.items():
         if len(values) != len(LANGS):
             raise SystemExit(f"{rid}: {len(values)} values for {len(LANGS)} languages")
-    korean = source_texts(res)
+    korean = string_texts(res, "values-ko")
     # Every language is checked and prepared first; files are written only when all of them pass,
     # so a missing key in one language never leaves the others half regenerated.
     outputs = {}

@@ -56,6 +56,17 @@ class LocalizationDeviceTest {
         assertEquals("Getaran", resFor("in-ID").getString(R.string.settings_haptics))
     }
 
+    @Test fun bundledPoliciesUseEnglishForUnsupportedLanguagesAndFollowSupportedLocales() {
+        val english = resFor("en-US")
+        val unsupported = resFor("it-IT,pl-PL")
+        val leads = listOf(R.string.privacy_lead, R.string.terms_lead)
+        for (id in leads) assertEquals(english.getString(id), unsupported.getString(id))
+        for (tag in AppLocale.supported - "en") {
+            val translated = resFor(tag)
+            for (id in leads) assertTrue(tag, translated.getString(id) != english.getString(id))
+        }
+    }
+
     @Test fun pluralsFollowEachLanguage() {
         val en = resFor("en")
         assertEquals("Delete 1 item from this day", en.getQuantityString(R.plurals.delete_day, 1, 1))
