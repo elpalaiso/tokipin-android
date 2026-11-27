@@ -125,6 +125,8 @@ fun SettingsSheet(vm: AppViewModel) {
                 // Debug builds only (src/debug); release builds omit these seed replacement controls.
                 Text(stringResource(R.string.debug_section), style = TkType.body.copy(fontSize = 15.sp), modifier = Modifier.padding(top = 4.dp))
                 Group {
+                    LinkRow(stringResource(R.string.debug_replay_onboarding), vm::replayOnboarding)
+                    HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
                     LinkRow(stringResource(R.string.debug_samples)) { vm.replaceWithSamples(); vm.closeSettings() }
                     HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 16.dp))
                     LinkRow(stringResource(R.string.debug_range_samples)) { confirmRangeSamples = true }

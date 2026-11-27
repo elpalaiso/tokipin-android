@@ -177,5 +177,6 @@
     <string name="onboarding_invitation">Que tal começar seu próprio diário agora?</string>
     <string name="onboarding_next">Avançar</string>
     <string name="onboarding_keep_exploring">Continuar explorando</string>
+    <string name="debug_replay_onboarding">Refazer a introdução</string>
     <string name="terms_b4">No lançamento oficial, vamos divulgar os dados do responsável, o contato e a data de entrada em vigor.</string>
 </resources>

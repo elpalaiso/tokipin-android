@@ -65,6 +65,9 @@ class AppViewModel private constructor(
 
     internal var sample by mutableStateOf<AppViewModel?>(null); private set
 
+    internal val replayingOnboarding get() = sample != null && screen != Screen.Sample
+    private var replayJob: Job? = null
+
     // Browse
     var level by mutableStateOf(Level.RECORDS); private set
     var selectedDate by mutableStateOf(com.tokipin.app.rules.AppClock.today()); private set
@@ -124,8 +127,7 @@ class AppViewModel private constructor(
             draft = drafts.active?.let { keptDrafts[it] }
             val firstLaunch = !store.hasLaunchedBefore
             if (firstLaunch && journal.isEmpty && drafts.drafts.isEmpty() && usage?.hasChoice != true) {
-                val newTour = withContext(Dispatchers.Default) { SampleTour.create(today, res) }
-                sample = AppViewModel(getApplication(), null, null, newTour).also { it.hapticsEnabled = hapticsEnabled }
+                sample = newSampleSession()
                 screen = Screen.Sample
                 return@launch
             }
@@ -144,11 +146,36 @@ class AppViewModel private constructor(
         }
     }
 
-    internal fun startPersonalJournal() {
-        if (screen != Screen.Sample) return
-        store?.hasLaunchedBefore = true
+    private suspend fun newSampleSession(): AppViewModel {
+        val newTour = withContext(Dispatchers.Default) { SampleTour.create(today, res) }
+        return AppViewModel(getApplication(), null, null, newTour).also { it.hapticsEnabled = hapticsEnabled }
+    }
+
+    internal fun replayOnboarding() {
+        if (!com.tokipin.app.data.SampleData.AVAILABLE || !settingsOpen || tour != null ||
+            sample != null || replayJob?.isActive == true) return
+        replayJob = viewModelScope.launch { sample = newSampleSession() }
+    }
+
+    internal fun closeDeveloperReplay() {
+        if (!replayingOnboarding) return
+        if (screen == Screen.Browse) entry = ListEntry.Restore
+        disposeSample()
+    }
+
+    private fun disposeSample() {
         sample?.viewModelScope?.cancel()
         sample = null
+    }
+
+    internal fun startPersonalJournal() {
+        if (replayingOnboarding) {
+            if (usageAvailable) sample?.tour?.previewUsage() else closeDeveloperReplay()
+            return
+        }
+        if (screen != Screen.Sample) return
+        store?.hasLaunchedBefore = true
+        disposeSample()
         usagePromptOpen = shouldOfferUsage
         draft = Draft(date = com.tokipin.app.rules.AppClock.today().toString())
         screen = Screen.Editor
@@ -697,7 +724,10 @@ class AppViewModel private constructor(
     // region Settings
 
     fun openSettings() { settingsOpen = true }
-    fun closeSettings() { settingsOpen = false }
+    fun closeSettings() {
+        replayJob?.cancel()
+        settingsOpen = false
+    }
     fun openPolicy(p: Policy?) { policy = p }
 
     fun setHaptics(enabled: Boolean) {

@@ -495,5 +495,12 @@ APP = {
         "और देखें", "สำรวจต่อ", "Continuar explorando", "Seguir explorando",
         "Seguir explorando", "继续浏览", "繼續瀏覽", "繼續瀏覽",
     ],
+    # TP-0366
+    "debug_replay_onboarding": [
+        "Replay onboarding", "オンボーディングをもう一度体験", "Einführung erneut durchlaufen", "Revoir le parcours de découverte",
+        "Coba lagi panduan awal", "Trải nghiệm lại phần hướng dẫn ban đầu", "Tanıtımı yeniden dene", "Пройти знакомство с приложением ещё раз",
+        "शुरुआती गाइड फिर से देखें", "ลองขั้นตอนแนะนำแอปอีกครั้ง", "Refazer a introdução", "Repetir el recorrido inicial",
+        "Repetir el recorrido inicial", "重新体验新手引导", "重新體驗新手導覽", "重新體驗新手導覽",
+    ],
 }
 APP["terms_b4"] = APP["privacy_b5"]

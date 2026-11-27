@@ -163,5 +163,6 @@
     <string name="onboarding_invitation">现在开始一点点写下自己的记录，好吗？</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_keep_exploring">继续浏览</string>
+    <string name="debug_replay_onboarding">重新体验新手引导</string>
     <string name="terms_b4">应用正式上线时，我们会公布运营者信息、联系方式和生效日期。</string>
 </resources>

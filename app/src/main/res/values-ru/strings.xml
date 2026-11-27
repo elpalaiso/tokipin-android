@@ -184,5 +184,6 @@
     <string name="onboarding_invitation">Готовы начать вести свой дневник?</string>
     <string name="onboarding_next">Далее</string>
     <string name="onboarding_keep_exploring">Продолжить знакомство</string>
+    <string name="debug_replay_onboarding">Пройти знакомство с приложением ещё раз</string>
     <string name="terms_b4">При запуске приложения мы укажем сведения об операторе, контакты и дату вступления документа в силу.</string>
 </resources>

@@ -170,5 +170,6 @@
     <string name="onboarding_invitation">Şimdi kendi günlüğünü tutmaya başlamak ister misin?</string>
     <string name="onboarding_next">İleri</string>
     <string name="onboarding_keep_exploring">Keşfetmeye devam et</string>
+    <string name="debug_replay_onboarding">Tanıtımı yeniden dene</string>
     <string name="terms_b4">Uygulama kullanıma açıldığında işletmeci bilgilerini, iletişim adresini ve yürürlük tarihini paylaşacağız.</string>
 </resources>

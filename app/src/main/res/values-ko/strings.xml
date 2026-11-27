@@ -159,4 +159,5 @@
     <string name="onboarding_invitation">이제 나만의 기록을 쌓아가 볼까요?</string>
     <string name="onboarding_next">다음</string>
     <string name="onboarding_keep_exploring">계속 둘러보기</string>
+    <string name="debug_replay_onboarding">온보딩 다시 체험</string>
 </resources>

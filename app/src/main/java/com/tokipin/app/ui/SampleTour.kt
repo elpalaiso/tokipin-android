@@ -23,7 +23,7 @@ internal enum class BrowseCue(val message: Int) {
     YearOpen(R.string.onboarding_year_open), PickDay(R.string.onboarding_open_day),
 }
 
-internal enum class TourSheet { ExitOptions, Invitation }
+internal enum class TourSheet { ExitOptions, Invitation, PreviewUsage }
 
 /** Cues observe the native screen's committed actions. The guided fallback uses the same actions. */
 internal class SampleTour(
@@ -102,6 +102,7 @@ internal class SampleTour(
     fun exitOptions() { sheet = TourSheet.ExitOptions }
     fun cancelOptions() { sheet = null }
     fun explore() { sheet = null; guided = false; scrollTarget = null }
+    fun previewUsage() { sheet = TourSheet.PreviewUsage }
     fun invite() { sheet = TourSheet.Invitation; scrollTarget = null }
 
     fun scrolled() {

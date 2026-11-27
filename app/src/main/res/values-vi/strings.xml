@@ -163,5 +163,6 @@
     <string name="onboarding_invitation">Bạn đã sẵn sàng viết nhật ký của riêng mình chưa?</string>
     <string name="onboarding_next">Tiếp</string>
     <string name="onboarding_keep_exploring">Tiếp tục khám phá</string>
+    <string name="debug_replay_onboarding">Trải nghiệm lại phần hướng dẫn ban đầu</string>
     <string name="terms_b4">Thông tin về đơn vị vận hành, cách liên hệ và ngày có hiệu lực sẽ được công bố khi ứng dụng chính thức ra mắt.</string>
 </resources>

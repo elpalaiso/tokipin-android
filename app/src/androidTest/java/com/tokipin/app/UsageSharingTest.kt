@@ -102,6 +102,44 @@ class UsageSharingTest {
         }
     }
 
+    @Test fun developerReplayDoesNotCallTheOptedInSinkAndOmitsAnUnavailableOffer() {
+        val changes = mutableListOf<Boolean>()
+        var saves = 0
+        val sink = object : UsageAnalytics {
+            override fun setCollection(enabled: Boolean) { changes += enabled }
+            override fun recordSaved() { saves++ }
+        }
+        val preferences = app.getSharedPreferences("tokipin.usage", Context.MODE_PRIVATE)
+        preferences.edit().putBoolean("enabled", true).commit()
+        com.tokipin.app.data.JournalStore(app).hasLaunchedBefore = true
+        for (configured in listOf(true, false)) {
+            lateinit var vm: AppViewModel
+            main { vm = AppViewModel(app, UsageSharing(app, sink, available = configured)) }
+            compose.waitUntil(8_000) { vm.screen == Screen.Browse }
+            main { vm.openSettings(); vm.replayOnboarding() }
+            compose.waitUntil(8_000) { vm.sample != null }
+            val sample = requireNotNull(vm.sample)
+            main { sample.updateRaw("practice only"); sample.saveDraft() }
+            compose.waitUntil(8_000) { sample.screen == Screen.Browse }
+            main {
+                sample.tour!!.invite()
+                vm.startPersonalJournal()
+                if (configured) {
+                    assertEquals(com.tokipin.app.ui.TourSheet.PreviewUsage, sample.tour.sheet)
+                    vm.closeDeveloperReplay()
+                }
+                assertNull(vm.sample)
+                assertTrue(vm.settingsOpen)
+                assertEquals(Screen.Browse, vm.screen)
+                assertFalse(vm.usagePromptOpen)
+                assertTrue(vm.journal.isEmpty)
+            }
+            assertTrue(preferences.getBoolean("enabled", false))
+            assertEquals(listOf(true), changes) // Only initialization of the configured personal client.
+            assertEquals(0, saves)
+        }
+    }
+
     @Test fun consentGatesSuccessfulManualSavesAndPersistsAcrossLaunches() {
         val changes = mutableListOf<Boolean>()
         var saves = 0

@@ -10,7 +10,7 @@ Korean, the source, lives in values-ko/.
   Korean text in values-ko (never by position: reordering a JSON file changes nothing). The TP ids
   below document the handoff row.
 - Rows marked 조정 / 별도 come from tools/l10n/app_strings.py.
-- Development-only strings (debug_*), the brand name and pure number formats are not translated.
+- Development-only strings without explicit translations, the brand name and pure number formats are excluded.
 
 Usage: python3 tools/l10n/generate.py <path to a checkout of the web repo's locales directory>
 """
@@ -84,10 +84,10 @@ def android(text: str) -> str:
 
 
 def source_names(res: str):
-    """Every user-facing name in the Korean source (values-ko); debug_* and untranslatable excluded."""
+    """Every user-facing name in the Korean source (values-ko); debug_* without explicit translations and untranslatable strings excluded."""
     text = open(os.path.join(res, "values-ko", "strings.xml"), encoding="utf-8").read()
     names = re.findall(r'<(?:string|plurals) name="([^"]+)"(?![^>]*translatable="false")', text)
-    return [n for n in names if not n.startswith("debug_")]
+    return [n for n in names if not n.startswith("debug_") or n in APP]
 
 
 def source_texts(res: str):

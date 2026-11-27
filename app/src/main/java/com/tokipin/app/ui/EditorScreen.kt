@@ -331,7 +331,9 @@ private fun EditorHeader(vm: AppViewModel, hasItems: Boolean, compactTour: Boole
     if (compactTour) {
         // Leave space for the actual composing line above a tall IME on a short screen.
         Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp).testTag("editorTopBar"), verticalAlignment = Alignment.CenterVertically) {
-            RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor)
+            val closeReplay = LocalCloseDeveloperReplay.current
+            if (closeReplay != null) DeveloperReplayClose(closeReplay)
+            else RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_keep_draft), vm::leaveEditor)
             RoundIconButton(R.drawable.ic_view_month, "$spoken, $changeDate", { picking = true }, Modifier.testTag("editorDate"))
             Spacer(Modifier.weight(1f))
             EditorActions()

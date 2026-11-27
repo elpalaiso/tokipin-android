@@ -163,5 +163,6 @@
     <string name="onboarding_invitation">そろそろ、自分だけの記録を重ねてみませんか？</string>
     <string name="onboarding_next">次へ</string>
     <string name="onboarding_keep_exploring">もう少し見てみる</string>
+    <string name="debug_replay_onboarding">オンボーディングをもう一度体験</string>
     <string name="terms_b4">運営者情報、お問い合わせ先、適用開始日は、アプリの正式リリース時にお知らせします。</string>
 </resources>

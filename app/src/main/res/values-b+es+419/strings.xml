@@ -177,5 +177,6 @@
     <string name="onboarding_invitation">¿Te animas a empezar tu propio diario?</string>
     <string name="onboarding_next">Siguiente</string>
     <string name="onboarding_keep_exploring">Seguir explorando</string>
+    <string name="debug_replay_onboarding">Repetir el recorrido inicial</string>
     <string name="terms_b4">Cuando lancemos la app, publicaremos los datos del responsable, el contacto y la fecha de entrada en vigor.</string>
 </resources>

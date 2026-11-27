@@ -170,5 +170,6 @@
     <string name="onboarding_invitation">Möchtest du jetzt mit deinem eigenen Tagebuch beginnen?</string>
     <string name="onboarding_next">Weiter</string>
     <string name="onboarding_keep_exploring">Weiter erkunden</string>
+    <string name="debug_replay_onboarding">Einführung erneut durchlaufen</string>
     <string name="terms_b4">Wer die App betreibt, wie du uns erreichst und ab wann diese Bestimmungen gelten, geben wir zum Start bekannt.</string>
 </resources>

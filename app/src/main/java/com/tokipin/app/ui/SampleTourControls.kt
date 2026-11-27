@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.tokipin.app.R
 import kotlinx.coroutines.delay
 
+internal val LocalCloseDeveloperReplay = androidx.compose.runtime.staticCompositionLocalOf<(() -> Unit)?> { null }
+
 private val accent = Color(0xFFD8E6CD)
 private val ink = Color(0xFF203127)
 private val shape = RoundedCornerShape(14.dp)
@@ -40,10 +42,15 @@ internal fun Modifier.tourTarget(active: Boolean) = if (active) border(2.dp, acc
 @Composable
 internal fun SampleControls(vm: AppViewModel, inline: Boolean = false, onNext: () -> Unit = { vm.tour?.next(vm) }) {
     val tour = vm.tour ?: return
-    if (tour.sheet == TourSheet.Invitation) return
+    if (tour.sheet == TourSheet.Invitation || tour.sheet == TourSheet.PreviewUsage) return
     val rail = if (inline) Modifier else Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
     Row(rail.testTag("onboarding"),
         horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+        val close = LocalCloseDeveloperReplay.current
+        if (close != null && !inline) {
+            DeveloperReplayClose(close)
+            Spacer(Modifier.weight(1f))
+        }
         if (tour.guided) {
             if (vm.screen == Screen.Search) RoundIconButton(R.drawable.ic_close, stringResource(R.string.onboarding_dismiss_guide), tour::exitOptions, glass = false)
             val screen = vm.screen
@@ -58,6 +65,11 @@ internal fun SampleControls(vm: AppViewModel, inline: Boolean = false, onNext: (
             SampleAction(stringResource(R.string.onboarding_start), tour::invite, Modifier.testTag("sampleEarlyStart"))
         }
     }
+}
+
+@Composable
+internal fun DeveloperReplayClose(onClose: () -> Unit) {
+    RoundIconButton(R.drawable.ic_close, stringResource(R.string.cd_close), onClose, Modifier.testTag("developerReplayClose"), glass = false)
 }
 
 @Composable
@@ -92,6 +104,11 @@ internal fun SampleReceipt(tour: SampleTour) {
 internal fun SampleExitSheet(vm: AppViewModel, onStart: () -> Unit) {
     val tour = vm.tour ?: return
     val sheet = tour.sheet ?: return
+    if (sheet == TourSheet.PreviewUsage) {
+        val close = LocalCloseDeveloperReplay.current ?: return
+        UsageSharingSheet(onPresented = {}, onChoice = { close() }, onNotNow = close)
+        return
+    }
     val finish = sheet == TourSheet.Invitation
     val dismiss = if (finish) tour::explore else tour::cancelOptions
     val keyboard = LocalSoftwareKeyboardController.current

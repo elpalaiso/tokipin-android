@@ -81,7 +81,9 @@ class MainActivity : ComponentActivity() {
                 var resumes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                 androidx.lifecycle.compose.LifecycleResumeEffect(vm) { resumes++; vm.refreshToday(); onPauseOrDispose { } }
                 val timeDisplay = androidx.compose.runtime.remember(resumes) { com.tokipin.app.ui.TimeDisplay.from(context) }
+                val retainedSettings = if (personal.settingsOpen) androidx.compose.runtime.saveable.rememberSaveableStateHolder() else null
                 CompositionLocalProvider(
+                    com.tokipin.app.ui.LocalCloseDeveloperReplay provides if (personal.replayingOnboarding) personal::closeDeveloperReplay else null,
                     LocalHaptics provides haptics,
                     com.tokipin.app.ui.LocalReduceMotion provides reduceMotion,
                     com.tokipin.app.ui.LocalTimeDisplay provides timeDisplay,
@@ -129,8 +131,11 @@ class MainActivity : ComponentActivity() {
                             vm.chooseUsageSharing(false)
                             showUsageHint = true
                         }
-                    } else if (vm.settingsOpen) SettingsSheet(vm)
-                    else SampleExitSheet(vm, personal::startPersonalJournal)
+                    } else if (vm.settingsOpen) {
+                        if (vm === personal && retainedSettings != null) {
+                            retainedSettings.SaveableStateProvider("personalSettings") { SettingsSheet(vm) }
+                        } else SettingsSheet(vm)
+                    } else SampleExitSheet(vm, personal::startPersonalJournal)
                 }
               }
             }

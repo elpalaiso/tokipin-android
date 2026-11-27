@@ -163,5 +163,6 @@
     <string name="onboarding_invitation">Siap mulai mengisi jurnalmu sendiri?</string>
     <string name="onboarding_next">Berikutnya</string>
     <string name="onboarding_keep_exploring">Terus menjelajah</string>
+    <string name="debug_replay_onboarding">Coba lagi panduan awal</string>
     <string name="terms_b4">Informasi tentang pengelola, kontak, dan tanggal mulai berlaku akan diumumkan saat aplikasi resmi diluncurkan.</string>
 </resources>

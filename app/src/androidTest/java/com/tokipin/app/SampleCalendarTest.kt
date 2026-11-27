@@ -240,6 +240,95 @@ class SampleCalendarTest {
         checkPersonalUntouched()
     }
 
+    @Test fun developerReplayReturnsToThePersonalSettingsWithTheSameDataAndChoice() {
+        val original = """{"version":1,"days":[{"date":"2026-02-20","items":[{"id":"personal","kind":"word","value":"kept"}]}]}"""
+        root.mkdirs()
+        val records = File(root, "records.json").apply { writeText(original) }
+        val draft = Draft(date = "2026-02-18", raw = "private unfinished words")
+        val store = JournalStore(app)
+        store.hasLaunchedBefore = true
+        store.writeDrafts(DraftsFile(drafts = listOf(draft)))
+        val draftFile = File(root, "draft.json")
+        val draftBytes = draftFile.readBytes()
+        val sharing = app.getSharedPreferences("tokipin.usage", Context.MODE_PRIVATE)
+        sharing.edit().putBoolean("enabled", false).commit()
+        val res = AppLocale.resources(app)
+        val launcher = compose.onNodeWithText(res.getString(R.string.debug_replay_onboarding))
+        launch("level_RECORDS")
+        scenario!!.onActivity { it.vm.openSettings() }
+
+        fun openReplay() {
+            launcher.performScrollTo().performClick()
+            waitFor("sampleNext")
+            compose.onNodeWithText(res.getString(R.string.onboarding_emoji_tool)).assertIsDisplayed()
+            compose.onNodeWithTag("usageInvitation").assertDoesNotExist()
+        }
+        fun checkReturned() {
+            compose.waitUntil(8_000) { compose.onAllNodes(hasText(res.getString(R.string.debug_replay_onboarding))).fetchSemanticsNodes().isNotEmpty() }
+            launcher.assertIsDisplayed()
+            scenario!!.onActivity {
+                assertTrue(it.vm.settingsOpen)
+                assertNull(it.vm.sample)
+                assertFalse(it.vm.usagePromptOpen)
+                assertEquals(Screen.Browse, it.vm.screen)
+                assertEquals(com.tokipin.app.ui.AppViewModel.ListEntry.Restore, it.vm.entry)
+                assertEquals("kept", it.vm.journal.itemsOn(LocalDate.parse("2026-02-20")).single().value)
+            }
+            assertEquals(original, records.readText())
+            assertArrayEquals(draftBytes, draftFile.readBytes())
+            assertTrue(store.hasLaunchedBefore)
+            assertEquals(mapOf("enabled" to false), sharing.all)
+        }
+
+        openReplay()
+        compose.onNodeWithTag("sampleNext").performClick()
+        compose.onNodeWithTag("sampleNext").performClick()
+        compose.onNodeWithTag("sampleNext").performClick()
+        waitFor("level_DAILY")
+        compose.onNodeWithTag("developerReplayClose").performClick()
+        checkReturned()
+
+        val choices = if (BuildConfig.USAGE_SHARING_AVAILABLE) listOf("share", "later", "back") else listOf("unconfigured")
+        for (choice in choices) {
+            openReplay()
+            compose.onNodeWithTag("sampleDismiss").performClick()
+            compose.onNodeWithTag("sampleEarlyStart").performClick()
+            compose.onNodeWithTag("onboardingStart").performClick()
+            if (BuildConfig.USAGE_SHARING_AVAILABLE) {
+                waitFor("usageInvitation")
+                when (choice) {
+                    "share" -> compose.onNodeWithText(res.getString(R.string.usage_share)).performClick()
+                    "later" -> compose.onNodeWithTag("usageLater").performClick()
+                    "back" -> InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+                }
+            }
+            checkReturned()
+        }
+    }
+
+    @Test fun developerReplayCanCloseWithActivePersonalDraftAndRetainsTheEditor() {
+        val personal = Draft(date = "2026-02-18", raw = "personal draft")
+        val store = JournalStore(app)
+        store.hasLaunchedBefore = true
+        store.writeDrafts(DraftsFile(personal.date, listOf(personal)))
+        app.getSharedPreferences("tokipin.usage", Context.MODE_PRIVATE).edit().putBoolean("enabled", false).commit()
+        launch("editorTopBar")
+        scenario!!.onActivity { it.vm.openSettings() }
+        val label = AppLocale.resources(app).getString(R.string.debug_replay_onboarding)
+        compose.onNodeWithText(label).performScrollTo().performClick()
+        waitFor("sampleNext")
+        compose.onNodeWithContentDescription("Enter a word").performTextInput("throwaway")
+        compose.onNodeWithTag("developerReplayClose").performClick()
+        compose.waitUntil(8_000) { compose.onAllNodes(hasText(label)).fetchSemanticsNodes().isNotEmpty() }
+        scenario!!.onActivity {
+            assertNull(it.vm.sample)
+            assertTrue(it.vm.settingsOpen)
+            assertEquals(Screen.Editor, it.vm.screen)
+            assertEquals(personal, it.vm.draft)
+        }
+        assertEquals(personal, kotlinx.coroutines.runBlocking { store.loadDrafts() }.drafts.single())
+    }
+
     @Test fun restoredJournalBypassesSampleEvenWithoutLaunchFlag() {
         val file = File(root.apply { mkdirs() }, "records.json")
         val original = """{"version":1,"days":[{"date":"2026-02-20","items":[{"id":"old","kind":"word","value":"kept"}]}]}"""

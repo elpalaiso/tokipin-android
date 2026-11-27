@@ -177,5 +177,6 @@
     <string name="onboarding_invitation">Et si vous commenciez votre propre journal ?</string>
     <string name="onboarding_next">Suivant</string>
     <string name="onboarding_keep_exploring">Continuer à explorer</string>
+    <string name="debug_replay_onboarding">Revoir le parcours de découverte</string>
     <string name="terms_b4">Nous publierons le nom de l’éditeur, ses coordonnées et la date d’entrée en vigueur lors du lancement.</string>
 </resources>

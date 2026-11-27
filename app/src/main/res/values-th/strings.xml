@@ -163,5 +163,6 @@
     <string name="onboarding_invitation">พร้อมเริ่มเก็บบันทึกของตัวเองหรือยัง</string>
     <string name="onboarding_next">ถัดไป</string>
     <string name="onboarding_keep_exploring">สำรวจต่อ</string>
+    <string name="debug_replay_onboarding">ลองขั้นตอนแนะนำแอปอีกครั้ง</string>
     <string name="terms_b4">เราจะแจ้งข้อมูลผู้ให้บริการ ช่องทางติดต่อ และวันที่มีผลบังคับใช้เมื่อแอปเปิดตัวอย่างเป็นทางการ</string>
 </resources>

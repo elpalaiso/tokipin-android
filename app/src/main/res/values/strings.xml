@@ -170,5 +170,6 @@
     <string name="onboarding_invitation">Ready to start a journal of your own?</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_keep_exploring">Keep exploring</string>
+    <string name="debug_replay_onboarding">Replay onboarding</string>
     <string name="terms_b4">We’ll publish the operator’s name, contact details and the effective date at launch.</string>
 </resources>
