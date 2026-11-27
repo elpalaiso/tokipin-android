@@ -62,12 +62,13 @@
     <string name="terms_b3">Tokipin synchronisiert Notizen nicht über ein Konto. Exportiere Notizen, die du behalten möchtest, vor einem Gerätewechsel oder dem Löschen der App-Daten in den Einstellungen als JSON-Datei.</string>
     <string name="terms_h4">Betreiber und Fragen zur Nutzung</string>
     <string name="usage_label">App-Nutzungsstatistiken teilen</string>
-    <string name="usage_prompt">Tokipin mit uns verbessern?</string>
-    <string name="usage_body">Du hilfst uns, das Notieren einfacher zu machen. Wenn du zustimmst, senden wir an Google Analytics, wie oft du die App öffnest und Notizen speicherst. Deine Notizinhalte und Suchbegriffe werden nicht gesendet.</string>
-    <string name="usage_share">Teilen</string>
+    <string name="usage_prompt">Möchtest du Tokipin mit uns verbessern?</string>
+    <string name="usage_body">Nutzungsstatistiken zeigen uns zum Beispiel, wie oft die App geöffnet wird und Notizen gespeichert werden. So können wir nachsehen, wo es hakt, und Funktionen verbessern. Die Inhalte deiner Notizen und deine Suchbegriffe senden wir nicht.</string>
+    <string name="usage_share">Ich bin dabei</string>
     <string name="usage_later">Jetzt nicht</string>
     <string name="privacy_usage_body">Wenn du zustimmst, verarbeitet Google Analytics Daten zu App-Starts und zum Speichern von Notizen sowie eine Kennung der App-Installation und Geräteinformationen. Die Inhalte und Datumsangaben deiner Notizen sowie deine Suchbegriffe werden nicht gesendet. Du kannst das Teilen jederzeit in den Einstellungen deaktivieren.</string>
     <string name="privacy_usage_title">App-Nutzungsstatistiken teilen</string>
+    <string name="usage_later_hint">In den Einstellungen kannst du „App-Nutzungsstatistiken teilen“ jederzeit aktivieren.</string>
     <string name="cd_tool_word">Wort eingeben</string>
     <string name="cd_tool_emoji">Emoji eingeben</string>
     <string name="cd_tool_place">Ort eingeben</string>

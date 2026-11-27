@@ -62,12 +62,13 @@
     <string name="terms_b3">Tokipin tidak menyinkronkan catatan melalui akun. Sebelum mengganti perangkat atau menghapus data aplikasi, ekspor catatan yang ingin disimpan sebagai file JSON di pengaturan.</string>
     <string name="terms_h4">Pengelola dan pertanyaan tentang penggunaan aplikasi</string>
     <string name="usage_label">Bagikan statistik penggunaan aplikasi</string>
-    <string name="usage_prompt">Bantu tingkatkan Tokipin?</string>
-    <string name="usage_body">Anda dapat membantu kami mempermudah pencatatan. Jika Anda setuju, kami mengirim jumlah kali Anda membuka aplikasi dan menyimpan catatan ke Google Analytics. Isi catatan dan kata pencarian Anda tidak dikirim.</string>
-    <string name="usage_share">Bagikan</string>
+    <string name="usage_prompt">Mau ikut membantu kami menyempurnakan Tokipin?</string>
+    <string name="usage_body">Statistik penggunaan, seperti seberapa sering aplikasi dibuka dan catatan disimpan, membantu kami melihat kendala dan memperbaiki fitur. Kami tidak mengirim isi catatan atau kata kunci pencarian Anda.</string>
+    <string name="usage_share">Saya ikut</string>
     <string name="usage_later">Nanti saja</string>
     <string name="privacy_usage_body">Jika Anda setuju, Google Analytics memproses aktivitas membuka aplikasi dan menyimpan catatan, pengenal instalasi aplikasi, serta informasi perangkat. Kami tidak mengirim isi atau tanggal catatan maupun kata pencarian Anda. Anda dapat menonaktifkan berbagi kapan saja di Pengaturan.</string>
     <string name="privacy_usage_title">Bagikan statistik penggunaan aplikasi</string>
+    <string name="usage_later_hint">Anda bisa mengaktifkan “Bagikan statistik penggunaan aplikasi” kapan saja di Pengaturan.</string>
     <string name="cd_tool_word">Masukkan kata</string>
     <string name="cd_tool_emoji">Masukkan emoji</string>
     <string name="cd_tool_place">Masukkan tempat</string>

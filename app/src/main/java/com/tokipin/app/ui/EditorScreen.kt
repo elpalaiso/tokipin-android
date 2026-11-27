@@ -103,7 +103,7 @@ fun EntryKind.textStyle(): TextStyle = when (this) {
 fun EntryKind.editorStyle(large: Boolean): TextStyle = if (large) textStyle() else TkType.title
 
 @Composable
-fun EditorScreen(vm: AppViewModel) {
+fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
     val draft = vm.draft ?: return
     val selection = vm.selection
     val keyboard = LocalSoftwareKeyboardController.current
@@ -164,6 +164,7 @@ fun EditorScreen(vm: AppViewModel) {
     TkBackground {
         Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding().navigationBarsPadding().imePadding()) {
             if (selection != null) SelectionHeader(vm, selection) else EditorHeader(vm, draft.items.isNotEmpty())
+            if (showUsageHint) UsageLaterHint()
 
             val listState = rememberLazyListState()
             val edge = with(LocalDensity.current) { 64.dp.toPx() }

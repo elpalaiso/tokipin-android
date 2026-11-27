@@ -62,12 +62,13 @@
     <string name="terms_b3">Tokipin はアカウント経由で記録を同期しません。機種変更やアプリデータの消去の前に、残したい記録を設定から JSON ファイルに書き出してください。</string>
     <string name="terms_h4">運営者情報と利用に関するお問い合わせ</string>
     <string name="usage_label">アプリの使用統計を共有</string>
-    <string name="usage_prompt">トキピンの改善に協力しませんか？</string>
-    <string name="usage_body">記録をもっと使いやすくするために役立てます。共有をオンにすると、アプリを開いた回数と記録を保存した回数を Google Analytics に送ります。記録の内容や検索語は送りません。</string>
-    <string name="usage_share">共有する</string>
+    <string name="usage_prompt">一緒にトキピンをもっと使いやすくしませんか？</string>
+    <string name="usage_body">アプリを開いた回数や記録を保存した回数などの利用統計を参考に、使いにくいところを見直し、機能を改善します。記録の内容や検索した言葉は送信しません。</string>
+    <string name="usage_share">協力する</string>
     <string name="usage_later">今はしない</string>
     <string name="privacy_usage_body">共有をオンにすると、Google Analytics がアプリの起動と記録の保存に関するイベント、アプリのインストール識別子、端末情報を処理します。記録の内容や日付、検索語は送りません。共有は設定でいつでもオフにできます。</string>
     <string name="privacy_usage_title">アプリの使用統計を共有</string>
+    <string name="usage_later_hint">「設定」の「アプリの使用統計を共有」は、いつでもオンにできます。</string>
     <string name="cd_tool_word">ことばを入力</string>
     <string name="cd_tool_emoji">絵文字を入力</string>
     <string name="cd_tool_place">場所を入力</string>

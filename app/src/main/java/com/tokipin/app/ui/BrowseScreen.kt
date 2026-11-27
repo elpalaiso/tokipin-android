@@ -115,7 +115,7 @@ private val MONTH_TITLE = 38.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BrowseScreen(vm: AppViewModel) {
+fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
     val haptics = LocalHaptics.current
     val reduceMotion = LocalReduceMotion.current
     val scope = rememberCoroutineScope()
@@ -168,6 +168,7 @@ fun BrowseScreen(vm: AppViewModel) {
         CompositionLocalProvider(LocalPinchTargets provides pinchTargets) {
             Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding()) {
                 BrowseTopBar(vm, onDayMenu = { dayMenuFor = vm.selectedDate })
+                if (showUsageHint) UsageLaterHint()
                 Box(
                     Modifier
                         .weight(1f)

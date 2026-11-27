@@ -62,12 +62,13 @@
     <string name="terms_b3">Tokipin खाते के ज़रिए नोट सिंक नहीं करता। डिवाइस बदलने या ऐप का डेटा साफ़ करने से पहले, जो नोट रखना चाहते हैं उन्हें सेटिंग्स से JSON फ़ाइल में एक्सपोर्ट करें।</string>
     <string name="terms_h4">संचालक और उपयोग से जुड़े सवाल</string>
     <string name="usage_label">ऐप के इस्तेमाल के आँकड़े शेयर करें</string>
-    <string name="usage_prompt">Tokipin को बेहतर बनाने में मदद करेंगे?</string>
-    <string name="usage_body">आप नोट रखना आसान बनाने में हमारी मदद कर सकते हैं। अगर आप सहमत हैं, तो हम Google Analytics को बताते हैं कि आप कितनी बार ऐप खोलते हैं और नोट सहेजते हैं। हम आपके नोट की सामग्री या खोज शब्द नहीं भेजते।</string>
-    <string name="usage_share">शेयर करें</string>
+    <string name="usage_prompt">क्या आप Tokipin को बेहतर बनाने में साथ देंगे?</string>
+    <string name="usage_body">ऐप कितनी बार खोला गया और कितनी बार नोट सहेजे गए, ऐसे आँकड़ों से हमें समझने में मदद मिलती है कि कहाँ दिक्कत आ रही है और सुविधाएँ कैसे बेहतर बनाई जा सकती हैं। हम आपके नोट की सामग्री या आपके खोजे हुए शब्द नहीं भेजते।</string>
+    <string name="usage_share">साथ दें</string>
     <string name="usage_later">अभी नहीं</string>
     <string name="privacy_usage_body">अगर आप सहमति देते हैं, तो Google Analytics ऐप खुलने और नोट सहेजे जाने की जानकारी, ऐप इंस्टॉलेशन की पहचान और डिवाइस की जानकारी प्रोसेस करता है। हम आपके नोट की सामग्री, उनकी तारीखें या खोज शब्द नहीं भेजते। आप सेटिंग्स में जाकर इसे कभी भी बंद कर सकते हैं।</string>
     <string name="privacy_usage_title">ऐप के इस्तेमाल के आँकड़े शेयर करें</string>
+    <string name="usage_later_hint">आप सेटिंग्स में जाकर “ऐप के इस्तेमाल के आँकड़े शेयर करें” कभी भी चालू कर सकते हैं।</string>
     <string name="cd_tool_word">शब्द दर्ज करें</string>
     <string name="cd_tool_emoji">इमोजी दर्ज करें</string>
     <string name="cd_tool_place">जगह दर्ज करें</string>

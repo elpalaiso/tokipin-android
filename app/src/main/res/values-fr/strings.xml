@@ -62,12 +62,13 @@
     <string name="terms_b3">Tokipin ne synchronise pas les notes via un compte. Avant de changer d’appareil ou d’effacer les données de l’application, exportez depuis les réglages les notes à conserver dans un fichier JSON.</string>
     <string name="terms_h4">Éditeur et questions sur l’application</string>
     <string name="usage_label">Partager les statistiques d’utilisation de l’app</string>
-    <string name="usage_prompt">Nous aider à améliorer Tokipin ?</string>
-    <string name="usage_body">Vous pouvez nous aider à simplifier la prise de notes. Si vous acceptez, nous indiquons à Google Analytics combien de fois vous ouvrez l’app et enregistrez une note. Le contenu de vos notes et vos recherches ne sont pas transmis.</string>
-    <string name="usage_share">Partager</string>
+    <string name="usage_prompt">Et si on améliorait Tokipin ensemble ?</string>
+    <string name="usage_body">Les statistiques d’utilisation, par exemple le nombre d’ouvertures de l’app et de notes enregistrées, nous aident à repérer ce qui pose problème et à améliorer les fonctionnalités. Nous ne transmettons ni le contenu de vos notes ni vos termes de recherche.</string>
+    <string name="usage_share">Je participe</string>
     <string name="usage_later">Pas maintenant</string>
     <string name="privacy_usage_body">Si vous acceptez, Google Analytics traite les ouvertures de l’app, les enregistrements de notes, un identifiant de l’installation et des informations sur l’appareil. Le contenu et les dates de vos notes ainsi que vos termes de recherche ne sont pas transmis. Vous pouvez désactiver le partage à tout moment dans les réglages.</string>
     <string name="privacy_usage_title">Partager les statistiques d’utilisation de l’app</string>
+    <string name="usage_later_hint">Vous pouvez activer « Partager les statistiques d’utilisation de l’app » à tout moment dans les réglages.</string>
     <string name="cd_tool_word">Saisir un mot</string>
     <string name="cd_tool_emoji">Saisir un émoji</string>
     <string name="cd_tool_place">Saisir un lieu</string>

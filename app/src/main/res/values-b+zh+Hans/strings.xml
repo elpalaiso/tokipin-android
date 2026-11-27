@@ -62,12 +62,13 @@
     <string name="terms_b3">Tokipin 不通过账号同步记录。更换设备或清除应用数据前，请先在设置中将希望保留的记录导出为 JSON 文件。</string>
     <string name="terms_h4">运营方信息与使用咨询</string>
     <string name="usage_label">分享应用使用统计</string>
-    <string name="usage_prompt">愿意一起改进 Tokipin 吗？</string>
-    <string name="usage_body">你可以帮助我们让记录更方便。如果选择分享，我们会向 Google Analytics 发送打开应用和保存记录的次数，不会发送记录内容或搜索词。</string>
-    <string name="usage_share">分享</string>
+    <string name="usage_prompt">愿意和我们一起改进 Tokipin 吗？</string>
+    <string name="usage_body">我们会参考打开应用和保存记录的次数等使用统计，了解哪里用起来不方便，并改进功能。我们不会发送你的记录内容或搜索词。</string>
+    <string name="usage_share">我愿意</string>
     <string name="usage_later">暂不</string>
     <string name="privacy_usage_body">如果你同意，Google Analytics 会处理应用打开和记录保存事件、应用安装标识符和设备信息。我们不会发送记录内容、记录日期或搜索词。你可以随时在设置中关闭分享。</string>
     <string name="privacy_usage_title">分享应用使用统计</string>
+    <string name="usage_later_hint">你随时可以在设置中开启“分享应用使用统计”。</string>
     <string name="cd_tool_word">输入词语</string>
     <string name="cd_tool_emoji">输入表情符号</string>
     <string name="cd_tool_place">输入地点</string>

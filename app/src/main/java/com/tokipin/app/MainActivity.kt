@@ -14,10 +14,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -81,6 +83,15 @@ class MainActivity : ComponentActivity() {
                     com.tokipin.app.ui.LocalReduceMotion provides reduceMotion,
                     com.tokipin.app.ui.LocalTimeDisplay provides timeDisplay,
                 ) {
+                    var showUsageHint by remember(vm.screen, vm.settingsOpen) { mutableStateOf(false) }
+                    val accessibility = LocalAccessibilityManager.current
+                    LaunchedEffect(showUsageHint) {
+                        if (showUsageHint) {
+                            val timeout = accessibility?.calculateRecommendedTimeoutMillis(5_000L, containsText = true) ?: 5_000L
+                            kotlinx.coroutines.delay(timeout)
+                            showUsageHint = false
+                        }
+                    }
                     LaunchedEffect(vm.transientMessage) {
                         vm.transientMessage?.let {
                             Toast.makeText(this@MainActivity, it, Toast.LENGTH_SHORT).show()
@@ -102,13 +113,16 @@ class MainActivity : ComponentActivity() {
                         when (screen) {
                             Screen.Loading -> if (vm.showSkeleton) LoadingSkeleton() else TkBackground {}
                             Screen.LoadFailed -> LoadFailedScreen(onRetry = vm::load)
-                            Screen.Editor -> EditorScreen(vm)
-                            Screen.Browse -> BrowseScreen(vm)
+                            Screen.Editor -> EditorScreen(vm, showUsageHint)
+                            Screen.Browse -> BrowseScreen(vm, showUsageHint)
                             Screen.Search -> SearchScreen(vm)
                         }
                     }
                     if (vm.usagePromptOpen && vm.screen != Screen.Loading && vm.screen != Screen.LoadFailed) {
-                        UsageSharingSheet(vm::usagePromptPresented, vm::chooseUsageSharing)
+                        UsageSharingSheet(vm::usagePromptPresented, vm::chooseUsageSharing) {
+                            vm.chooseUsageSharing(false)
+                            showUsageHint = true
+                        }
                     } else if (vm.settingsOpen) SettingsSheet(vm)
                 }
               }

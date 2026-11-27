@@ -23,6 +23,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,7 +34,7 @@ import com.tokipin.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun UsageSharingSheet(onPresented: () -> Unit, onChoice: (Boolean) -> Unit) {
+internal fun UsageSharingSheet(onPresented: () -> Unit, onChoice: (Boolean) -> Unit, onNotNow: () -> Unit) {
     val sheetShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
     ModalBottomSheet(
         onDismissRequest = { onChoice(false) },
@@ -60,18 +62,30 @@ internal fun UsageSharingSheet(onPresented: () -> Unit, onChoice: (Boolean) -> U
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 if (maxWidth < 280.dp || LocalDensity.current.fontScale >= 1.3f) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ChoiceButton(stringResource(R.string.usage_later), Modifier.fillMaxWidth().testTag("usageLater")) { onChoice(false) }
+                        ChoiceButton(stringResource(R.string.usage_later), Modifier.fillMaxWidth().testTag("usageLater"), onNotNow)
                         ChoiceButton(stringResource(R.string.usage_share), Modifier.fillMaxWidth()) { onChoice(true) }
                     }
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        ChoiceButton(stringResource(R.string.usage_later), Modifier.weight(1f).testTag("usageLater")) { onChoice(false) }
+                        ChoiceButton(stringResource(R.string.usage_later), Modifier.weight(1f).testTag("usageLater"), onNotNow)
                         ChoiceButton(stringResource(R.string.usage_share), Modifier.weight(1f)) { onChoice(true) }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+internal fun UsageLaterHint() {
+    Text(
+        text = stringResource(R.string.usage_later_hint),
+        style = TkType.label,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            .background(Tk.Surface, RoundedCornerShape(12.dp))
+            .semantics { liveRegion = LiveRegionMode.Polite }
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+    )
 }
 
 @Composable

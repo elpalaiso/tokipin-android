@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -49,17 +50,31 @@ class UsageSharingTest {
         assumeTrue(BuildConfig.USAGE_SHARING_AVAILABLE)
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("usageInvitation")).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText(AppLocale.resources(app).getString(R.string.usage_prompt)).assertIsDisplayed()
+        val resources = AppLocale.resources(app)
+        compose.onNodeWithText(resources.getString(R.string.usage_prompt)).assertIsDisplayed()
+        val laterHint = resources.getString(R.string.usage_later_hint)
+        compose.onNodeWithText(laterHint).assertDoesNotExist()
         compose.onNodeWithContentDescription("Enter a word").assertIsNotFocused()
         compose.onNodeWithTag("usageLater").performClick()
         compose.onNodeWithTag("usageInvitation").assertDoesNotExist()
+        compose.onNodeWithText(laterHint).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Enter a word").assertIsFocused()
         scenario!!.onActivity { it.vm.updateRaw("kept draft"); it.vm.leaveEditor(); it.vm.openSettings() }
         compose.onNodeWithTag("usageRow").performScrollTo().assertIsOff()
+        compose.onNodeWithText(laterHint).assertDoesNotExist()
 
-        scenario!!.close()
+        assertTrue(UsageSharing(app).hasChoice)
+        assertFalse(UsageSharing(app).enabled)
+    }
+
+    @Test fun launchAfterDecliningDoesNotRepeatInvitationOrHint() {
+        assumeTrue(BuildConfig.USAGE_SHARING_AVAILABLE)
+        UsageSharing(app).setEnabled(false)
+        app.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit().putBoolean("launched", true).commit()
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        compose.waitForIdle()
+        compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("level_RECORDS")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("usageInvitation").assertDoesNotExist()
+        compose.onNodeWithText(AppLocale.resources(app).getString(R.string.usage_later_hint)).assertDoesNotExist()
         assertFalse(UsageSharing(app).enabled)
     }
 
@@ -74,6 +89,7 @@ class UsageSharingTest {
         compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("usageInvitation")).fetchSemanticsNodes().isNotEmpty() }
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
         compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("usageInvitation")).fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText(AppLocale.resources(app).getString(R.string.usage_later_hint)).assertDoesNotExist()
         scenario!!.onActivity {
             assertEquals(Screen.Browse, it.vm.screen)
             assertEquals("kept", it.vm.journal.itemsOn(java.time.LocalDate.parse("2026-01-01")).single().value)
