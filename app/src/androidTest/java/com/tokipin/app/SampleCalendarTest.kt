@@ -110,19 +110,32 @@ class SampleCalendarTest {
         compose.onNodeWithTag("usageInvitation").assertDoesNotExist()
     }
 
-    @Test fun restoredJournalAndNonActiveDraftBypassSampleEvenWithoutLaunchFlag() {
+    @Test fun restoredJournalBypassesSampleEvenWithoutLaunchFlag() {
         val file = File(root.apply { mkdirs() }, "records.json")
         val original = """{"version":1,"days":[{"date":"2026-02-20","items":[{"id":"old","kind":"word","value":"kept"}]}]}"""
         file.writeText(original)
         launch("level_RECORDS")
         compose.onNodeWithTag("onboardingStart").assertDoesNotExist()
         assertEquals(original, file.readText())
-        scenario!!.close()
-        file.delete()
-        JournalStore(app).apply {
-            hasLaunchedBefore = false
-            writeDrafts(DraftsFile(drafts = listOf(Draft(date = "2026-02-18", raw = "unsent"))))
+    }
+
+    @Test fun restoredActiveDraftOpensItsPersonalEditor() {
+        val restored = Draft(date = "2026-02-18", raw = "unsent")
+        JournalStore(app).writeDrafts(DraftsFile(restored.date, listOf(restored)))
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitUntil(8_000) {
+            var ready = false
+            scenario!!.onActivity { ready = it.vm.screen == Screen.Editor }
+            ready
         }
+        scenario!!.onActivity {
+            assertEquals(restored, it.vm.draft)
+            assertNull(it.vm.sample)
+        }
+    }
+
+    @Test fun restoredNonActiveDraftBypassesSampleAndStaysOnItsOwnDay() {
+        JournalStore(app).writeDrafts(DraftsFile(drafts = listOf(Draft(date = "2026-02-18", raw = "unsent"))))
         launch("level_RECORDS")
         compose.onNodeWithTag("onboardingStart").assertDoesNotExist()
         assertTrue(File(root, "draft.json").readText().contains("unsent"))

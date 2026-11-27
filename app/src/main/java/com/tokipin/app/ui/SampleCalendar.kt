@@ -106,7 +106,7 @@ internal class SampleCalendar(val today: LocalDate) {
     private data class Seed(val word: Int, val place: Int, val emoji: String)
     companion object {
         val choices = listOf("🌱", "☕", "🌧️", "✨")
-        private val filledDays = listOf(1, 3, 5, 7, 9, 11, 13, 17, 19, 21, 23, 25, 27)
+        private val filledDays = listOf(1, 3, 5, 7, 9, 11, 13, 17, 19, 21, 23, 25, 27, 2, 6, 10, 16, 18, 22, 26, 29)
         private val pottery = Seed(R.string.sample_pottery, R.string.sample_studio, "🏺")
         private val seeds = listOf(
             Seed(R.string.sample_walk, R.string.sample_park, "🌿"),

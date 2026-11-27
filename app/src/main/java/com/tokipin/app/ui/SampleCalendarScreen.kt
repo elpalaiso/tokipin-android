@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,21 +60,7 @@ internal fun SampleCalendarScreen(sample: SampleCalendar, onStart: () -> Unit) {
     }
     TkBackground {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().testTag("onboarding")) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (sample.page != SamplePage.Month) {
-                    val destination = if (sample.page == SamplePage.Day) R.string.view_month else R.string.view_daily
-                    RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_to, stringResource(destination)),
-                        sample::back, Modifier.testTag("sampleBack"), glass = false)
-                }
-                Text(stringResource(R.string.onboarding_sample_calendar), style = TkType.body,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp).semantics { heading() })
-                Box(Modifier.weight(1.1f), contentAlignment = Alignment.CenterEnd) {
-                    SampleButton(stringResource(R.string.onboarding_start_journal), onStart, Modifier.testTag("onboardingStart"), filled = true)
-                }
-            }
+            SampleHeader(sample, onStart)
             SampleNavigation(sample)
             when (sample.page) {
                 SamplePage.Month -> key(sample.month) { SampleMonth(sample, Modifier.weight(1f, fill = false)) }
@@ -83,6 +71,42 @@ internal fun SampleCalendarScreen(sample: SampleCalendar, onStart: () -> Unit) {
                 Text(stringResource(R.string.onboarding_emoji_saved), style = TkType.label,
                     modifier = Modifier.testTag("sampleReceipt").padding(horizontal = 20.dp, vertical = 10.dp)
                         .semantics { liveRegion = LiveRegionMode.Polite })
+            }
+        }
+    }
+}
+
+@Composable
+private fun SampleHeader(sample: SampleCalendar, onStart: () -> Unit) {
+    val title = stringResource(R.string.onboarding_sample_calendar)
+    val action = stringResource(R.string.onboarding_start_journal)
+    val measure = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val showBack = sample.page != SamplePage.Month
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        val textWidth = with(density) {
+            (measure.measure(title, TkType.body).size.width + measure.measure(action, TkType.label).size.width).toDp()
+        }
+        val stacked = maxWidth < textWidth + 36.dp + (if (showBack) 48.dp else 0.dp)
+        @Composable fun Title(modifier: Modifier) {
+            Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+                if (showBack) {
+                    val destination = if (sample.page == SamplePage.Day) R.string.view_month else R.string.view_daily
+                    RoundIconButton(R.drawable.ic_back, stringResource(R.string.cd_back_to, stringResource(destination)),
+                        sample::back, Modifier.testTag("sampleBack"), glass = false)
+                }
+                Text(title, style = TkType.body, modifier = Modifier.semantics { heading() })
+            }
+        }
+        if (stacked) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Title(Modifier)
+                SampleButton(action, onStart, Modifier.fillMaxWidth().testTag("onboardingStart"), filled = true)
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Title(Modifier.weight(1f))
+                SampleButton(action, onStart, Modifier.testTag("onboardingStart"), filled = true)
             }
         }
     }
@@ -168,26 +192,24 @@ private fun SampleDay(sample: SampleCalendar) {
         if (entries.isEmpty()) Text(stringResource(R.string.day_empty), style = TkType.body)
         entries.forEach { DailyItem(it, highlighted = false) }
         Spacer(Modifier.height(30.dp))
-        if (sample.canPractice()) {
-            SampleButton(stringResource(R.string.onboarding_practice_emoji), sample::startPractice, Modifier.testTag("samplePractice"),
-                outlined = sample.showGuide)
-        }
+        SampleButton(stringResource(R.string.onboarding_practice_emoji), sample::startPractice, Modifier.testTag("samplePractice"),
+            outlined = sample.showGuide, enabled = sample.canPractice())
     }
 }
 
 @Composable
 private fun SamplePractice(sample: SampleCalendar) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp)) {
-        if (sample.showGuide) {
-            SampleGuide(stringResource(if (sample.choice == null) R.string.onboarding_choose_emoji else R.string.onboarding_save_guide),
-                sample::dismissGuide)
+        if (sample.showGuide && sample.choice == null) {
+            SampleGuide(stringResource(R.string.onboarding_choose_emoji), sample::dismissGuide)
         }
         Spacer(Modifier.height(20.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (emoji in SampleCalendar.choices) {
                 val active = sample.choice == emoji
+                val outlined = active || (sample.showGuide && sample.choice == null && emoji == SampleCalendar.choices.first())
                 Box(Modifier.weight(1f).heightIn(min = 60.dp).clip(sampleShape).background(Tk.SheetRow)
-                    .border(if (active) 2.dp else 1.dp, if (active) sampleAccent else Tk.CardBorder, sampleShape)
+                    .border(if (outlined) 2.dp else 1.dp, if (outlined) sampleAccent else Tk.CardBorder, sampleShape)
                     .clickable(role = Role.RadioButton) { sample.select(emoji) }.semantics { selected = active }
                     .testTag("sampleChip_$emoji"), contentAlignment = Alignment.Center) {
                     Text(emoji, fontSize = 24.sp, modifier = Modifier.padding(vertical = 6.dp))
@@ -197,12 +219,18 @@ private fun SamplePractice(sample: SampleCalendar) {
         Spacer(Modifier.height(26.dp))
         val enabled = sample.choice != null
         val saveLabel = stringResource(R.string.cd_save_record)
-        Box(Modifier.align(Alignment.End).size(48.dp).clip(sampleShape)
-            .background(if (enabled) sampleAccent else Tk.SheetRow)
-            .clickable(enabled = enabled, role = Role.Button, onClick = sample::savePractice)
-            .testTag("sampleSave").semantics { contentDescription = saveLabel },
-            contentAlignment = Alignment.Center) {
-            TkIcon(R.drawable.ic_check, tint = if (enabled) onSampleAccent else Tk.Muted)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            if (enabled && sample.showGuide) {
+                SampleGuide(stringResource(R.string.onboarding_save_guide), sample::dismissGuide, Modifier.weight(1f))
+                Spacer(Modifier.width(10.dp))
+            }
+            Box(Modifier.size(48.dp).clip(sampleShape)
+                .background(if (enabled) sampleAccent else Tk.SheetRow)
+                .clickable(enabled = enabled, role = Role.Button, onClick = sample::savePractice)
+                .testTag("sampleSave").semantics { contentDescription = saveLabel },
+                contentAlignment = Alignment.Center) {
+                TkIcon(R.drawable.ic_check, tint = if (enabled) onSampleAccent else Tk.Muted)
+            }
         }
     }
 }
@@ -219,11 +247,14 @@ private fun SampleGuide(text: String, dismiss: () -> Unit, modifier: Modifier = 
 }
 
 @Composable
-private fun SampleButton(text: String, click: () -> Unit, modifier: Modifier = Modifier, filled: Boolean = false, outlined: Boolean = false) {
+private fun SampleButton(
+    text: String, click: () -> Unit, modifier: Modifier = Modifier, filled: Boolean = false,
+    outlined: Boolean = false, enabled: Boolean = true,
+) {
     Box(modifier.heightIn(min = 48.dp).clip(sampleShape)
         .background(if (filled) sampleAccent else Tk.SheetRow)
         .then(if (outlined) Modifier.border(2.dp, sampleAccent, sampleShape) else Modifier)
-        .clickable(role = Role.Button, onClick = click).padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-        Text(text, style = TkType.label.copy(color = if (filled) onSampleAccent else Tk.Primary), textAlign = TextAlign.Center)
+        .clickable(enabled = enabled, role = Role.Button, onClick = click).padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Text(text, style = TkType.label.copy(color = if (!enabled) Tk.Muted else if (filled) onSampleAccent else Tk.Primary), textAlign = TextAlign.Center)
     }
 }
