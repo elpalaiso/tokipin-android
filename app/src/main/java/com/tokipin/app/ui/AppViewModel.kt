@@ -615,7 +615,10 @@ class AppViewModel private constructor(
 
     /** A 기록한 날 page leaving the screen (a layout change) keeps its reading position too. */
     fun rememberRecordedReading(month: YearMonth, topCard: LocalDate?, offset: Int) {
-        if (month == recordedMonth) recordedRestore = RecordedRestore(month, topCard, offset)
+        // Only when the page goes because the layout changed (기록한 날 still shown); opening a day
+        // in one column has already kept its own position (openDayFromRecords).
+        val shown = if (twoPane) calendarLevel else level
+        if (month == recordedMonth && shown == Level.RECORDS) recordedRestore = RecordedRestore(month, topCard, offset)
     }
 
     /** Runs one recorded-days action and returns its events for the single haptic decision. */
