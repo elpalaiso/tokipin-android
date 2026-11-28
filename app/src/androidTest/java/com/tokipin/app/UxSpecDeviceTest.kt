@@ -58,7 +58,7 @@ class UxSpecDeviceTest {
 
     private val spec by lazy {
         Json.parseToJsonElement(
-            InstrumentationRegistry.getInstrumentation().context.assets.open("Tokipin-Native-UX-v0.3.json").reader().readText(),
+            InstrumentationRegistry.getInstrumentation().context.assets.open("Tokipin-Native-UX-v0.4.json").reader().readText(),
         ).jsonObject
     }
     private val swipeSpec get() = spec["swipe"]!!.jsonObject

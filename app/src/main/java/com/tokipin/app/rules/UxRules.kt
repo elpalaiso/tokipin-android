@@ -14,7 +14,7 @@ import kotlin.math.abs
  * vibration) only converts its events into these calls.
  */
 object UxSpec {
-    const val VERSION = "0.3"
+    const val VERSION = "0.4"
 
     // Swipe (W = usable width of the gesture area, in dp)
     const val AXIS_LOCK_RATIO = 1.3f

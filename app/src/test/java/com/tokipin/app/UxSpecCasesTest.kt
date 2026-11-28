@@ -42,13 +42,13 @@ import java.time.YearMonth
 import java.util.Locale
 
 /**
- * Runs every case of the shared Tokipin-Native-UX-v0.3.json (the same file the iOS tests read)
+ * Runs every case of the shared Tokipin-Native-UX-v0.4.json (the same file the iOS tests read)
  * against the Android rules. Cases that need a running UI are listed in [ON_DEVICE] and run in
  * androidTest (UxSpecDeviceTest); a case missing from both fails this test.
  */
 class UxSpecCasesTest {
     private val spec: JsonObject = Json.parseToJsonElement(
-        javaClass.classLoader!!.getResource("Tokipin-Native-UX-v0.3.json")!!.readText(),
+        javaClass.classLoader!!.getResource("Tokipin-Native-UX-v0.4.json")!!.readText(),
     ).jsonObject
 
     private val cases: List<JsonObject> = spec["tests"]!!.jsonArray.map { it.jsonObject }
@@ -86,14 +86,17 @@ class UxSpecCasesTest {
         var ran = 0
         for (case in cases) {
             val id = case.s("id")
-            if (id in ON_DEVICE || id in OTHER_PLATFORM) continue
+            if (id in ON_DEVICE || id in OTHER_PLATFORM || case.s("group") in ADAPTIVE_GROUPS) continue
             ran++
             runCatching { run(case) }.onFailure { failures += "$id: ${it.message}" }
         }
         assertTrue("failed cases:\n" + failures.joinToString("\n"), failures.isEmpty())
         val unknown = (ON_DEVICE + OTHER_PLATFORM) - cases.map { it.s("id") }.toSet()
         assertTrue("stale case ids: $unknown", unknown.isEmpty())
-        println("UX v${UxSpec.VERSION}: $ran cases on JVM, ${ON_DEVICE.size} on device, ${OTHER_PLATFORM.size} iOS-only, ${cases.size} total")
+        val adaptive = cases.count { it.s("group") in ADAPTIVE_GROUPS }
+        // Every id runs somewhere: here, AdaptiveSpecTest (v0.4 groups), on device, or on iOS.
+        assertEquals("cases not accounted for", cases.size, ran + adaptive + ON_DEVICE.size + OTHER_PLATFORM.size)
+        println("UX v${UxSpec.VERSION}: $ran cases here, $adaptive in AdaptiveSpecTest, ${ON_DEVICE.size} on device, ${OTHER_PLATFORM.size} iOS-only, ${cases.size} total")
     }
 
     private fun run(case: JsonObject) {
@@ -452,5 +455,7 @@ class UxSpecCasesTest {
             "recordedMonths.detail.restore",
         )
         val OTHER_PLATFORM = setOf("emoji.keyboardUnavailable")
+        /** v0.4 groups, run by AdaptiveSpecTest against the port of adaptive-layout.cjs. */
+        val ADAPTIVE_GROUPS = setOf("paneLayout", "paneRender", "paneNavigation", "paneTransition", "paneChrome", "yearColumns")
     }
 }
