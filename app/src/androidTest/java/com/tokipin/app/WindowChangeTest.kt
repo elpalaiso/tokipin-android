@@ -1,0 +1,221 @@
+package com.tokipin.app
+
+import android.content.Context
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextInputSelection
+import androidx.compose.ui.text.TextRange
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.tokipin.app.ui.Screen
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+import java.time.LocalDate
+
+/**
+ * UX v0.4 §5, the recreation path: window changes keep the activity ([WindowResizeTest]), but a
+ * language or font-size change still recreates it, and everything the person was in the middle of
+ * must come back as it was. `ActivityScenario.recreate()` is that destroy/recreate.
+ */
+@RunWith(AndroidJUnit4::class)
+class WindowChangeTest {
+    @get:Rule val compose = createEmptyComposeRule()
+    private var scenario: ActivityScenario<MainActivity>? = null
+    private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    private fun item(kind: String, value: String, id: String) = """{"id":"$id","kind":"$kind","value":"$value"}"""
+    /** One day in each month from 2025-01 to 2026-10, so the month view has months to scroll through. */
+    private fun monthly() = (0 until 22).joinToString(",") { i ->
+        val date = LocalDate.of(2025, 1, 10).plusMonths(i.toLong())
+        """{"date":"$date","updatedAt":"${date}T10:00:00Z","items":[${item("word", "달$i", "m$i")}]}"""
+    }
+
+    private val records = """
+        {"version":1,"days":[
+          {"date":"2026-11-25","updatedAt":"2026-11-25T10:00:00Z","items":[${item("word", "살구잼", "f")},${item("place", "연남동", "g")}]},
+          {"date":"2026-11-26","updatedAt":"2026-11-26T10:00:00Z","items":[${item("word", "귤", "h")}]},
+          ${monthly()}
+        ]}
+    """.trimIndent()
+
+    @Before fun launch() {
+        com.tokipin.app.rules.AppClock.override = LocalDate.of(2026, 11, 27)
+        File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(records)
+        context.getSharedPreferences("tokipin.settings", Context.MODE_PRIVATE).edit().putBoolean("launched", true).commit()
+        TestLocale.set("ko")
+        UsageSharing(context).markPresented()
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitUntil(5_000) { exists("level_RECORDS") }
+    }
+
+    @After fun close() {
+        scenario?.close()
+        com.tokipin.app.rules.AppClock.override = null
+    }
+
+    private fun exists(tag: String) = compose.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+    private fun existsText(text: String) = compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
+
+    private fun recreate() {
+        scenario!!.recreate()
+        compose.waitForIdle()
+    }
+
+    private val composer get() = compose.onNode(hasSetTextAction() and !hasTestTag("searchField"))
+
+    private fun imeVisible(): Boolean {
+        var visible = false
+        scenario!!.onActivity {
+            visible = androidx.core.view.ViewCompat.getRootWindowInsets(it.window.decorView)
+                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+        }
+        return visible
+    }
+
+    /** Puts the soft keyboard away the way a person does: system back while it is up. */
+    private fun putKeyboardAway() {
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("input keyevent KEYCODE_BACK").close()
+        compose.waitUntil(3_000) { !imeVisible() }
+    }
+
+    @Test fun keyboardUpStaysUpAndPutAwayStaysDown() {
+        compose.onNodeWithTag("addRecord").performClick()
+        compose.waitUntil(5_000) { imeVisible() }
+        recreate()
+        compose.waitUntil(5_000) { imeVisible() }
+        putKeyboardAway()
+        recreate()
+        Thread.sleep(1_000)
+        compose.waitForIdle()
+        assertFalse("keyboard came back after recreation", imeVisible())
+        scenario!!.onActivity { assertEquals(Screen.Editor, it.vm.screen) }
+    }
+
+    @Test fun searchCursorAndPutAwayKeyboardSurvive() {
+        scenario!!.onActivity { it.vm.openSearch() }
+        compose.waitUntil(5_000) { imeVisible() }
+        val field = compose.onNodeWithTag("searchField")
+        field.performTextInput("살구")
+        field.performTextInputSelection(TextRange(1))
+        recreate()
+        compose.waitUntil(5_000) { imeVisible() }
+        assertEquals(TextRange(1), compose.onNodeWithTag("searchField").fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange])
+        putKeyboardAway()
+        recreate()
+        Thread.sleep(1_000)
+        compose.waitForIdle()
+        assertFalse("keyboard came back after recreation", imeVisible())
+        assertEquals("살구", compose.onNodeWithTag("searchField").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
+    }
+
+    @Test fun typedTextAndCursorSurviveAndTheFieldKeepsFocus() {
+        compose.onNodeWithTag("addRecord").performClick()
+        compose.waitUntil(3_000) { runCatching { composer.assertIsFocused() }.isSuccess }
+        composer.performTextInput("봄바람")
+        composer.performTextInputSelection(TextRange(1))
+        recreate()
+        compose.waitUntil(3_000) { runCatching { composer.assertIsFocused() }.isSuccess }
+        val node = composer.fetchSemanticsNode()
+        assertEquals("봄바람", node.config[SemanticsProperties.EditableText].text)
+        assertEquals(TextRange(1), node.config[SemanticsProperties.TextSelectionRange])
+        scenario!!.onActivity { assertEquals(Screen.Editor, it.vm.screen) }
+    }
+
+    @Test fun editorDatePickerStaysOpen() {
+        compose.onNodeWithTag("addRecord").performClick()
+        compose.waitUntil(3_000) { exists("editorDate") }
+        compose.onNodeWithTag("editorDate").performClick()
+        compose.waitUntil(3_000) { exists("datePickerOk") }
+        recreate()
+        compose.waitUntil(3_000) { exists("datePickerOk") }
+    }
+
+    @Test fun viewMenuStaysOpen() {
+        compose.onNodeWithContentDescription("탐색 보기").performClick()
+        compose.waitUntil(3_000) { exists("menu_YEAR") }
+        recreate()
+        compose.waitUntil(3_000) { exists("menu_YEAR") }
+    }
+
+    @Test fun dayDeleteConfirmationStaysOpen() {
+        scenario!!.onActivity { it.vm.openDay(LocalDate.of(2026, 11, 25)) }
+        compose.waitUntil(3_000) { exists("level_DAILY") }
+        compose.onNodeWithContentDescription("이날 메뉴").performClick()
+        compose.waitUntil(3_000) { exists("deleteDay") }
+        recreate()
+        compose.waitUntil(3_000) { exists("deleteDay") }
+    }
+
+    @Test fun searchQueryResultsAndHighlightSurvive() {
+        scenario!!.onActivity { it.vm.openSearch() }
+        compose.waitUntil(3_000) { exists("searchField") }
+        compose.onNodeWithTag("searchField").performTextInput("살구")
+        compose.waitUntil(3_000) { existsText("살구잼") }
+        recreate()
+        compose.waitUntil(3_000) { existsText("살구잼") }
+        scenario!!.onActivity { assertEquals("살구", it.vm.searchQuery) }
+        compose.onNode(hasText("살구잼") and !hasTestTag("searchField")).performClick()
+        compose.waitUntil(3_000) { exists("searchReturn") }
+        recreate()
+        compose.waitUntil(3_000) { exists("searchReturn") }
+        scenario!!.onActivity {
+            assertEquals(LocalDate.of(2026, 11, 25), it.vm.selectedDate)
+            assertTrue(it.vm.openedFromSearch)
+        }
+    }
+
+    @Test fun undoAndSettingsSurviveOnScreen() {
+        scenario!!.onActivity { it.vm.deleteDay(LocalDate.of(2026, 11, 26)) }
+        compose.waitUntil(3_000) { existsText("실행 취소") }
+        recreate()
+        compose.waitUntil(3_000) { existsText("실행 취소") }
+        compose.onNode(hasText("실행 취소")).assertIsDisplayed()
+        scenario!!.onActivity { it.vm.openSettings() }
+        compose.waitUntil(3_000) { exists("feedbackRow") }
+        recreate()
+        compose.waitUntil(3_000) { exists("feedbackRow") }
+        compose.onNodeWithTag("feedbackRow").assertIsDisplayed()
+    }
+
+    @Test fun monthScrollPositionSurvives() {
+        scenario!!.onActivity { it.vm.changeLevel(com.tokipin.app.rules.Level.MONTH) }
+        compose.waitUntil(3_000) { exists("level_MONTH") }
+        compose.onNodeWithTag("calendarList").performScrollToNode(hasTestTag("month_2025-03"))
+        compose.waitForIdle()
+        compose.onNodeWithTag("month_2025-03").assertIsDisplayed()
+        recreate()
+        compose.waitUntil(3_000) { exists("level_MONTH") }
+        compose.waitForIdle()
+        compose.onNodeWithTag("month_2025-03").assertIsDisplayed()
+        assertTrue("jumped back to the selected date", !exists("month_2026-11"))
+    }
+
+    @Test fun keyboardRaisedByAToolAfterThePencilComesBack() {
+        scenario!!.onActivity { it.vm.openDay(LocalDate.of(2026, 11, 26)) }
+        compose.waitUntil(3_000) { exists("editDay") }
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitUntil(3_000) { exists("editorTopBar") }
+        compose.onNodeWithContentDescription("단어").performClick()
+        compose.waitUntil(5_000) { imeVisible() }
+        recreate()
+        compose.waitUntil(5_000) { imeVisible() }
+    }
+}

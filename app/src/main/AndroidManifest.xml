@@ -28,7 +28,10 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation"
             android:windowSoftInputMode="adjustResize">
+            <!-- UX v0.4 §5: window changes (rotation, fold/unfold, resize, split screen, a display
+                 with another density, keyboard attach) keep this activity; Compose recomposes. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

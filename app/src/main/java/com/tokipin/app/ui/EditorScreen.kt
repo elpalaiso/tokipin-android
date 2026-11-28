@@ -60,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,7 +116,8 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
     val focus = remember { FocusRequester() }
     var revealedId by remember { mutableStateOf<String?>(null) }
     var emojiBlocked by remember { mutableStateOf(false) }
-    var field by remember(draft.editId, draft.kind) {
+    // Saveable so a rotation, fold/unfold or resize (activity recreation) keeps the cursor (UX v0.4 §5).
+    var field by rememberSaveable(draft.editId, draft.kind, stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(draft.raw, TextRange(draft.raw.length)))
     }
     if (field.text != draft.raw && field.composition == null) field = TextFieldValue(draft.raw, TextRange(draft.raw.length))
@@ -155,7 +157,12 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
     }
 
     // "+" opens with the keyboard; the pencil opens with it closed until a fragment or tool is tapped.
-    var allowFocus by remember { mutableStateOf(vm.editorAutoFocus) }
+    // Saveable: a fragment or tool tapped after the pencil must still allow focus after recreation.
+    var allowFocus by rememberSaveable { mutableStateOf(vm.editorAutoFocus) }
+    // Recreated (language or font size change) with the keyboard down: skip the first automatic
+    // focus once, so the keyboard stays down. A fresh editor reads false and behaves as before.
+    val keyboardWasDown = rememberKeyboardWasDown()
+    var skipFocusOnce by remember { mutableStateOf(keyboardWasDown) }
     val tour = vm.tour
     val cue = tour?.takeIf { it.guided && selection == null }?.editorCue(draft)
     val imeHeight = WindowInsets.ime.getBottom(LocalDensity.current)
@@ -189,6 +196,7 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
             if (tour != null) listState.scrollToItem(editingIndex)
             // The tool's own field is laid out on the next frame; focus it then.
             androidx.compose.runtime.withFrameNanos { }
+            if (skipFocusOnce) { skipFocusOnce = false; return@LaunchedEffect }
             focusField()
         }
     }
@@ -319,7 +327,7 @@ private fun EditorHeader(vm: AppViewModel, hasItems: Boolean, compactTour: Boole
     val draft = vm.draft ?: return
     // v0.3: the draft's whole date ("2026.11.25 ⌄") on the screen's centre line, one button with
     // its chevron; choosing a date in the picker moves the draft only, ✓ saves.
-    var picking by remember { mutableStateOf(false) }
+    var picking by rememberSaveable { mutableStateOf(false) }
     val dateLabel = com.tokipin.app.rules.DateHeaders.editor(draft.localDate)
     val spoken = DateWords.spoken(draft.localDate)
     val changeDate = stringResource(R.string.cd_change_date)
