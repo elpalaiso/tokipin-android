@@ -56,6 +56,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -120,7 +121,8 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
     val haptics = LocalHaptics.current
     val reduceMotion = LocalReduceMotion.current
     val scope = rememberCoroutineScope()
-    var dayMenuFor by remember { mutableStateOf<LocalDate?>(null) }
+    // Open menus survive activity recreation (rotation, fold/unfold, resize; UX v0.4 §5).
+    var dayMenuFor by rememberSaveable { mutableStateOf<LocalDate?>(null) }
     val pinchTargets = remember { PinchTargets() }
     // Live pinch: the content scales around the first finger midpoint; on release the next view
     // eases in from that same point (or settles back on cancel).
@@ -257,7 +259,7 @@ private fun Level.viewName(): Int = when (this) {
 @Composable
 private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
     val haptics = LocalHaptics.current
-    var menuOpen by remember { mutableStateOf(false) }
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
     // v0.3: one date on the screen's centre line. Day: the selected date's year.month; 기록한 날:
     // the committed month's year (it changes only when a month settles); month calendar: the year
     // in view; year calendar: none (each block carries its own year).
