@@ -51,6 +51,8 @@ class PaneDeviceTest {
         com.tokipin.app.rules.AppClock.override = LocalDate.of(2026, 11, 27)
         File(context.filesDir, "tokipin").apply { deleteRecursively(); mkdirs() }.resolve("records.json").writeText(
             """{"version":1,"days":[
+              {"date":"2025-12-05","updatedAt":"2025-12-05T10:00:00Z","items":[${item("word", "눈", "s")}]},
+              {"date":"2026-10-03","updatedAt":"2026-10-03T10:00:00Z","items":[${item("word", "가을", "o")}]},
               {"date":"2026-11-12","updatedAt":"2026-11-12T10:00:00Z","items":[${item("word", "단풍", "a")}]},
               {"date":"2026-11-25","updatedAt":"2026-11-25T10:00:00Z","items":[${item("word", "살구잼", "f")},${item("place", "연남동", "g")}]}
             ]}""",
@@ -167,5 +169,51 @@ class PaneDeviceTest {
         InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("input keyevent KEYCODE_BACK").close()
         compose.waitUntil(3_000) { existsIn("calendarPane", "level_YEAR") }
         assertTrue(existsIn("dayPane", "level_DAILY"))
+    }
+
+    /** §3 (7efb087): closing the editor in two panes leaves the calendar pane's committed month. */
+    @Test fun closingTheEditorKeepsTheCalendarsMonth() {
+        vm { it.recorded { tap(java.time.YearMonth.of(2026, 10)) } }
+        compose.waitForIdle()
+        vm { assertEquals(java.time.YearMonth.of(2026, 10), it.recordedMonth) }
+        vm { it.openDay(LocalDate.of(2026, 11, 25)) }
+        compose.waitUntil(3_000) { existsIn("dayPane", "editDay") }
+        compose.onNode(inPane("dayPane", hasTestTag("editDay"))).performClick()
+        compose.waitUntil(3_000) { existsIn("dayPane", "editorTopBar") }
+        vm { it.leaveEditor() }
+        compose.waitForIdle()
+        vm { assertEquals("the calendar pane's month stays", java.time.YearMonth.of(2026, 10), it.recordedMonth) }
+    }
+
+    /** §3 (7efb087): opening a search result puts the keyboard away; the list stays. */
+    @Test fun openingASearchResultPutsTheKeyboardAway() {
+        vm { it.openSearch() }
+        compose.waitUntil(5_000) { imeVisible() }
+        compose.onNode(hasTestTag("searchField")).performTextInput("살구")
+        compose.waitUntil(3_000) { compose.onAllNodes(inPane("calendarPane", hasText("살구잼") and !hasTestTag("searchField"))).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(inPane("calendarPane", hasText("살구잼") and !hasTestTag("searchField"))).performClick()
+        compose.waitUntil(3_000) { !imeVisible() }
+        assertTrue(existsIn("calendarPane", "searchField"))
+    }
+
+    /** §4 (7efb087): a day-pane step to a date already visible in the month view leaves it in place. */
+    @Test fun followingLeavesAVisibleDateAlone() {
+        vm { it.changeLevel(Level.MONTH) }
+        compose.waitUntil(3_000) { existsIn("calendarPane", "level_MONTH") }
+        compose.onNode(inPane("calendarPane", hasTestTag("day_2026-11-12"))).performClick()
+        compose.waitForIdle()
+        val before = compose.onNode(inPane("calendarPane", hasTestTag("day_2026-11-12"))).fetchSemanticsNode().boundsInRoot
+        vm { it.selectDay(LocalDate.of(2026, 11, 13)) }
+        compose.waitForIdle()
+        val after = compose.onNode(inPane("calendarPane", hasTestTag("day_2026-11-12"))).fetchSemanticsNode().boundsInRoot
+        assertEquals(before.top, after.top, 1f)
+    }
+
+    private fun imeVisible(): Boolean {
+        var visible = false
+        scenario!!.onActivity {
+            visible = androidx.core.view.ViewCompat.getRootWindowInsets(it.window.decorView)?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+        }
+        return visible
     }
 }

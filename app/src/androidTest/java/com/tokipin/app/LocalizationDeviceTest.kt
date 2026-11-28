@@ -116,7 +116,9 @@ class LocalizationDeviceTest {
         TestLocale.set("ko")
         UsageSharing(context).markPresented() // Existing installation with optional sharing off.
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        compose.waitUntil(5_000) { runCatching { compose.onNodeWithTag("level_RECORDS").fetchSemanticsNode() }.isSuccess }
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("level_RECORDS")).fetchSemanticsNodes().isNotEmpty() }
+        // A one-column flow (the language change recreates the activity); two panes are PaneDeviceTest's.
+        org.junit.Assume.assumeFalse("two-pane window", compose.onAllNodes(androidx.compose.ui.test.hasTestTag("calendarPane")).fetchSemanticsNodes().isNotEmpty())
         compose.onNodeWithTag("addRecord").performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription("단어 입력").performTextInput("파도")

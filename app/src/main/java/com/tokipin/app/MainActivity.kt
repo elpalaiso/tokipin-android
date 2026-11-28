@@ -140,7 +140,8 @@ class MainActivity : ComponentActivity() {
                                         // The search list takes the calendar pane while searching and while
                                         // a result opened from it is highlighted in the day pane.
                                         if (vm.screen == Screen.Search || vm.openedFromSearch) search() else BrowseScreen(vm, showUsageHint)
-                                    else -> if (vm.screen == Screen.Editor) editor() else BrowseScreen(vm, showUsageHint)
+                                    // The usage hint shows once, in the calendar pane.
+                                    else -> if (vm.screen == Screen.Editor) editor() else BrowseScreen(vm, false)
                                 }
                             },
                         )

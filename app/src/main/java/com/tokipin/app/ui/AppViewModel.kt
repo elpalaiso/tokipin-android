@@ -80,7 +80,16 @@ class AppViewModel private constructor(
      * is the one the single column uses; here `level == DAILY` only means the day pane was used
      * last, and the calendar pane shows [calendarLevel].
      */
-    var twoPane by mutableStateOf(false); internal set
+    private val twoPaneState = mutableStateOf(false)
+    var twoPane: Boolean
+        get() = twoPaneState.value
+        internal set(value) {
+            if (value == twoPaneState.value) return
+            twoPaneState.value = value
+            // The views are composed again in their new place: put each list back where the person
+            // left it (§5 "각 보기의 스크롤 위치"), not on the selected date.
+            entry = ListEntry.Restore
+        }
 
     /** The level the calendar pane shows: [level], or the level a day was opened from. */
     val calendarLevel: Level get() = com.tokipin.app.rules.Adaptive.calendarLevel(level, dailyReturnLevel)
@@ -105,14 +114,25 @@ class AppViewModel private constructor(
      */
     private fun followInCalendar() {
         val month = YearMonth.from(selectedDate)
-        visibleMonth = month
-        if (calendarLevel == Level.RECORDS && month in visibleRecordMonths && month != recordedMonth) {
-            recordedMonth = month
-            recordedPreview = null
+        if (calendarLevel == Level.RECORDS) {
+            if (month != recordedMonth) {
+                // Another month only when it is listed; that page then shows the date's card.
+                if (month in visibleRecordMonths) {
+                    recordedMonth = month
+                    recordedPreview = null
+                    entry = ListEntry.Anchor(null)
+                    focusRequest++
+                }
+                return
+            }
+            // Same month, no card for the date: the reading position stays.
+            if (journal.itemsOn(selectedDate).isEmpty()) return
         }
-        entry = ListEntry.Anchor(null)
-        focusRequest++
+        followRequest++
     }
+
+    /** Incremented to ask the calendar pane to bring [selectedDate] into view only if it is hidden. */
+    var followRequest by mutableStateOf(0); private set
 
     // Search
     var searchQuery by mutableStateOf(""); private set
@@ -446,6 +466,19 @@ class AppViewModel private constructor(
         saveFailed = false
         selection = null
         clearUndo()
+        if (twoPane) {
+            // Two panes (§3, 7efb087): the calendar pane keeps its level, committed month and scroll.
+            // Saving uses the day pane (level DAILY, the calendar level kept as the return level); it
+            // moves only by following a changed date, or when its month left the list (reconcile).
+            val before = selectedDate
+            if (saved || journal.itemsOn(date).isNotEmpty() || level == Level.DAILY) selectedDate = date
+            screen = Screen.Browse
+            if (saved) useDayPane()
+            if (selectedDate != before) followInCalendar()
+            reconcileRecorded()
+            if (tour != null && saved) tour.didSave(journal.itemsOn(date).isNotEmpty())
+            return
+        }
         if (saved || journal.itemsOn(date).isNotEmpty() || level == Level.DAILY) selectedDate = date
         recordedMonth = listedMonth(YearMonth.from(selectedDate))
         screen = Screen.Browse
@@ -569,7 +602,8 @@ class AppViewModel private constructor(
         if (months.committed != recordedMonth) {
             recordedMonth = months.committed
             recordedPreview = null
-            if (level == Level.RECORDS) { entry = ListEntry.Anchor(null); focusRequest++ }
+            // Two panes: the calendar pane may show 기록한 날 while the day pane was used last.
+            if ((if (twoPane) calendarLevel else level) == Level.RECORDS) { entry = ListEntry.Anchor(null); focusRequest++ }
         }
     }
     var recordedPreview by mutableStateOf<YearMonth?>(null); private set
@@ -578,6 +612,11 @@ class AppViewModel private constructor(
     data class RecordedRestore(val month: YearMonth, val topCard: LocalDate?, val offset: Int)
     var recordedRestore: RecordedRestore? = null
         private set
+
+    /** A 기록한 날 page leaving the screen (a layout change) keeps its reading position too. */
+    fun rememberRecordedReading(month: YearMonth, topCard: LocalDate?, offset: Int) {
+        if (month == recordedMonth) recordedRestore = RecordedRestore(month, topCard, offset)
+    }
 
     /** Runs one recorded-days action and returns its events for the single haptic decision. */
     fun recorded(action: com.tokipin.app.rules.RecordedMonths.() -> List<com.tokipin.app.rules.NavEvent>): List<com.tokipin.app.rules.NavEvent> {

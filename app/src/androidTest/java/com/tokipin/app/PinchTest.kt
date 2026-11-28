@@ -48,6 +48,8 @@ class PinchTest {
         UsageSharing(context).markPresented() // Existing installation with optional sharing off.
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(5_000) { level("RECORDS").exists() }
+        // One-column pinch; the calendar pane's pinch is in PaneDeviceTest.
+        org.junit.Assume.assumeFalse("two-pane window", compose.onAllNodes(androidx.compose.ui.test.hasTestTag("calendarPane")).fetchSemanticsNodes().isNotEmpty())
     }
 
     @After fun close() = scenario.close()

@@ -64,6 +64,8 @@ class WindowChangeTest {
         UsageSharing(context).markPresented()
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(5_000) { exists("level_RECORDS") }
+        // One-column recreation cases; two panes are covered by PaneDeviceTest and WindowResizeTest.
+        org.junit.Assume.assumeFalse("two-pane window", exists("calendarPane"))
     }
 
     @After fun close() {

@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
@@ -66,6 +68,8 @@ fun PaneHost(vm: AppViewModel, single: @Composable () -> Unit, pane: @Composable
             val calendarPane = @Composable {
                 Box(
                     Modifier.place(calendar).testTag("calendarPane")
+                        // Read one pane through before the next (TalkBack follows the screen order).
+                        .semantics { isTraversalGroup = true }
                         // The lower pane starts at its header: no status bar room.
                         .ownInsets(calendar, windowWidth, windowHeight),
                 ) {
@@ -86,6 +90,7 @@ fun PaneHost(vm: AppViewModel, single: @Composable () -> Unit, pane: @Composable
             val dayPane = @Composable {
                 Box(
                     Modifier.place(day).testTag("dayPane")
+                        .semantics { isTraversalGroup = true }
                         .ownInsets(day, windowWidth, windowHeight),
                 ) {
                     CompositionLocalProvider(LocalPaneRole provides PaneRole.DAY) { pane(PaneRole.DAY) }

@@ -69,6 +69,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -197,6 +198,7 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
                         .weight(1f)
                         .fillMaxWidth()
                         .onSizeChanged { boxSize = it }
+                        .then(Modifier.onGloballyPositioned { pinchTargets.viewport = it })
                         .testTag("level_${shown.name}")
                         // Measure the pinch outside the scaling layer, so the live zoom never feeds back
                         // into the measured finger spread. The day pane takes no pinch (v0.4 §4).
@@ -448,6 +450,18 @@ private fun TrackScroll(vm: AppViewModel, level: Level, state: LazyListState, an
         val entry = vm.entry
         if (entry is AppViewModel.ListEntry.Restore && saved != null) state.scrollToItem(saved.index, saved.offset)
         else anchor((entry as? AppViewModel.ListEntry.Anchor)?.y)
+    }
+    // Two panes: following the day pane moves this list only as far as needed (§4, 7efb087) —
+    // not when the date (the month in the year view) is already visible, nor while a finger moves it.
+    val targets = LocalPinchTargets.current
+    var followed by rememberSaveable { mutableStateOf(vm.followRequest) }
+    LaunchedEffect(vm.followRequest) {
+        if (followed == vm.followRequest) return@LaunchedEffect
+        followed = vm.followRequest
+        if (state.isScrollInProgress) return@LaunchedEffect
+        val key: Any = if (level == Level.YEAR) YearMonth.from(vm.selectedDate) else vm.selectedDate
+        if (targets.isVisible(key)) return@LaunchedEffect
+        anchor(null)
     }
     DisposableEffect(state) {
         onDispose {
@@ -762,6 +776,22 @@ private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDat
                 val idx = rows.indexOfFirst { vm.selectedDate in it.dates }
                 if (idx > 0) state.placeAt(idx, (entry as? AppViewModel.ListEntry.Anchor)?.y) else state.scrollToItem(0)
             }
+        }
+        DisposableEffect(state, month) {
+            onDispose {
+                val top = rows.getOrNull(state.firstVisibleItemIndex)?.dates?.firstOrNull()
+                vm.rememberRecordedReading(month, top, state.firstVisibleItemScrollOffset)
+            }
+        }
+        // Two panes: follow the day pane only to a card that is not already visible (§4, 7efb087).
+        val targets = LocalPinchTargets.current
+        var followed by rememberSaveable { mutableStateOf(vm.followRequest) }
+        LaunchedEffect(vm.followRequest, month) {
+            if (month != vm.recordedMonth || followed == vm.followRequest) return@LaunchedEffect
+            followed = vm.followRequest
+            if (state.isScrollInProgress || targets.isVisible(vm.selectedDate)) return@LaunchedEffect
+            val idx = rows.indexOfFirst { vm.selectedDate in it.dates }
+            if (idx >= 0) state.placeAt(idx, null)
         }
         LazyColumn(
             state = state,
