@@ -114,7 +114,8 @@ internal fun SampleExitSheet(vm: AppViewModel, onStart: () -> Unit) {
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(sheet) { keyboard?.hide() }
     ModalBottomSheet(onDismissRequest = dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Tk.Sheet, dragHandle = null) {
+        // v0.4 §3: the tour's last question stays within the single column's width.
+        containerColor = Tk.Sheet, dragHandle = null, sheetMaxWidth = CONTENT_MAX_WIDTH) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
