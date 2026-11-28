@@ -30,6 +30,7 @@ import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 import com.tokipin.app.rules.Adaptive
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * UX v0.4 window host. Reads the app window's size (never reduced by the keyboard) and a separating
@@ -67,9 +68,12 @@ fun PaneHost(vm: AppViewModel, single: @Composable () -> Unit, pane: @Composable
                         // The lower pane starts at its header: no status bar room.
                         .then(if (stacked) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier),
                 ) {
-                    CompositionLocalProvider(LocalPaneRole provides PaneRole.CALENDAR) { pane(PaneRole.CALENDAR) }
+                    val editing = vm.screen == Screen.Editor
+                    Box(if (editing) Modifier.fillMaxSize().clearAndSetSemantics { } else Modifier.fillMaxSize()) {
+                        CompositionLocalProvider(LocalPaneRole provides PaneRole.CALENDAR) { pane(PaneRole.CALENDAR) }
+                    }
                     // While editing, the calendar is dimmed and out of reach of touch and assistive tech.
-                    if (vm.screen == Screen.Editor) {
+                    if (editing) {
                         Box(
                             Modifier.fillMaxSize().background(Color(0x99151A17)).testTag("calendarScrim")
                                 .clearAndSetSemantics { }
@@ -135,8 +139,9 @@ private fun rememberFold(): Adaptive.Fold? {
 
 /**
  * A text field that moves between one column and a pane (the same composition, see MainActivity)
- * loses focus when the window change re-places its node. If it had focus when the window changed
- * size, take it back once it sits in its new place, so the cursor and keyboard stay with the
+ * can lose focus as the window changes: the move re-places its node, and a fold also hands the
+ * window to the other display first. If the field lost focus just before the layout or window
+ * changed, take it back once it sits in its new place, so the cursor and keyboard stay with the
  * person's typing (UX v0.4 §5).
  */
 @Composable
@@ -145,12 +150,28 @@ fun Modifier.keepFocusAcrossLayouts(focus: androidx.compose.ui.focus.FocusReques
     val config = androidx.compose.ui.platform.LocalConfiguration.current
     val window = config.screenWidthDp to config.screenHeightDp
     val focused = remember { androidx.compose.runtime.mutableStateOf(false) }
-    // Read in the first composition after the window changes, before the move lets go of focus.
-    val focusedAtChange = remember(window) { focused.value }
-    androidx.compose.runtime.LaunchedEffect(role, window) {
-        if (!focusedAtChange) return@LaunchedEffect
+    // [0] when focus was last lost, [1] when the layout or window last changed.
+    val times = remember { longArrayOf(0L, 0L) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    fun now() = android.os.SystemClock.uptimeMillis()
+    fun restore() = scope.launch {
         androidx.compose.runtime.withFrameNanos { }
         if (!focused.value) runCatching { focus.requestFocus() }
     }
-    return this.then(Modifier.onFocusChanged { focused.value = it.isFocused })
+    androidx.compose.runtime.LaunchedEffect(role, window) {
+        times[1] = now()
+        // Focus that went just before the change (the window moving to the other display).
+        if (now() - times[0] < FOCUS_RESTORE_WINDOW_MS) restore()
+    }
+    return this.then(Modifier.onFocusChanged {
+        if (focused.value && !it.isFocused) {
+            times[0] = now()
+            // Focus that goes just after the change (the node being re-placed).
+            if (now() - times[1] < FOCUS_RESTORE_WINDOW_MS) restore()
+        }
+        focused.value = it.isFocused
+    })
 }
+
+/** How close a lost focus must be to a layout or window change to count as caused by it. */
+private const val FOCUS_RESTORE_WINDOW_MS = 1_000L
