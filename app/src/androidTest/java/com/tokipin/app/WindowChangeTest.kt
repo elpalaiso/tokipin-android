@@ -19,6 +19,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.tokipin.app.ui.Screen
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -70,6 +71,51 @@ class WindowChangeTest {
     }
 
     private val composer get() = compose.onNode(hasSetTextAction() and !hasTestTag("searchField"))
+
+    private fun imeVisible(): Boolean {
+        var visible = false
+        scenario!!.onActivity {
+            visible = androidx.core.view.ViewCompat.getRootWindowInsets(it.window.decorView)
+                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+        }
+        return visible
+    }
+
+    /** Puts the soft keyboard away the way a person does: system back while it is up. */
+    private fun putKeyboardAway() {
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("input keyevent KEYCODE_BACK").close()
+        compose.waitUntil(3_000) { !imeVisible() }
+    }
+
+    @Test fun keyboardUpStaysUpAndPutAwayStaysDown() {
+        compose.onNodeWithTag("addRecord").performClick()
+        compose.waitUntil(5_000) { imeVisible() }
+        recreate()
+        compose.waitUntil(5_000) { imeVisible() }
+        putKeyboardAway()
+        recreate()
+        Thread.sleep(1_000)
+        compose.waitForIdle()
+        assertFalse("keyboard came back after recreation", imeVisible())
+        scenario!!.onActivity { assertEquals(Screen.Editor, it.vm.screen) }
+    }
+
+    @Test fun searchCursorAndPutAwayKeyboardSurvive() {
+        scenario!!.onActivity { it.vm.openSearch() }
+        compose.waitUntil(5_000) { imeVisible() }
+        val field = compose.onNodeWithTag("searchField")
+        field.performTextInput("살구")
+        field.performTextInputSelection(TextRange(1))
+        recreate()
+        compose.waitUntil(5_000) { imeVisible() }
+        assertEquals(TextRange(1), compose.onNodeWithTag("searchField").fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange])
+        putKeyboardAway()
+        recreate()
+        Thread.sleep(1_000)
+        compose.waitForIdle()
+        assertFalse("keyboard came back after recreation", imeVisible())
+        assertEquals("살구", compose.onNodeWithTag("searchField").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
+    }
 
     @Test fun typedTextAndCursorSurviveAndTheFieldKeepsFocus() {
         compose.onNodeWithTag("addRecord").performClick()

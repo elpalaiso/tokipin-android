@@ -158,6 +158,10 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
 
     // "+" opens with the keyboard; the pencil opens with it closed until a fragment or tool is tapped.
     var allowFocus by remember { mutableStateOf(vm.editorAutoFocus) }
+    // After a rotation or fold the keyboard comes back only if it was up: a keyboard the person put
+    // away stays down until they pick another fragment or tool, or tap the field (UX v0.4 §5).
+    val keyboardPutAway = rememberKeyboardPutAway()
+    val restoredField = remember { draft.kind to draft.editId }
     val tour = vm.tour
     val cue = tour?.takeIf { it.guided && selection == null }?.editorCue(draft)
     val imeHeight = WindowInsets.ime.getBottom(LocalDensity.current)
@@ -191,6 +195,7 @@ fun EditorScreen(vm: AppViewModel, showUsageHint: Boolean) {
             if (tour != null) listState.scrollToItem(editingIndex)
             // The tool's own field is laid out on the next frame; focus it then.
             androidx.compose.runtime.withFrameNanos { }
+            if (keyboardPutAway.value && restoredField == (draft.kind to draft.editId)) return@LaunchedEffect
             focusField()
         }
     }

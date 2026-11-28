@@ -29,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -138,7 +141,21 @@ fun SearchScreen(vm: AppViewModel) {
         hitsFor = query
     }
     BackHandler { vm.closeSearch() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    // Recreated after a rotation or fold with the keyboard put away: leave it down (UX v0.4 §5).
+    val keyboardPutAway = rememberKeyboardPutAway()
+    LaunchedEffect(Unit) {
+        if (!keyboardPutAway.value) runCatching { focus.requestFocus() }
+        else {
+            // The restored window may bring the field's focus (and so the keyboard) back on its own.
+            androidx.compose.runtime.withFrameNanos { }
+            keyboard?.hide()
+        }
+    }
+    // Saveable so the cursor survives activity recreation, like the editor's field.
+    var field by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(vm.searchQuery, TextRange(vm.searchQuery.length)))
+    }
+    if (field.text != vm.searchQuery && field.composition == null) field = TextFieldValue(vm.searchQuery, TextRange(vm.searchQuery.length))
 
     TkBackground {
         Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding().imePadding()) {
@@ -154,8 +171,8 @@ fun SearchScreen(vm: AppViewModel) {
                     Spacer(Modifier.width(10.dp))
                     val hint = stringResource(R.string.search_hint)
                     BasicTextField(
-                        value = vm.searchQuery,
-                        onValueChange = vm::updateSearch,
+                        value = field,
+                        onValueChange = { field = it; if (it.text != vm.searchQuery) vm.updateSearch(it.text) },
                         singleLine = true,
                         textStyle = TkType.body,
                         cursorBrush = SolidColor(Tk.Primary),
