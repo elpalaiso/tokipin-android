@@ -85,6 +85,15 @@ class AppViewModel private constructor(
     /** The level the calendar pane shows: [level], or the level a day was opened from. */
     val calendarLevel: Level get() = com.tokipin.app.rules.Adaptive.calendarLevel(level, dailyReturnLevel)
 
+    /** Tests (PaneNavigationReplayTest): put the navigation state where a shared case starts. */
+    internal fun setNavigationStateForTest(level: Level, dayReturnLevel: Level, selected: LocalDate, recordedMonth: YearMonth?) {
+        this.level = level
+        dailyReturnLevel = dayReturnLevel
+        selectedDate = selected
+        visibleMonth = YearMonth.from(selected)
+        recordedMonth?.let { this.recordedMonth = it; recordedPreview = null }
+    }
+
     /** Two panes: the day pane was used, so folding the device lands on the day. Never ticks. */
     private fun useDayPane() {
         if (level != Level.DAILY) { dailyReturnLevel = level; level = Level.DAILY }
@@ -578,6 +587,9 @@ class AppViewModel private constructor(
         recordedMonth = months.committed
         recordedPreview = months.preview
         if (months.selectedDay != selectedDate) selectedDate = months.selectedDay
+        // Two panes: committing a month in the calendar pane means the calendar pane was used last
+        // (paneNavigation.recordedMonthCommit). 오늘 and silent recalculations leave level alone.
+        if (twoPane && com.tokipin.app.rules.NavEvent.RECORDED_MONTH_COMMIT in events && level != Level.RECORDS) level = Level.RECORDS
         if (com.tokipin.app.rules.NavEvent.RECORDED_MONTH_COMMIT in events || com.tokipin.app.rules.NavEvent.TODAY in events) {
             visibleMonth = recordedMonth
             entry = ListEntry.Anchor(null)

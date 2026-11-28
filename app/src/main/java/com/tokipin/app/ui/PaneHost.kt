@@ -42,6 +42,8 @@ import kotlinx.coroutines.launch
 fun PaneHost(vm: AppViewModel, single: @Composable () -> Unit, pane: @Composable (PaneRole) -> Unit) {
     val fold = rememberFold()
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        val windowWidth = maxWidth.value
+        val windowHeight = maxHeight.value
         val layout = Adaptive.layout(maxWidth.value, maxHeight.value, fold, journalEmpty = vm.journal.isEmpty, sampleTour = vm.tour != null)
         val panes = layout !is Adaptive.Layout.Single &&
             (vm.screen == Screen.Browse || vm.screen == Screen.Editor || vm.screen == Screen.Search)
@@ -50,7 +52,7 @@ fun PaneHost(vm: AppViewModel, single: @Composable () -> Unit, pane: @Composable
             // One column; beside a separating fold it stays in the larger side.
             val region = (layout as? Adaptive.Layout.Single)?.let { regionOf(it.content, fold, maxWidth.value, maxHeight.value) }
             if (region == null || (region.width == maxWidth.value && region.height == maxHeight.value)) single()
-            else TkBackground { Box(Modifier.place(region)) { single() } }
+            else TkBackground { Box(Modifier.place(region).ownInsets(region, windowWidth, windowHeight)) { single() } }
             return@BoxWithConstraints
         }
         val (calendar, day) = when (layout) {
@@ -59,14 +61,13 @@ fun PaneHost(vm: AppViewModel, single: @Composable () -> Unit, pane: @Composable
             is Adaptive.Layout.Single -> error("unreachable")
         }
         val stacked = layout is Adaptive.Layout.Stacked
-        val windowHeight = maxHeight.value
         TkBackground {
             // Reading order follows the screen: calendar then day side by side; day then calendar stacked.
             val calendarPane = @Composable {
                 Box(
                     Modifier.place(calendar).testTag("calendarPane")
                         // The lower pane starts at its header: no status bar room.
-                        .then(if (stacked) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier),
+                        .ownInsets(calendar, windowWidth, windowHeight),
                 ) {
                     val editing = vm.screen == Screen.Editor
                     Box(if (editing) Modifier.fillMaxSize().clearAndSetSemantics { } else Modifier.fillMaxSize()) {
@@ -85,7 +86,7 @@ fun PaneHost(vm: AppViewModel, single: @Composable () -> Unit, pane: @Composable
             val dayPane = @Composable {
                 Box(
                     Modifier.place(day).testTag("dayPane")
-                        .then(if (stacked) Modifier.consumeWindowInsets(WindowInsets.navigationBars) else Modifier),
+                        .ownInsets(day, windowWidth, windowHeight),
                 ) {
                     CompositionLocalProvider(LocalPaneRole provides PaneRole.DAY) { pane(PaneRole.DAY) }
                 }
@@ -100,6 +101,18 @@ fun PaneHost(vm: AppViewModel, single: @Composable () -> Unit, pane: @Composable
 }
 
 private fun Modifier.place(r: Adaptive.Rect): Modifier = offset(r.x.dp, r.y.dp).size(r.width.dp, r.height.dp)
+
+/**
+ * Window insets belong to a pane only where they overlap it: the stretch between the pane and each
+ * window edge is consumed. A pane above a fold takes neither the navigation bar nor the keyboard
+ * (which covers the pane below; only an overflow above the fold reaches it), and a pane below the
+ * fold starts at its header with no status bar room.
+ */
+private fun Modifier.ownInsets(r: Adaptive.Rect, windowWidth: Float, windowHeight: Float): Modifier =
+    consumeWindowInsets(androidx.compose.foundation.layout.PaddingValues(
+        start = r.x.dp, top = r.y.dp,
+        end = (windowWidth - r.right).coerceAtLeast(0f).dp, bottom = (windowHeight - r.bottom).coerceAtLeast(0f).dp,
+    ))
 
 /** The side of a separating fold a single column sits in (the whole window without one). */
 private fun regionOf(content: Adaptive.Rect, fold: Adaptive.Fold?, width: Float, height: Float): Adaptive.Rect {
