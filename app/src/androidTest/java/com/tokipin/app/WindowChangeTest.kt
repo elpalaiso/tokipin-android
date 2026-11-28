@@ -3,6 +3,8 @@ package com.tokipin.app
 import android.content.Context
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -29,9 +31,9 @@ import java.io.File
 import java.time.LocalDate
 
 /**
- * UX v0.4 §5 on today's single-column screens: a rotation, fold/unfold, resize or split screen
- * recreates the activity, and everything the person was in the middle of must come back as it was.
- * `ActivityScenario.recreate()` is the same destroy/recreate the system does for those changes.
+ * UX v0.4 §5, the recreation path: window changes keep the activity ([WindowResizeTest]), but a
+ * language or font-size change still recreates it, and everything the person was in the middle of
+ * must come back as it was. `ActivityScenario.recreate()` is that destroy/recreate.
  */
 @RunWith(AndroidJUnit4::class)
 class WindowChangeTest {
@@ -40,10 +42,17 @@ class WindowChangeTest {
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun item(kind: String, value: String, id: String) = """{"id":"$id","kind":"$kind","value":"$value"}"""
+    /** One day in each month from 2025-01 to 2026-10, so the month view has months to scroll through. */
+    private fun monthly() = (0 until 22).joinToString(",") { i ->
+        val date = LocalDate.of(2025, 1, 10).plusMonths(i.toLong())
+        """{"date":"$date","updatedAt":"${date}T10:00:00Z","items":[${item("word", "달$i", "m$i")}]}"""
+    }
+
     private val records = """
         {"version":1,"days":[
           {"date":"2026-11-25","updatedAt":"2026-11-25T10:00:00Z","items":[${item("word", "살구잼", "f")},${item("place", "연남동", "g")}]},
-          {"date":"2026-11-26","updatedAt":"2026-11-26T10:00:00Z","items":[${item("word", "귤", "h")}]}
+          {"date":"2026-11-26","updatedAt":"2026-11-26T10:00:00Z","items":[${item("word", "귤", "h")}]},
+          ${monthly()}
         ]}
     """.trimIndent()
 
@@ -173,14 +182,40 @@ class WindowChangeTest {
         }
     }
 
-    @Test fun undoAndSettingsSurvive() {
+    @Test fun undoAndSettingsSurviveOnScreen() {
         scenario!!.onActivity { it.vm.deleteDay(LocalDate.of(2026, 11, 26)) }
-        compose.waitForIdle()
+        compose.waitUntil(3_000) { existsText("실행 취소") }
         recreate()
-        scenario!!.onActivity { assertTrue(it.vm.undo != null) }
+        compose.waitUntil(3_000) { existsText("실행 취소") }
+        compose.onNode(hasText("실행 취소")).assertIsDisplayed()
         scenario!!.onActivity { it.vm.openSettings() }
-        compose.waitForIdle()
+        compose.waitUntil(3_000) { exists("feedbackRow") }
         recreate()
-        scenario!!.onActivity { assertTrue(it.vm.settingsOpen) }
+        compose.waitUntil(3_000) { exists("feedbackRow") }
+        compose.onNodeWithTag("feedbackRow").assertIsDisplayed()
+    }
+
+    @Test fun monthScrollPositionSurvives() {
+        scenario!!.onActivity { it.vm.changeLevel(com.tokipin.app.rules.Level.MONTH) }
+        compose.waitUntil(3_000) { exists("level_MONTH") }
+        compose.onNodeWithTag("calendarList").performScrollToNode(hasTestTag("month_2025-03"))
+        compose.waitForIdle()
+        compose.onNodeWithTag("month_2025-03").assertIsDisplayed()
+        recreate()
+        compose.waitUntil(3_000) { exists("level_MONTH") }
+        compose.waitForIdle()
+        compose.onNodeWithTag("month_2025-03").assertIsDisplayed()
+        assertTrue("jumped back to the selected date", !exists("month_2026-11"))
+    }
+
+    @Test fun keyboardRaisedByAToolAfterThePencilComesBack() {
+        scenario!!.onActivity { it.vm.openDay(LocalDate.of(2026, 11, 26)) }
+        compose.waitUntil(3_000) { exists("editDay") }
+        compose.onNodeWithTag("editDay").performClick()
+        compose.waitUntil(3_000) { exists("editorTopBar") }
+        compose.onNodeWithContentDescription("단어").performClick()
+        compose.waitUntil(5_000) { imeVisible() }
+        recreate()
+        compose.waitUntil(5_000) { imeVisible() }
     }
 }

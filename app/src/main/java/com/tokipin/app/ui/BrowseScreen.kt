@@ -420,7 +420,12 @@ private suspend fun LazyListState.placeAt(index: Int, y: Float?, innerOffset: Fl
  */
 @Composable
 private fun TrackScroll(vm: AppViewModel, level: Level, state: LazyListState, anchor: suspend (Float?) -> Unit) {
+    // A request is placed once. After a recreation (language or font size change) the restored list
+    // keeps where the person scrolled instead of jumping back to the selected date (UX v0.4 §5).
+    var placed by rememberSaveable { mutableStateOf(-1) }
     LaunchedEffect(vm.focusRequest) {
+        if (placed == vm.focusRequest) return@LaunchedEffect
+        placed = vm.focusRequest
         val saved = vm.savedScroll(level)
         val entry = vm.entry
         if (entry is AppViewModel.ListEntry.Restore && saved != null) state.scrollToItem(saved.index, saved.offset)
@@ -723,8 +728,11 @@ private fun MonthPage(vm: AppViewModel, month: YearMonth, onLongPress: (LocalDat
             geometry.map { r -> BentoRowUi(r.cards.map { dates[it] }, r.cards.map { laid[it] }, r) }
         }
         val state = rememberLazyListState()
+        var placed by rememberSaveable { mutableStateOf(-1) }
         LaunchedEffect(vm.focusRequest, month) {
             if (month != vm.recordedMonth) return@LaunchedEffect
+            if (placed == vm.focusRequest) return@LaunchedEffect
+            placed = vm.focusRequest
             val restore = vm.recordedRestore
             val entry = vm.entry
             if (entry is AppViewModel.ListEntry.Restore && restore != null && restore.month == month) {

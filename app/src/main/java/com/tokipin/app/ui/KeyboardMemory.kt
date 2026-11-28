@@ -1,8 +1,7 @@
 package com.tokipin.app.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalView
@@ -11,46 +10,29 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.delay
 
 /**
- * Whether the soft keyboard was put away on this screen, kept across activity recreation
- * (rotation, fold/unfold, resize; UX v0.4 §5), so a recreated screen brings the keyboard back only
- * if it was up.
+ * Whether the soft keyboard was down when this screen was last paused, kept for the changes that
+ * still recreate the activity (language, font size; window changes keep it, UX v0.4 §5). Callers
+ * read it once when the screen is built and then forget it.
  *
- * Read from the window's own insets (the activity's adjustResize window reports them whether or not
- * Compose consumes them), sampled while the screen is resumed: the teardown for a rotation or fold
- * also drops the keyboard and must not count. A new window can briefly report the old window's
- * keyboard, so only a keyboard this screen has seen come up can be put away.
+ * Read from the window's insets as the screen pauses: a language or font-size change always passes
+ * through pause before the teardown that drops the keyboard. (Compose's `WindowInsets.ime` stayed 0
+ * here in emulator runs, so the view's own insets are used.)
  */
 @Composable
-fun rememberKeyboardPutAway(): MutableState<Boolean> {
-    val putAway = rememberSaveable { mutableStateOf(false) }
+fun rememberKeyboardWasDown(): Boolean {
+    val down = rememberSaveable { mutableStateOf(false) }
     val view = LocalView.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(view, lifecycle) {
-        var shown = false
-        fun sample() {
-            val visible = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
-            if (visible) shown = true
-            if (shown && putAway.value == visible) putAway.value = !visible
-        }
-        // One last look as the screen pauses, before any teardown hides the keyboard.
-        val onPause = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_PAUSE) sample() }
-        lifecycle.addObserver(onPause)
-        try {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                while (true) {
-                    sample()
-                    delay(KEYBOARD_SAMPLE_MS)
-                }
+    DisposableEffect(view, lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                down.value = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) != true
             }
-        } finally {
-            lifecycle.removeObserver(onPause)
         }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
-    return putAway
+    return down.value
 }
-
-private const val KEYBOARD_SAMPLE_MS = 200L

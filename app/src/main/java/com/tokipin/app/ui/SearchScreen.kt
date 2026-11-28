@@ -141,17 +141,18 @@ fun SearchScreen(vm: AppViewModel) {
         hitsFor = query
     }
     BackHandler { vm.closeSearch() }
-    // Recreated after a rotation or fold with the keyboard put away: leave it down (UX v0.4 §5).
-    val keyboardPutAway = rememberKeyboardPutAway()
+    // Recreated (language or font size change) with the keyboard down: leave it down (UX v0.4 §5).
+    val keyboardWasDown = rememberKeyboardWasDown()
+    val restoredDown = remember { keyboardWasDown }
     LaunchedEffect(Unit) {
-        if (!keyboardPutAway.value) runCatching { focus.requestFocus() }
+        if (!restoredDown) runCatching { focus.requestFocus() }
         else {
             // The restored window may bring the field's focus (and so the keyboard) back on its own.
             androidx.compose.runtime.withFrameNanos { }
             keyboard?.hide()
         }
     }
-    // Saveable so the cursor survives activity recreation, like the editor's field.
+    // Saveable so the cursor survives the recreations that remain, like the editor's field.
     var field by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(vm.searchQuery, TextRange(vm.searchQuery.length)))
     }
