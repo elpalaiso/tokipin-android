@@ -58,7 +58,7 @@ class UxSpecDeviceTest {
 
     private val spec by lazy {
         Json.parseToJsonElement(
-            InstrumentationRegistry.getInstrumentation().context.assets.open("Tokipin-Native-UX-v0.3.json").reader().readText(),
+            InstrumentationRegistry.getInstrumentation().context.assets.open("Tokipin-Native-UX-v0.4.json").reader().readText(),
         ).jsonObject
     }
     private val swipeSpec get() = spec["swipe"]!!.jsonObject
@@ -87,6 +87,8 @@ class UxSpecDeviceTest {
         UsageSharing(context).markPresented() // Existing installation with optional sharing off.
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntil(5_000) { exists(level("RECORDS")) }
+        // These cases describe the one column (v0.1–v0.3); two panes are PaneDeviceTest's.
+        org.junit.Assume.assumeFalse("two-pane window", compose.onAllNodes(hasTestTag("calendarPane")).fetchSemanticsNodes().isNotEmpty())
     }
 
     @After fun close() { scenario?.close() }

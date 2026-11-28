@@ -86,6 +86,9 @@ class WindowResizeTest {
 
     /** Opens + and types with the keyboard up; returns the activity that holds it. */
     private fun startTyping(): MainActivity {
+        // An empty day shows "+" in one column and in the day pane alike.
+        scenario!!.onActivity { it.vm.openDay(LocalDate.of(2026, 11, 27)) }
+        compose.waitUntil(3_000) { compose.onAllNodes(hasTestTag("addRecord")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("addRecord").performClick()
         compose.waitUntil(5_000) { imeVisible() }
         composer.performTextInput("봄바람")

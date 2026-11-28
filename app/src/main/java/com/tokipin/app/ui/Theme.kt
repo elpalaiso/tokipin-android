@@ -63,14 +63,21 @@ object Tk {
 /** Sage on the left, slate at the top right, warm charcoal at the bottom (Figma 01 · 세이지와 슬레이트). */
 @Composable
 fun TkBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+    // In two panes the window draws the backdrop once; the panes stay transparent (UX v0.4 §2).
+    val inPane = LocalPaneRole.current != PaneRole.SINGLE
     Box(
-        modifier
+        if (inPane) modifier.fillMaxSize() else modifier
             .fillMaxSize()
             .background(Brush.linearGradient(listOf(Color(0xFF39453D), Color(0xFF34413B), Color(0xFF3B4A55))))
             .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0x00000000), Color(0x9E443E39)))),
         content = content,
     )
 }
+
+/** Which part of the window a screen is drawn in (UX v0.4). */
+enum class PaneRole { SINGLE, CALENDAR, DAY }
+
+val LocalPaneRole = androidx.compose.runtime.staticCompositionLocalOf { PaneRole.SINGLE }
 
 @Composable
 fun TokipinTheme(content: @Composable () -> Unit) {

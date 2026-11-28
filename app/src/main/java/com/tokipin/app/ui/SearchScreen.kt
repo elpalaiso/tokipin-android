@@ -123,6 +123,7 @@ fun SearchScreen(vm: AppViewModel) {
     val context = LocalContext.current
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val kindNames = remember { EntryKind.entries.associateWith { context.getString(it.label()) } }
     // Results are worked out on a background thread; the field never waits for them. The index is
     // built once per journal, and an older query's result is dropped when a newer one arrives.
@@ -145,7 +146,9 @@ fun SearchScreen(vm: AppViewModel) {
     val keyboardWasDown = rememberKeyboardWasDown()
     val restoredDown = remember { keyboardWasDown }
     LaunchedEffect(Unit) {
-        if (!restoredDown) runCatching { focus.requestFocus() }
+        // Only an open search takes the keyboard: the list shown again for a highlighted result (a
+        // layout change, §3) leaves it down.
+        if (!restoredDown && vm.screen == Screen.Search) runCatching { focus.requestFocus() }
         else {
             // The restored window may bring the field's focus (and so the keyboard) back on its own.
             androidx.compose.runtime.withFrameNanos { }
@@ -179,7 +182,7 @@ fun SearchScreen(vm: AppViewModel) {
                         cursorBrush = SolidColor(Tk.Primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
-                        modifier = Modifier.weight(1f).focusRequester(focus).testTag("searchField").semantics { contentDescription = hint },
+                        modifier = Modifier.weight(1f).focusRequester(focus).keepFocusAcrossLayouts(focus).testTag("searchField").semantics { contentDescription = hint },
                         decorationBox = { inner ->
                             Box(contentAlignment = Alignment.CenterStart) {
                                 if (vm.searchQuery.isEmpty()) Text(hint, style = TkType.body.copy(color = Tk.Muted))
@@ -210,7 +213,12 @@ fun SearchScreen(vm: AppViewModel) {
                             if (header) Text(hit.date.fullLabel(), style = TkType.small, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
                             Row(
                                 Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                                    .clickable(role = Role.Button) { vm.openSearchResult(hit.date, hit.entry) },
+                                    .clickable(role = Role.Button) {
+                                        // Two panes: the list stays, so put the keyboard away from the day pane (§3).
+                                        keyboard?.hide()
+                                        focusManager.clearFocus()
+                                        vm.openSearchResult(hit.date, hit.entry)
+                                    },
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 if (hit.entry.kind != EntryKind.EMOJI) {

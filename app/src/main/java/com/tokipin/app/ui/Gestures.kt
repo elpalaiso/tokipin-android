@@ -35,6 +35,17 @@ class PinchTargets {
         if (coordinates == null || nodes[key] === coordinates) nodes.remove(key)
     }
 
+    /** The visible part of the view these targets live in (the content box), for following. */
+    var viewport: LayoutCoordinates? = null
+
+    /** Whether the date or month [key] is laid out wholly inside the viewport right now. */
+    fun isVisible(key: Any): Boolean {
+        val node = nodes[key]?.takeIf { it.isAttached } ?: return false
+        val area = viewport?.takeIf { it.isAttached }?.boundsInRoot() ?: return false
+        val r = node.boundsInRoot()
+        return r.top >= area.top && r.bottom <= area.bottom && r.left >= area.left - 1 && r.right <= area.right + 1
+    }
+
     fun at(point: Offset, preferred: Any? = null): Any? {
         val bounds = LinkedHashMap<Any, Rect>()
         nodes.forEach { (key, c) -> if (c.isAttached) bounds[key] = c.boundsInRoot() }

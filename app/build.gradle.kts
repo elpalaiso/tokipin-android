@@ -94,16 +94,19 @@ android {
 }
 
 /**
- * Native UX v0.3 shared with iOS: one copy lives in the web repo (../tokipin/native-spec/v0.3), not
+ * Native UX v0.4 shared with iOS: one copy lives in the web repo (../tokipin/native-spec/v0.4), not
  * in this repository. Tests read it from there; the SHA-256 pin makes a changed or missing spec fail
  * the build instead of silently testing against another version.
  */
-val uxSpecDir = rootProject.file("../tokipin/native-spec/v0.3")
-val uxSpecSha256 = "6bddea73872758395ec047089b96a96ba996fa0cdaef11117363347655599512"
+// -PtokipinSpecDir=<dir> points at another checkout of the same folder (e.g. while the sibling
+// web repo is not on the commit that has it); the SHA-256 pin below still applies.
+val uxSpecDir = providers.gradleProperty("tokipinSpecDir").orNull?.let(::file)
+    ?: rootProject.file("../tokipin/native-spec/v0.4")
+val uxSpecSha256 = "81a9e6fd8e8aa0b70d99389214e5914f4d28a472120e8786e2b7679b2f167203"
 
 val verifyUxSpec by tasks.registering {
     group = "verification"
-    val spec = uxSpecDir.resolve("Tokipin-Native-UX-v0.3.json")
+    val spec = uxSpecDir.resolve("Tokipin-Native-UX-v0.4.json")
     inputs.file(spec)
     doLast {
         if (!spec.isFile) throw GradleException("UX spec not found at $spec (clone elpalaiso/tokipin next to this repo)")
@@ -165,6 +168,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.window)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
