@@ -73,7 +73,37 @@ class AppViewModel private constructor(
     var selectedDate by mutableStateOf(com.tokipin.app.rules.AppClock.today()); private set
     /** Incremented to ask the current view to scroll back to [selectedDate] (e.g. the Today button). */
     var focusRequest by mutableStateOf(0); private set
-    private var dailyReturnLevel = Level.RECORDS
+    private var dailyReturnLevel by mutableStateOf(Level.RECORDS)
+
+    /**
+     * UX v0.4: set by the window host while the window shows the calendar and day panes. The state
+     * is the one the single column uses; here `level == DAILY` only means the day pane was used
+     * last, and the calendar pane shows [calendarLevel].
+     */
+    var twoPane by mutableStateOf(false); internal set
+
+    /** The level the calendar pane shows: [level], or the level a day was opened from. */
+    val calendarLevel: Level get() = com.tokipin.app.rules.Adaptive.calendarLevel(level, dailyReturnLevel)
+
+    /** Two panes: the day pane was used, so folding the device lands on the day. Never ticks. */
+    private fun useDayPane() {
+        if (level != Level.DAILY) { dailyReturnLevel = level; level = Level.DAILY }
+    }
+
+    /**
+     * Two panes: after the day pane changed the date, the calendar pane brings it into view (no
+     * tick). 기록한 날 moves only to a month it lists.
+     */
+    private fun followInCalendar() {
+        val month = YearMonth.from(selectedDate)
+        visibleMonth = month
+        if (calendarLevel == Level.RECORDS && month in visibleRecordMonths && month != recordedMonth) {
+            recordedMonth = month
+            recordedPreview = null
+        }
+        entry = ListEntry.Anchor(null)
+        focusRequest++
+    }
 
     // Search
     var searchQuery by mutableStateOf(""); private set
@@ -201,7 +231,8 @@ class AppViewModel private constructor(
      * fragments in their order (or an empty draft). "+" on an empty day focuses the word field;
      * the pencil on a filled day ([focus] = false) opens with the keyboard closed.
      */
-    fun openEditor(date: LocalDate = if (level == Level.DAILY) selectedDate else com.tokipin.app.rules.AppClock.today(), focus: Boolean = true) {
+    /** In two panes "+" and the pencil sit in the day pane and open the date it shows (v0.4 §3). */
+    fun openEditor(date: LocalDate = if (level == Level.DAILY || twoPane) selectedDate else com.tokipin.app.rules.AppClock.today(), focus: Boolean = true) {
         draft = keptDrafts[date.toString()]?.takeIf { it.hasContent }
             ?: Draft(date = date.toString(), items = journal.itemsOn(date))
         editorAutoFocus = focus
@@ -569,6 +600,9 @@ class AppViewModel private constructor(
     /** Returns whether the level changed, i.e. whether this is a committed navigation (one tick). */
     fun changeLevel(next: Level, entryMode: ListEntry = ListEntry.Anchor(null)): Boolean {
         if (next == level) return false
+        // Two panes: the calendar pane already shows the day's return level; choosing it only
+        // records that the calendar pane was used last (no tick, the list stays where it is).
+        if (twoPane && next != Level.DAILY && next == calendarLevel) { level = next; return false }
         if (next == Level.DAILY) dailyReturnLevel = level
         if (next == Level.MONTH) revealMonth(YearMonth.from(selectedDate))
         if (next == Level.RECORDS) {
@@ -594,6 +628,18 @@ class AppViewModel private constructor(
      * where that date was on screen, so the next view can keep it there.
      */
     fun pinchTo(next: Level, target: Any?, anchorY: Float?): Boolean {
+        if (twoPane) {
+            // Only the calendar pane pinches, starting from the level it shows. Spreading into a day
+            // opens that date in the day pane and leaves the calendar pane as it is.
+            if (next == calendarLevel) return false
+            val before = selectedDate
+            when (target) {
+                is LocalDate -> selectedDate = target
+                is YearMonth -> if (YearMonth.from(selectedDate) != target) selectedDate = journal.datesIn(target).firstOrNull() ?: target.atDay(1)
+            }
+            if (next == Level.DAILY) { useDayPane(); return selectedDate != before }
+            return changeLevel(next, ListEntry.Anchor(anchorY)) || selectedDate != before
+        }
         if (next == level) return false
         when (target) {
             is LocalDate -> selectedDate = target
@@ -606,7 +652,7 @@ class AppViewModel private constructor(
 
     /** Where "<" leads (TalkBack names it); null when there is no back button (year view, search day). */
     val upTarget: Level?
-        get() = when (level) {
+        get() = if (twoPane) Level.YEAR.takeIf { calendarLevel != Level.YEAR } else when (level) {
             Level.DAILY -> if (openedFromSearch) null else dailyReturnLevel.takeIf { it != Level.DAILY } ?: Level.RECORDS
             Level.RECORDS, Level.MONTH -> Level.YEAR
             Level.YEAR -> null
@@ -614,6 +660,10 @@ class AppViewModel private constructor(
 
     /** The "< parent" button and system back. Closing a day returns to the view and spot it was opened from. */
     fun goUp(): Boolean = when {
+        // Two panes: the search list closes first; otherwise up from the level the calendar pane
+        // shows, never "closing" the day pane.
+        twoPane && openedFromSearch -> { closeSearch(); false }
+        twoPane -> calendarLevel != Level.YEAR && changeLevel(Level.YEAR)
         level == Level.DAILY && openedFromSearch -> { reopenSearch(); false }
         level == Level.DAILY -> changeLevel(dailyReturnLevel.takeIf { it != Level.DAILY } ?: Level.RECORDS, ListEntry.Restore)
         level == Level.RECORDS || level == Level.MONTH -> changeLevel(Level.YEAR)
@@ -629,7 +679,26 @@ class AppViewModel private constructor(
         return true
     }
 
+    /**
+     * A date chosen in the day view (week rail, day or week swipe). In two panes the calendar pane
+     * follows silently.
+     */
+    fun selectDay(date: LocalDate): Boolean {
+        val changed = selectDate(date)
+        if (twoPane) {
+            useDayPane()
+            if (changed) followInCalendar()
+        }
+        return changed
+    }
+
     fun openDay(date: LocalDate): Boolean {
+        if (twoPane) {
+            // The calendar pane keeps its level and scroll; the date opens in the day pane.
+            val changed = selectDate(date)
+            useDayPane()
+            return changed
+        }
         val pickedLastDay = level == Level.MONTH && tour?.guided == true && tour.cue == BrowseCue.PickDay
         val changed = selectDate(date)
         val opened = changeLevel(Level.DAILY)
@@ -645,6 +714,13 @@ class AppViewModel private constructor(
 
     /** Today keeps the current view and brings today back on screen, even if it is already selected. Silent. */
     fun goToday() {
+        // Two panes: both panes show today; the calendar pane brings it into view. Silent.
+        if (twoPane && calendarLevel == Level.RECORDS && level == Level.DAILY) {
+            selectedDate = com.tokipin.app.rules.AppClock.today()
+            highlightId = null
+            followInCalendar()
+            return
+        }
         if (level == Level.RECORDS) { recorded { today(com.tokipin.app.rules.AppClock.today()) }; return }
         selectedDate = com.tokipin.app.rules.AppClock.today()
         visibleMonth = com.tokipin.app.rules.AppClock.thisMonth()
@@ -704,6 +780,15 @@ class AppViewModel private constructor(
     fun closeSearch() {
         searchQuery = ""
         screen = Screen.Browse
+        if (twoPane) {
+            // The calendar pane goes back to its view and shows the selected date (the result's
+            // date when one was opened).
+            openedFromSearch = false
+            highlightId = null
+            visibleMonth = YearMonth.from(selectedDate)
+            entry = ListEntry.Anchor(null)
+            focusRequest++
+        }
     }
 
     fun openSearchResult(date: LocalDate, entry: Entry) {

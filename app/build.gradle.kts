@@ -168,6 +168,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.window)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 

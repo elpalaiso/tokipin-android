@@ -18,6 +18,7 @@ androidxTestOrchestrator = "1.6.1"
 benchmark = "1.5.0"
 profileinstaller = "1.4.1"
 uiautomator = "2.3.0"
+window = "1.5.0"
 
 [libraries]
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
@@ -41,6 +42,7 @@ androidx-test-orchestrator = { module = "androidx.test:orchestrator", version.re
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
+androidx-window = { module = "androidx.window:window", version.ref = "window" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 androidx-benchmark-macro = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
 androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }

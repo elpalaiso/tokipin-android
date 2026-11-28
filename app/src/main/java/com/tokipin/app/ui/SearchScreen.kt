@@ -179,7 +179,7 @@ fun SearchScreen(vm: AppViewModel) {
                         cursorBrush = SolidColor(Tk.Primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
-                        modifier = Modifier.weight(1f).focusRequester(focus).testTag("searchField").semantics { contentDescription = hint },
+                        modifier = Modifier.weight(1f).focusRequester(focus).keepFocusAcrossLayouts(focus).testTag("searchField").semantics { contentDescription = hint },
                         decorationBox = { inner ->
                             Box(contentAlignment = Alignment.CenterStart) {
                                 if (vm.searchQuery.isEmpty()) Text(hint, style = TkType.body.copy(color = Tk.Muted))

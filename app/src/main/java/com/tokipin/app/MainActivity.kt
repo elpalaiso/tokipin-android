@@ -111,20 +111,39 @@ class MainActivity : ComponentActivity() {
                     // Editor ↔ home: a short fade (Figma 04 · 180–240ms 시작값), instant when motion is reduced.
                     val duration = if (reduceMotion) com.tokipin.app.rules.UxSpec.REDUCED_MOTION_FADE_MS else com.tokipin.app.rules.UxSpec.COMMIT_MS
                     androidx.compose.runtime.key(vm) {
-                        AnimatedContent(
-                            targetState = vm.screen,
-                            transitionSpec = { fadeIn(tween(duration)) togetherWith fadeOut(tween(duration)) },
-                            label = "screen",
-                        ) { screen ->
-                            when (screen) {
-                                Screen.Loading -> if (vm.showSkeleton) LoadingSkeleton() else TkBackground {}
-                                Screen.LoadFailed -> LoadFailedScreen(onRetry = vm::load)
-                                Screen.Sample -> TkBackground {}
-                                Screen.Editor -> EditorScreen(vm, showUsageHint)
-                                Screen.Browse -> BrowseScreen(vm, showUsageHint)
-                                Screen.Search -> SearchScreen(vm)
-                            }
-                        }
+                        // The editor and search move between one column and the panes as the same
+                        // composition, so text, cursor, focus and keyboard stay through a fold (v0.4 §5).
+                        val hint = androidx.compose.runtime.rememberUpdatedState(showUsageHint)
+                        val editor = remember(vm) { androidx.compose.runtime.movableContentOf { EditorScreen(vm, hint.value) } }
+                        val search = remember(vm) { androidx.compose.runtime.movableContentOf { SearchScreen(vm) } }
+                        com.tokipin.app.ui.PaneHost(
+                            vm,
+                            single = {
+                                AnimatedContent(
+                                    targetState = vm.screen,
+                                    transitionSpec = { fadeIn(tween(duration)) togetherWith fadeOut(tween(duration)) },
+                                    label = "screen",
+                                ) { screen ->
+                                    when (screen) {
+                                        Screen.Loading -> if (vm.showSkeleton) LoadingSkeleton() else TkBackground {}
+                                        Screen.LoadFailed -> LoadFailedScreen(onRetry = vm::load)
+                                        Screen.Sample -> TkBackground {}
+                                        Screen.Editor -> editor()
+                                        Screen.Browse -> BrowseScreen(vm, showUsageHint)
+                                        Screen.Search -> search()
+                                    }
+                                }
+                            },
+                            pane = { role ->
+                                when (role) {
+                                    com.tokipin.app.ui.PaneRole.CALENDAR ->
+                                        // The search list takes the calendar pane while searching and while
+                                        // a result opened from it is highlighted in the day pane.
+                                        if (vm.screen == Screen.Search || vm.openedFromSearch) search() else BrowseScreen(vm, showUsageHint)
+                                    else -> if (vm.screen == Screen.Editor) editor() else BrowseScreen(vm, showUsageHint)
+                                }
+                            },
+                        )
                     }
                     if (vm.usagePromptOpen && vm.screen != Screen.Loading && vm.screen != Screen.LoadFailed) {
                         UsageSharingSheet(vm::usagePromptPresented, vm::chooseUsageSharing) {

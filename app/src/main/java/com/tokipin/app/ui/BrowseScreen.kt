@@ -130,9 +130,24 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
     val alpha = remember { Animatable(1f) }
     var origin by remember { mutableStateOf(Offset.Zero) }
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
+    // UX v0.4: in two panes this screen is drawn twice, as the calendar pane (the level it shows)
+    // and as the day pane (always the selected day). One column keeps the v0.3 screen.
+    val role = LocalPaneRole.current
+    val shown = when (role) {
+        PaneRole.SINGLE -> vm.level
+        PaneRole.CALENDAR -> vm.calendarLevel
+        PaneRole.DAY -> Level.DAILY
+    }
 
-    BackHandler(enabled = vm.level == Level.DAILY || (vm.level != Level.YEAR && !vm.journal.isEmpty)) {
-        haptics.commitIf(vm.goUp(), NavEvent.LEVEL_COMMIT)
+    when (role) {
+        PaneRole.SINGLE -> BackHandler(enabled = vm.level == Level.DAILY || (vm.level != Level.YEAR && !vm.journal.isEmpty)) {
+            haptics.commitIf(vm.goUp(), NavEvent.LEVEL_COMMIT)
+        }
+        // Back goes up from the calendar pane's level; from the year view it leaves the app.
+        PaneRole.CALENDAR -> BackHandler(enabled = vm.calendarLevel != Level.YEAR) {
+            haptics.commitIf(vm.goUp(), NavEvent.LEVEL_COMMIT)
+        }
+        PaneRole.DAY -> Unit
     }
 
     val listener = remember(vm) {
@@ -145,7 +160,7 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
                 scope.launch { scale.animateTo(1f, tween(if (reduceMotion) 0 else UxSpec.CANCEL_MS)) }
             }
             override fun onEnd(next: Level, target: Any?, origin: Offset) {
-                val zoomIn = next.ordinal > vm.level.ordinal
+                val zoomIn = next.ordinal > shown.ordinal
                 val changed = vm.pinchTo(next, target, origin.y)
                 if (!changed) { onCancel(); return }
                 haptics.report(NavEvent.LEVEL_COMMIT)
@@ -171,7 +186,7 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
         CompositionLocalProvider(LocalPinchTargets provides pinchTargets) {
             Column(Modifier.fillMaxSize().contentColumn().statusBarsPadding()) {
                 SampleControls(vm)
-                BrowseTopBar(vm, onDayMenu = { dayMenuFor = vm.selectedDate })
+                BrowseTopBar(vm, role, shown, onDayMenu = { dayMenuFor = vm.selectedDate })
                 if (showUsageHint) UsageLaterHint()
                 vm.tour?.let { tour ->
                     SampleReceipt(tour)
@@ -182,15 +197,15 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
                         .weight(1f)
                         .fillMaxWidth()
                         .onSizeChanged { boxSize = it }
-                        .testTag("level_${vm.level.name}")
+                        .testTag("level_${shown.name}")
                         // Measure the pinch outside the scaling layer, so the live zoom never feeds back
-                        // into the measured finger spread.
-                        .pinchLevels(
-                            level = { vm.level },
+                        // into the measured finger spread. The day pane takes no pinch (v0.4 §4).
+                        .then(if (role == PaneRole.DAY) Modifier else Modifier.pinchLevels(
+                            level = { if (role == PaneRole.CALENDAR) vm.calendarLevel else vm.level },
                             targets = pinchTargets,
                             preferred = { vm.selectedDate },
                             listener = listener,
-                        )
+                        ))
                         .graphicsLayer {
                             scaleX = scale.value; scaleY = scale.value
                             this.alpha = alpha.value
@@ -201,17 +216,17 @@ fun BrowseScreen(vm: AppViewModel, showUsageHint: Boolean) {
                         },
                 ) {
                     when {
-                        vm.journal.isEmpty && (vm.level == Level.RECORDS || vm.level == Level.YEAR) -> EmptyHome(vm)
-                        vm.level == Level.DAILY -> DailyView(vm)
-                        vm.level == Level.RECORDS -> RecordsView(vm, onLongPress = { dayMenuFor = it })
-                        vm.level == Level.MONTH -> MonthView(vm)
+                        vm.journal.isEmpty && (shown == Level.RECORDS || shown == Level.YEAR) -> EmptyHome(vm)
+                        shown == Level.DAILY -> DailyView(vm)
+                        shown == Level.RECORDS -> RecordsView(vm, onLongPress = { dayMenuFor = it })
+                        shown == Level.MONTH -> MonthView(vm)
                         else -> YearView(vm)
                     }
                 }
             }
         }
-        if (vm.journal.isEmpty && (vm.level == Level.RECORDS || vm.level == Level.YEAR)) PeekRabbit()
-        BottomActions(vm)
+        if (role == PaneRole.SINGLE && vm.journal.isEmpty && (vm.level == Level.RECORDS || vm.level == Level.YEAR)) PeekRabbit()
+        BottomActions(vm, role, shown)
     }
 
     dayMenuFor?.let { date ->
@@ -257,25 +272,25 @@ private fun Level.viewName(): Int = when (this) {
 }
 
 @Composable
-private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
+private fun BrowseTopBar(vm: AppViewModel, role: PaneRole, shown: Level, onDayMenu: () -> Unit) {
     val haptics = LocalHaptics.current
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     // v0.3: one date on the screen's centre line. Day: the selected date's year.month; 기록한 날:
     // the committed month's year (it changes only when a month settles); month calendar: the year
     // in view; year calendar: none (each block carries its own year).
-    val title: String? = when (vm.level) {
+    val title: String? = when (shown) {
         Level.DAILY -> com.tokipin.app.rules.DateHeaders.day(vm.selectedDate)
         Level.RECORDS -> com.tokipin.app.rules.DateHeaders.recordedDays(vm.recordedMonth)
         Level.MONTH -> com.tokipin.app.rules.DateHeaders.month(vm.visibleMonth)
         Level.YEAR -> com.tokipin.app.rules.DateHeaders.year(vm.visibleMonth.year)
     }
-    val spoken = when (vm.level) {
+    val spoken = when (shown) {
         Level.DAILY -> DateWords.yearMonth(YearMonth.from(vm.selectedDate))
         Level.RECORDS -> DateWords.year(vm.recordedMonth.year)
         Level.MONTH -> DateWords.year(vm.visibleMonth.year)
         Level.YEAR -> ""
     }
-    val upName = vm.upTarget?.let { stringResource(it.viewName()) }
+    val upName = vm.upTarget.takeIf { role != PaneRole.DAY }?.let { stringResource(it.viewName()) }
     CenteredTitleBar(
         modifier = Modifier.testTag("topBar"),
         leading = { compact ->
@@ -287,7 +302,7 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
                         glass = false, modifier = Modifier.testTag("backButton"),
                     )
                 }
-                if (vm.openedFromSearch && vm.level == Level.DAILY) {
+                if (role == PaneRole.SINGLE && vm.openedFromSearch && vm.level == Level.DAILY) {
                     if (compact) RoundIconButton(R.drawable.ic_search, stringResource(R.string.search_results), { vm.goUp() }, glass = false, modifier = Modifier.testTag("searchReturn"))
                     else GlassPill(stringResource(R.string.search_results), onClick = { vm.goUp() }, leading = R.drawable.ic_search, modifier = Modifier.testTag("searchReturn"))
                 }
@@ -302,11 +317,12 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
             }
         },
         trailing = { Row(verticalAlignment = Alignment.CenterVertically) {
-        if (vm.level == Level.DAILY && vm.journal.itemsOn(vm.selectedDate).isNotEmpty()) {
+        if (shown == Level.DAILY && vm.journal.itemsOn(vm.selectedDate).isNotEmpty()) {
             RoundIconButton(R.drawable.ic_more, stringResource(R.string.cd_day_menu), onDayMenu, glass = false)
         }
-        RoundIconButton(R.drawable.ic_search, stringResource(R.string.cd_search), vm::openSearch, glass = false)
-        Box {
+        // The day pane carries only its date and 더보기; search and views live in the calendar pane.
+        if (role != PaneRole.DAY) RoundIconButton(R.drawable.ic_search, stringResource(R.string.cd_search), vm::openSearch, glass = false)
+        if (role != PaneRole.DAY) Box {
             RoundIconButton(R.drawable.ic_views, stringResource(R.string.cd_view_menu), { menuOpen = true }, glass = false)
             DropdownMenu(
                 expanded = menuOpen,
@@ -319,8 +335,8 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
                     Triple(Level.RECORDS, R.string.view_records, R.drawable.ic_view_bento),
                     Triple(Level.MONTH, R.string.view_month, R.drawable.ic_view_month),
                     Triple(Level.YEAR, R.string.view_year, R.drawable.ic_view_year),
-                ).forEach { (lvl, label, icon) ->
-                    val current = vm.level == lvl
+                ).filter { (lvl) -> role == PaneRole.SINGLE || lvl in com.tokipin.app.rules.Adaptive.CALENDAR_MENU }.forEach { (lvl, label, icon) ->
+                    val current = shown == lvl
                     DropdownMenuItem(
                         text = { Text(stringResource(label), style = TkType.body) },
                         leadingIcon = { TkIcon(icon, size = 20.dp) },
@@ -345,21 +361,23 @@ private fun BrowseTopBar(vm: AppViewModel, onDayMenu: () -> Unit) {
 }
 
 @Composable
-private fun BoxScope.BottomActions(vm: AppViewModel) {
+private fun BoxScope.BottomActions(vm: AppViewModel, role: PaneRole, shown: Level) {
     val haptics = LocalHaptics.current
     Column(
         Modifier.align(Alignment.BottomCenter).contentColumn().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        vm.undo?.let { UndoBar(it) }
-        if (!vm.journal.isEmpty || vm.level == Level.DAILY || vm.level == Level.MONTH) {
+        // The undo notice sits under the day pane in two panes (v0.4 §3).
+        if (role != PaneRole.CALENDAR) vm.undo?.let { UndoBar(it) }
+        if (!vm.journal.isEmpty || shown == Level.DAILY || shown == Level.MONTH) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Today keeps the view and is silent (UX v0.1 §3).
-                GlassPill(stringResource(R.string.today), onClick = { vm.goToday(); haptics.report(NavEvent.TODAY) })
+                // Today keeps the view and is silent (UX v0.1 §3). Two panes: in the calendar pane.
+                if (role != PaneRole.DAY) GlassPill(stringResource(R.string.today), onClick = { vm.goToday(); haptics.report(NavEvent.TODAY) })
                 Spacer(Modifier.weight(1f))
+                if (role == PaneRole.CALENDAR) return@Row
                 // Daily: "+" opens an empty day; a filled day shows one pencil that opens all of its
                 // fragments with the keyboard closed. Other views keep "+".
-                val filled = vm.level == Level.DAILY && vm.journal.itemsOn(vm.selectedDate).isNotEmpty()
+                val filled = shown == Level.DAILY && vm.journal.itemsOn(vm.selectedDate).isNotEmpty()
                 if (filled) {
                     RoundIconButton(
                         R.drawable.ic_pencil, stringResource(R.string.cd_edit_day), { vm.openEditor(vm.selectedDate, focus = false) },
@@ -450,18 +468,18 @@ private fun DailyView(vm: AppViewModel) {
         SwipePager(
             page = date.weekStart(),
             neighbor = { start, d -> start.plusWeeks(d.toLong()) },
-            onCommit = { dir -> if (vm.selectDate(date.plusWeeks(dir.toLong()))) haptics.report(NavEvent.WEEK_SWIPE_COMMIT) },
+            onCommit = { dir -> if (vm.selectDay(date.plusWeeks(dir.toLong()))) haptics.report(NavEvent.WEEK_SWIPE_COMMIT) },
             reduceMotion = reduceMotion,
             modifier = Modifier.fillMaxWidth().testTag("weekRail"),
         ) { start ->
-            WeekRow(start, date) { day -> haptics.commitIf(vm.selectDate(day), NavEvent.TAP_DATE) }
+            WeekRow(start, date) { day -> haptics.commitIf(vm.selectDay(day), NavEvent.TAP_DATE) }
         }
         HorizontalDivider(color = Tk.Divider, modifier = Modifier.padding(horizontal = 20.dp))
         // Day body: ±1 day; the neighbouring days sit beside it and follow the finger 1:1.
         SwipePager(
             page = date,
             neighbor = { d, step -> d.plusDays(step.toLong()) },
-            onCommit = { dir -> if (vm.selectDate(date.plusDays(dir.toLong()))) haptics.report(NavEvent.DAY_SWIPE_COMMIT) },
+            onCommit = { dir -> if (vm.selectDay(date.plusDays(dir.toLong()))) haptics.report(NavEvent.DAY_SWIPE_COMMIT) },
             reduceMotion = reduceMotion,
             modifier = Modifier.fillMaxSize().testTag("dayBody"),
         ) { shown -> DayBody(vm, shown) }
@@ -1159,7 +1177,7 @@ private fun YearView(vm: AppViewModel) {
     // Three months per row on phones, four when there is room (tablets, foldables, landscape).
     CompositionLocalProvider(LocalMiniDayText provides miniText) {
     BoxWithConstraints {
-    val perRow = if (maxWidth >= 560.dp) 4 else 3
+    val perRow = com.tokipin.app.rules.Adaptive.yearColumns(maxWidth.value)
     LazyColumn(state = state, modifier = Modifier.testTag("calendarList"), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 110.dp)) {
         itemsIndexed(rows, key = { _, r ->
             when (r) {

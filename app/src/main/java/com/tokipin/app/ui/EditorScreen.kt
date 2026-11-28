@@ -489,6 +489,7 @@ private fun Composer(
             .fillMaxWidth()
             .heightIn(min = 52.dp)
             .focusRequester(focus)
+            .keepFocusAcrossLayouts(focus)
             .semantics { contentDescription = description },
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.CenterStart) {
