@@ -85,11 +85,14 @@ object AppLocale {
         return localized(base)
     }
 
-    /** [base] with the app language applied (used for the activity and for view-model messages). */
-    fun localized(base: Context): Context {
-        val config = Configuration(base.resources.configuration).apply { setLocale(current) }
-        return base.createConfigurationContext(config)
-    }
+    /**
+     * [base] with the app language applied (used for the activity and for view-model messages).
+     * The override carries the language only: anything else in it would be pinned at today's value,
+     * and the activity handles window changes itself (UX v0.4 §5), so screen size, orientation and
+     * density must keep following the real configuration.
+     */
+    fun localized(base: Context): Context =
+        base.createConfigurationContext(Configuration().apply { setLocale(current) })
 
     private var cached: Pair<Locale, Resources>? = null
 
